@@ -1,0 +1,12 @@
+:root[data-theme='dark'] {
+    --bg: #0c1420;
+    --bg-accent-a: #1f2e3d;
+    --bg-accent-b: #1b2534;
+    --card: #142131;
+    --text: #dfebfb;
+    --muted: #9cb3cc;
+    --accent: #7ec2ff;
+    --accent-soft: #203a55;
+    --border: #28435c;
+    --font-family: "Source Sans 3", "Segoe UI", sans-serif;
+}

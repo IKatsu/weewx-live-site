@@ -1,0 +1,13 @@
+:root[data-theme='bright'],
+:root {
+    --bg: #f3f8ff;
+    --bg-accent-a: #d2e7ff;
+    --bg-accent-b: #e8f8de;
+    --card: #ffffff;
+    --text: #0f253c;
+    --muted: #58728c;
+    --accent: #0665c1;
+    --accent-soft: #d7e9ff;
+    --border: #d4e0ed;
+    --font-family: "Source Sans 3", "Segoe UI", sans-serif;
+}
