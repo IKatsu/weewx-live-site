@@ -25,54 +25,169 @@ if ($bootstrapPath === null) {
 
 require_once $bootstrapPath;
 
+function years_last_n(int $years): array
+{
+    $now = new DateTimeImmutable('now');
+    $list = [];
+    for ($i = $years - 1; $i >= 0; $i--) {
+        $list[] = (int) $now->modify("-{$i} years")->format('Y');
+    }
+    return $list;
+}
+
+function month_labels_short(): array
+{
+    return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+}
+
+function fetch_monthly_hilo(PDO $pdo, string $tableName): array
+{
+    $sql = sprintf(
+        "SELECT
+            DATE_FORMAT(FROM_UNIXTIME(dateTime), '%%Y-%%m') AS month_key,
+            MIN(min) AS low_val,
+            SUM(sum) / NULLIF(SUM(count), 0) AS avg_val,
+            MAX(max) AS high_val
+         FROM `%s`
+         WHERE dateTime >= UNIX_TIMESTAMP(DATE_SUB(CURDATE(), INTERVAL 12 MONTH))
+         GROUP BY month_key",
+        $tableName
+    );
+
+    $rows = $pdo->query($sql)->fetchAll();
+    $out = [];
+    foreach ($rows as $row) {
+        $key = (string) ($row['month_key'] ?? '');
+        if ($key === '') {
+            continue;
+        }
+        $out[$key] = [
+            'low' => $row['low_val'] !== null ? (float) $row['low_val'] : null,
+            'avg' => $row['avg_val'] !== null ? (float) $row['avg_val'] : null,
+            'high' => $row['high_val'] !== null ? (float) $row['high_val'] : null,
+        ];
+    }
+    return $out;
+}
+
+function row_min_max(array $values): array
+{
+    $filtered = array_values(array_filter($values, static fn($v) => $v !== null));
+    if ($filtered === []) {
+        return [null, null];
+    }
+    return [min($filtered), max($filtered)];
+}
+
+function cell_style(?float $value, ?float $min, ?float $max): string
+{
+    if ($value === null || $min === null || $max === null || abs($max - $min) < 0.00001) {
+        return '';
+    }
+    $ratio = ($value - $min) / ($max - $min);
+    $ratio = max(0.0, min(1.0, $ratio));
+    $alpha = 0.10 + (0.35 * $ratio);
+    return sprintf(' style="background: rgba(15,110,207,%.3f);"', $alpha);
+}
+
+function fmt_val(?float $value, int $decimals): string
+{
+    return $value === null ? '-' : number_format($value, $decimals);
+}
+
 $config = app_config();
+
+$metricDefs = [
+    ['field' => 'outTemp', 'label' => 'Outside Temperature', 'unit_key' => 'temperature', 'decimals' => 1],
+    ['field' => 'inTemp', 'label' => 'Inside Temperature', 'unit_key' => 'temperature', 'decimals' => 1],
+    ['field' => 'dewpoint', 'label' => 'Outside Dew Point', 'unit_key' => 'temperature', 'decimals' => 1],
+    ['field' => 'inDewpoint', 'label' => 'Inside Dew Point', 'unit_key' => 'temperature', 'decimals' => 1],
+    ['field' => 'outHumidity', 'label' => 'Outside Humidity', 'unit' => '%', 'decimals' => 1],
+    ['field' => 'inHumidity', 'label' => 'Inside Humidity', 'unit' => '%', 'decimals' => 1],
+    ['field' => 'windSpeed', 'label' => 'Wind Speed', 'unit_key' => 'wind', 'decimals' => 1],
+    ['field' => 'windGust', 'label' => 'Wind Gust', 'unit_key' => 'wind', 'decimals' => 1],
+    ['field' => 'barometer', 'label' => 'Barometer', 'unit_key' => 'pressure', 'decimals' => 1],
+    ['field' => 'rainRate', 'label' => 'Rain Rate', 'unit_key' => 'rain_rate', 'decimals' => 2],
+    ['field' => 'rain', 'label' => 'Rain Total', 'unit_key' => 'rain', 'decimals' => 2],
+    ['field' => 'radiation', 'label' => 'Solar Radiation', 'unit' => 'W/m²', 'decimals' => 0],
+    ['field' => 'UV', 'label' => 'UV Index', 'unit' => 'index', 'decimals' => 1],
+    ['field' => 'ET', 'label' => 'Evapotranspiration', 'unit_key' => 'rain', 'decimals' => 2],
+    ['field' => 'pm2_5', 'label' => 'PM2.5', 'unit' => 'µg/m³', 'decimals' => 1],
+    ['field' => 'lightning_strike_count', 'label' => 'Lightning Count', 'unit' => 'count', 'decimals' => 0],
+    ['field' => 'windBatteryStatus', 'label' => 'Wind Battery', 'unit' => 'V', 'decimals' => 2],
+    ['field' => 'rainBatteryStatus', 'label' => 'Rain Battery', 'unit' => 'V', 'decimals' => 2],
+    ['field' => 'lightning_Batt', 'label' => 'Lightning Battery', 'unit' => 'V', 'decimals' => 2],
+    ['field' => 'pm25_Batt1', 'label' => 'PM2.5 Battery', 'unit' => 'V', 'decimals' => 2],
+    ['field' => 'inTempBatteryStatus', 'label' => 'Indoor Temp Battery', 'unit' => 'V', 'decimals' => 2],
+];
+
+    $sections = [];
+    $error = null;
 
 try {
     $pdo = pdo_from_config($config);
     $columns = archive_columns($pdo);
+    $years = years_last_n(3);
 
-    $outTempColumn = mapped_archive_column($config, $columns, 'outTemp') ?? 'outTemp';
-    if (!is_safe_identifier($outTempColumn)) {
-        throw new RuntimeException('Invalid outTemp field mapping.');
+    $latestUnits = 17;
+    $dateCol = mapped_archive_column($config, $columns, 'dateTime');
+    $unitsCol = mapped_archive_column($config, $columns, 'usUnits');
+    if ($dateCol !== null && $unitsCol !== null) {
+        $sqlLatest = sprintf('SELECT %s AS usUnits FROM archive ORDER BY %s DESC LIMIT 1', $unitsCol, $dateCol);
+        $row = $pdo->query($sqlLatest)->fetch();
+        if (is_array($row) && isset($row['usUnits'])) {
+            $latestUnits = (int) $row['usUnits'];
+        }
     }
+    $unitMap = unit_map($latestUnits);
 
-    $dayTable = 'archive_day_' . $outTempColumn;
-    if (!is_safe_identifier($dayTable)) {
-        throw new RuntimeException('Invalid archive_day table name.');
-    }
-
-    // Daily summaries already contain min/max and weighted sums,
-    // so monthly min/avg/max can be computed cheaply from archive_day tables.
-    $sql = sprintf(
-        "SELECT
-            DATE_FORMAT(FROM_UNIXTIME(dateTime), '%%Y-%%m') AS month_key,
-            MIN(min) AS month_min,
-            MAX(max) AS month_max,
-            SUM(sum) / NULLIF(SUM(count), 0) AS month_avg,
-            SUM(count) AS sample_count
-         FROM %s
-         WHERE dateTime >= UNIX_TIMESTAMP(DATE_SUB(CURDATE(), INTERVAL 24 MONTH))
-         GROUP BY month_key
-         ORDER BY month_key DESC",
-        $dayTable
+    $tableExistsStmt = $pdo->prepare(
+        'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table_name'
     );
 
-    $rows = $pdo->query($sql)->fetchAll();
-} catch (Throwable $e) {
-    http_response_code(500);
-    echo 'Failed to load history: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
-    exit;
-}
+    foreach ($metricDefs as $def) {
+        $field = (string) $def['field'];
+        $mapped = mapped_archive_column($config, $columns, $field);
+        if ($mapped === null) {
+            continue;
+        }
 
-$months = [];
-$minVals = [];
-$avgVals = [];
-$maxVals = [];
-foreach ($rows as $row) {
-    $months[] = $row['month_key'];
-    $minVals[] = $row['month_min'] !== null ? round((float) $row['month_min'], 2) : null;
-    $avgVals[] = $row['month_avg'] !== null ? round((float) $row['month_avg'], 2) : null;
-    $maxVals[] = $row['month_max'] !== null ? round((float) $row['month_max'], 2) : null;
+        $tableName = 'archive_day_' . $mapped;
+        if (!is_safe_identifier($tableName)) {
+            continue;
+        }
+
+        $tableExistsStmt->execute([':table_name' => $tableName]);
+        if ((int) $tableExistsStmt->fetchColumn() === 0) {
+            continue;
+        }
+
+        $monthlyData = fetch_monthly_hilo($pdo, $tableName); // keyed by YYYY-MM
+        $rowsByYear = [];
+        foreach ($years as $year) {
+            $y = (string) $year;
+            $rowsByYear[$y] = ['high' => [], 'avg' => [], 'low' => []];
+            for ($month = 1; $month <= 12; $month++) {
+                $mk = sprintf('%04d-%02d', $year, $month);
+                $entry = $monthlyData[$mk] ?? ['low' => null, 'avg' => null, 'high' => null];
+                $rowsByYear[$y]['high'][] = $entry['high'];
+                $rowsByYear[$y]['avg'][] = $entry['avg'];
+                $rowsByYear[$y]['low'][] = $entry['low'];
+            }
+        }
+
+        $unit = $def['unit'] ?? ($unitMap[$def['unit_key'] ?? ''] ?? '');
+        $sections[] = [
+            'label' => $def['label'],
+            'unit' => (string) $unit,
+            'decimals' => (int) $def['decimals'],
+            'years' => $years,
+            'rows_by_year' => $rowsByYear,
+        ];
+    }
+} catch (Throwable $e) {
+    $error = $e->getMessage();
+    $sections = [];
 }
 ?>
 <!doctype html>
@@ -80,70 +195,92 @@ foreach ($rows as $row) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Monthly Temperature History</title>
+    <title>Monthly History</title>
     <link rel="stylesheet" href="assets/css/base.css">
     <link rel="stylesheet" href="assets/css/theme-bright.css">
     <style>
-        .history-wrap { max-width: 1200px; margin: 1rem auto; width: calc(100% - 2rem); }
-        .table-card { background: var(--card); border: 1px solid var(--border); border-radius: .8rem; padding: 1rem; margin-top: 1rem; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: .55rem .5rem; border-bottom: 1px solid var(--border); text-align: right; }
-        th:first-child, td:first-child { text-align: left; }
+        .history-wrap { max-width: 1400px; margin: 1rem auto; width: calc(100% - 2rem); }
+        .history-grid { display: grid; gap: .9rem; }
+        .history-card { background: var(--card); border: 1px solid var(--border); border-radius: .8rem; padding: .85rem; overflow-x: auto; }
+        .history-head { display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; margin-bottom: .5rem; }
+        .history-title { margin: 0; font-size: 1rem; }
+        .history-unit { color: var(--muted); font-size: .86rem; }
+        table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        th, td { padding: .45rem .4rem; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
+        th:first-child, td:first-child { text-align: left; font-weight: 700; }
+        .muted { color: var(--muted); }
     </style>
 </head>
 <body>
 <div class="history-wrap">
-    <div class="status-row" style="margin-bottom: .6rem;">
+    <div class="status-row" style="margin-bottom: .7rem;">
         <a class="status-pill" href="./">Dashboard</a>
     </div>
-    <h1 class="title">Monthly Outside Temperature Min/Avg/Max</h1>
-    <div class="chart-card">
-        <h3 class="chart-title">Last 24 Months</h3>
-        <div class="chart-wrap"><canvas id="history-chart"></canvas></div>
-    </div>
-    <div class="table-card">
-        <table>
-            <thead>
-                <tr>
-                    <th>Month</th>
-                    <th>Min</th>
-                    <th>Avg</th>
-                    <th>Max</th>
-                    <th>Samples</th>
-                </tr>
-            </thead>
-            <tbody>
-            <?php foreach ($rows as $row): ?>
-                <tr>
-                    <td><?= htmlspecialchars((string) $row['month_key'], ENT_QUOTES, 'UTF-8') ?></td>
-                    <td><?= $row['month_min'] !== null ? number_format((float) $row['month_min'], 2) : 'n/a' ?></td>
-                    <td><?= $row['month_avg'] !== null ? number_format((float) $row['month_avg'], 2) : 'n/a' ?></td>
-                    <td><?= $row['month_max'] !== null ? number_format((float) $row['month_max'], 2) : 'n/a' ?></td>
-                    <td><?= (int) ($row['sample_count'] ?? 0) ?></td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
+    <h1 class="title">Monthly High / Average / Low History</h1>
+    <p class="muted">Monthly high/average/low by metric (Jan-Dec columns, last 3 years) from available <code>archive_day_*</code> tables.</p>
+
+    <?php if ($error !== null): ?>
+        <div class="history-card">Failed to load history: <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
+    <?php elseif ($sections === []): ?>
+        <div class="history-card">No monthly history sections available for current field mappings.</div>
+    <?php else: ?>
+    <section class="history-grid">
+        <?php foreach ($sections as $section): ?>
+            <?php
+            $allHigh = [];
+            $allAvg = [];
+            $allLow = [];
+            foreach ($section['rows_by_year'] as $bucket) {
+                $allHigh = array_merge($allHigh, $bucket['high']);
+                $allAvg = array_merge($allAvg, $bucket['avg']);
+                $allLow = array_merge($allLow, $bucket['low']);
+            }
+            [$highMin, $highMax] = row_min_max($allHigh);
+            [$avgMin, $avgMax] = row_min_max($allAvg);
+            [$lowMin, $lowMax] = row_min_max($allLow);
+            ?>
+            <article class="history-card">
+                <div class="history-head">
+                    <h2 class="history-title"><?= htmlspecialchars($section['label'], ENT_QUOTES, 'UTF-8') ?></h2>
+                    <span class="history-unit"><?= htmlspecialchars($section['unit'], ENT_QUOTES, 'UTF-8') ?></span>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Year / Type</th>
+                            <?php foreach (month_labels_short() as $monthLabel): ?>
+                                <th><?= htmlspecialchars($monthLabel, ENT_QUOTES, 'UTF-8') ?></th>
+                            <?php endforeach; ?>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($section['years'] as $year): ?>
+                            <?php $bucket = $section['rows_by_year'][(string) $year]; ?>
+                            <tr>
+                                <td><?= (int) $year ?> High</td>
+                                <?php foreach ($bucket['high'] as $v): ?>
+                                    <td<?= cell_style($v, $highMin, $highMax) ?>><?= fmt_val($v, $section['decimals']) ?></td>
+                                <?php endforeach; ?>
+                            </tr>
+                            <tr>
+                                <td><?= (int) $year ?> Average</td>
+                                <?php foreach ($bucket['avg'] as $v): ?>
+                                    <td<?= cell_style($v, $avgMin, $avgMax) ?>><?= fmt_val($v, $section['decimals']) ?></td>
+                                <?php endforeach; ?>
+                            </tr>
+                            <tr>
+                                <td><?= (int) $year ?> Low</td>
+                                <?php foreach ($bucket['low'] as $v): ?>
+                                    <td<?= cell_style($v, $lowMin, $lowMax) ?>><?= fmt_val($v, $section['decimals']) ?></td>
+                                <?php endforeach; ?>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </article>
+        <?php endforeach; ?>
+    </section>
+    <?php endif; ?>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script>
-new Chart(document.getElementById('history-chart'), {
-    type: 'line',
-    data: {
-        labels: <?= json_encode(array_reverse($months)) ?>,
-        datasets: [
-            { label: 'Min', data: <?= json_encode(array_reverse($minVals)) ?>, borderColor: '#2c77c0', backgroundColor: '#2c77c0' },
-            { label: 'Avg', data: <?= json_encode(array_reverse($avgVals)) ?>, borderColor: '#2f7f40', backgroundColor: '#2f7f40' },
-            { label: 'Max', data: <?= json_encode(array_reverse($maxVals)) ?>, borderColor: '#cf3f2f', backgroundColor: '#cf3f2f' },
-        ],
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        elements: { point: { radius: 2 }, line: { tension: 0.25, borderWidth: 2 } },
-    },
-});
-</script>
 </body>
 </html>
