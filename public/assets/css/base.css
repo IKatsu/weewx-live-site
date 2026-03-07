@@ -62,6 +62,32 @@ body {
     padding: 0.3rem 0.7rem;
 }
 
+.diag-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 0.55rem;
+    margin: 0 0 0.9rem;
+}
+
+.diag-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    align-items: center;
+    background: color-mix(in srgb, var(--card) 88%, var(--accent-soft) 12%);
+    border: 1px solid var(--border);
+    border-radius: 0.6rem;
+    padding: 0.45rem 0.65rem;
+    color: var(--muted);
+    font-size: 0.86rem;
+}
+
+.diag-item strong {
+    color: var(--text);
+    font-family: "DM Mono", "Consolas", "Courier New", monospace;
+    font-weight: 600;
+}
+
 .dot {
     width: 0.6rem;
     height: 0.6rem;

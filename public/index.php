@@ -78,6 +78,14 @@ $forecastConfig = $config['forecast'] ?? ['provider' => 'none'];
             <div class="status-pill"><span class="dot" id="mqtt-dot"></span><span id="mqtt-status">MQTT: idle</span></div>
         </div>
     </header>
+    <section class="diag-panel" aria-label="Connection diagnostics">
+        <div class="diag-item"><span>API poll:</span> <strong id="diag-api-state">idle</strong></div>
+        <div class="diag-item"><span>Last API attempt:</span> <strong id="diag-api-attempt">never</strong></div>
+        <div class="diag-item"><span>Last API success:</span> <strong id="diag-api-success">never</strong></div>
+        <div class="diag-item"><span>Last API error:</span> <strong id="diag-api-error">none</strong></div>
+        <div class="diag-item"><span>MQTT stream:</span> <strong id="diag-mqtt-state">idle</strong></div>
+        <div class="diag-item"><span>Last MQTT message:</span> <strong id="diag-mqtt-last">never</strong></div>
+    </section>
 
     <section class="hero-grid">
         <article class="hero-card current-visual">
@@ -303,6 +311,14 @@ const state = {
     latest: null,
     charts: {},
     windRosePlotly: false,
+    diagnostics: {
+        apiPollState: 'idle',
+        apiLastAttemptAt: null,
+        apiLastSuccessAt: null,
+        apiLastError: '',
+        mqttState: 'idle',
+        mqttLastMessageAt: null,
+    },
 };
 
 const graphFieldRequirements = {
@@ -756,6 +772,40 @@ function setMqttStatus(text, mode) {
     status.textContent = text;
     dot.classList.remove('connected', 'error');
     if (mode) dot.classList.add(mode);
+    if (text.toLowerCase().includes('connected')) {
+        state.diagnostics.mqttState = 'connected';
+    } else if (text.toLowerCase().includes('disabled')) {
+        state.diagnostics.mqttState = 'disabled';
+    } else if (text.toLowerCase().includes('offline') || text.toLowerCase().includes('error')) {
+        state.diagnostics.mqttState = 'error';
+    } else if (text.toLowerCase().includes('connect')) {
+        state.diagnostics.mqttState = 'connecting';
+    } else {
+        state.diagnostics.mqttState = 'idle';
+    }
+    renderDiagnostics();
+}
+
+function formatDiagTime(epochMs) {
+    if (!Number.isFinite(epochMs)) return 'never';
+    return formatClock(new Date(epochMs), APP.location?.timezone || 'UTC');
+}
+
+function renderDiagnostics() {
+    const d = state.diagnostics;
+    const apiState = document.getElementById('diag-api-state');
+    const apiAttempt = document.getElementById('diag-api-attempt');
+    const apiSuccess = document.getElementById('diag-api-success');
+    const apiError = document.getElementById('diag-api-error');
+    const mqttState = document.getElementById('diag-mqtt-state');
+    const mqttLast = document.getElementById('diag-mqtt-last');
+    if (!apiState || !apiAttempt || !apiSuccess || !apiError || !mqttState || !mqttLast) return;
+    apiState.textContent = d.apiPollState;
+    apiAttempt.textContent = formatDiagTime(d.apiLastAttemptAt);
+    apiSuccess.textContent = formatDiagTime(d.apiLastSuccessAt);
+    apiError.textContent = d.apiLastError || 'none';
+    mqttState.textContent = d.mqttState;
+    mqttLast.textContent = formatDiagTime(d.mqttLastMessageAt);
 }
 
 function applyGraphVisibility() {
@@ -1572,14 +1622,28 @@ function buildCharts(history) {
 }
 
 async function loadLatest() {
-    const response = await fetch('api/latest.php', { cache: 'no-store' });
-    if (!response.ok) throw new Error(`latest ${response.status}`);
-    state.latest = await response.json();
-    document.getElementById('db-updated').textContent = formatTimestamp(state.latest.timestamp);
-    renderCards();
-    renderCurrentVisual(state.latest.metrics);
-    renderAstroInfo(state.latest.metrics);
-    renderSkyWidget(state.latest.metrics);
+    state.diagnostics.apiPollState = 'polling';
+    state.diagnostics.apiLastAttemptAt = Date.now();
+    renderDiagnostics();
+    try {
+        const response = await fetch('api/latest.php', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`latest ${response.status}`);
+        state.latest = await response.json();
+        state.diagnostics.apiPollState = 'ok';
+        state.diagnostics.apiLastSuccessAt = Date.now();
+        state.diagnostics.apiLastError = '';
+        document.getElementById('db-updated').textContent = formatTimestamp(state.latest.timestamp);
+        renderCards();
+        renderCurrentVisual(state.latest.metrics);
+        renderAstroInfo(state.latest.metrics);
+        renderSkyWidget(state.latest.metrics);
+    } catch (err) {
+        state.diagnostics.apiPollState = 'error';
+        state.diagnostics.apiLastError = err && err.message ? String(err.message) : 'request failed';
+        throw err;
+    } finally {
+        renderDiagnostics();
+    }
 }
 
 async function loadHistory(rangeKey = APP.historyRange) {
@@ -1659,6 +1723,8 @@ function connectMqtt() {
         if (rootTopic !== '' && !topic.startsWith(rootTopic)) return;
         try {
             mergeMqttUpdate(JSON.parse(payload.toString()));
+            state.diagnostics.mqttLastMessageAt = Date.now();
+            renderDiagnostics();
         } catch {
             // Ignore malformed payloads.
         }
@@ -1668,6 +1734,7 @@ function connectMqtt() {
 (async function init() {
     applyGraphVisibility();
     initThemeSelector();
+    renderDiagnostics();
     renderForecastPlaceholders('Loading cached forecast...');
     applyLayoutConfig();
     try {
