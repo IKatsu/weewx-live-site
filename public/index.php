@@ -85,6 +85,20 @@ $forecastConfig = $config['forecast'] ?? ['provider' => 'none'];
                         <div id="current-temp" class="current-temp">--</div>
                         <div id="current-sub" class="current-sub">Forecast provider: pending</div>
                     </div>
+                    <div class="wind-compass-card" aria-label="Wind compass">
+                        <div class="wind-compass-title">Wind</div>
+                        <div class="wind-compass-ring">
+                            <div id="wind-needle" class="wind-needle"></div>
+                            <div class="wind-compass-center"></div>
+                            <span class="wind-mark wind-mark-n">N</span>
+                            <span class="wind-mark wind-mark-e">E</span>
+                            <span class="wind-mark wind-mark-s">S</span>
+                            <span class="wind-mark wind-mark-w">W</span>
+                        </div>
+                        <div id="wind-dir-short" class="wind-compass-main">--</div>
+                        <div id="wind-dir-deg" class="wind-compass-sub">--°</div>
+                        <div id="wind-speed-ms" class="wind-compass-sub">-- m/s</div>
+                    </div>
                 </div>
                 <div class="forecast-now-col">
                     <h3>Next 5 Hours</h3>
@@ -618,6 +632,33 @@ function moonPhaseIcon(phase) {
     return '🌘';
 }
 
+function windDirectionShort(degrees) {
+    if (!Number.isFinite(degrees)) return '--';
+    const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+    const norm = ((degrees % 360) + 360) % 360;
+    const idx = Math.round(norm / 22.5) % 16;
+    return dirs[idx];
+}
+
+function renderWindCompass(metrics) {
+    const needle = document.getElementById('wind-needle');
+    const shortNode = document.getElementById('wind-dir-short');
+    const degNode = document.getElementById('wind-dir-deg');
+    const speedNode = document.getElementById('wind-speed-ms');
+    if (!needle || !shortNode || !degNode || !speedNode) return;
+
+    const rawDir = Number(metrics?.windDir?.value);
+    const rawSpeed = Number(metrics?.windSpeed?.value);
+    const windUnit = metrics?.windSpeed?.unit || 'm/s';
+    const dir = Number.isFinite(rawDir) ? (((rawDir % 360) + 360) % 360) : NaN;
+    const speedMs = Number.isFinite(rawSpeed) ? toMetersPerSecond(rawSpeed, windUnit) : NaN;
+
+    shortNode.textContent = windDirectionShort(dir);
+    degNode.textContent = Number.isFinite(dir) ? `${Math.round(dir)}°` : '--°';
+    speedNode.textContent = Number.isFinite(speedMs) ? `${speedMs.toFixed(1)} m/s` : '-- m/s';
+    needle.style.transform = Number.isFinite(dir) ? `translateX(-50%) rotate(${dir}deg)` : 'translateX(-50%) rotate(0deg)';
+}
+
 function renderAstroInfo(metrics) {
     const host = document.getElementById('astro-times');
     if (!host || !window.SunCalc) return;
@@ -661,8 +702,9 @@ function renderCurrentVisual(metrics) {
         condNode.textContent = `Current Weather (${APP.forecast?.provider || 'local'})`;
     }
     if (subNode) {
-        subNode.textContent = `Wind ${formatValue(metrics?.windSpeed?.value, metrics?.windSpeed?.unit)}  Humidity ${formatValue(metrics?.outHumidity?.value, metrics?.outHumidity?.unit)}`;
+        subNode.textContent = `Humidity ${formatValue(metrics?.outHumidity?.value, metrics?.outHumidity?.unit)}`;
     }
+    renderWindCompass(metrics || {});
 }
 
 function renderForecastCacheStatus(cache) {
