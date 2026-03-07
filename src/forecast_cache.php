@@ -60,6 +60,14 @@ function forecast_http_get_json(string $url, int $timeoutSeconds = 10): array
                 if ($parts !== []) {
                     $errorSummary = ' (' . implode(', ', $parts) . ')';
                 }
+            } else {
+                $trimmed = trim((string) $raw);
+                if ($trimmed !== '') {
+                    $snippet = preg_replace('/\s+/', ' ', $trimmed);
+                    if (is_string($snippet) && $snippet !== '') {
+                        $errorSummary = ' (body=' . substr($snippet, 0, 220) . ')';
+                    }
+                }
             }
             throw new RuntimeException('WU request failed with HTTP ' . $code . $errorSummary);
         }
