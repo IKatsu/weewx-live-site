@@ -382,7 +382,7 @@ function temperatureGradientStyle(value, unit = '°C') {
     const luma = (0.2126 * r) + (0.7152 * g) + (0.0722 * b);
     const fg = luma < 145 ? '#ffffff' : '#102137';
     return {
-        background: `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.36), rgba(${r}, ${g}, ${b}, 0.18))`,
+        background: `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.82), rgba(${r}, ${g}, ${b}, 0.56))`,
         borderColor: `rgba(${r}, ${g}, ${b}, 0.78)`,
         color: fg,
     };
@@ -427,7 +427,7 @@ function colorForRatio(palette, ratio) {
     ];
 }
 
-function applyMetricCardColor(cardNode, metricKey, value) {
+function applyMetricCardColor(cardNode, metricKey, value, unit = '') {
     if (!cardNode) return;
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) {
@@ -442,9 +442,7 @@ function applyMetricCardColor(cardNode, metricKey, value) {
         return;
     }
     if (['outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'heatindex', 'windchill', 'appTemp', 'humidex'].includes(metricKey)) {
-        const valueNode = cardNode.querySelector('.value');
-        const unitMatch = valueNode?.textContent?.match(/(°C|°F)/);
-        const style = temperatureGradientStyle(numeric, unitMatch ? unitMatch[1] : '°C');
+        const style = temperatureGradientStyle(numeric, unit || '°C');
         if (style) {
             cardNode.style.background = style.background;
             cardNode.style.borderColor = style.borderColor;
@@ -679,7 +677,7 @@ function renderCards() {
         card.className = 'card';
         card.dataset.metric = key;
         card.innerHTML = `<div class="label">${metric.label || key}</div><div class="value" id="metric-${key}">${formatValue(metric.value, metric.unit)}</div>`;
-        applyMetricCardColor(card, key, metric.value);
+        applyMetricCardColor(card, key, metric.value, metric.unit || '');
         cards.appendChild(card);
     }
 
@@ -689,7 +687,7 @@ function renderCards() {
         card.className = 'card';
         card.dataset.metric = key;
         card.innerHTML = `<div class="label">${metric.label || key}</div><div class="value" id="metric-${key}">${formatValue(metric.value, metric.unit)}</div>`;
-        applyMetricCardColor(card, key, metric.value);
+        applyMetricCardColor(card, key, metric.value, metric.unit || '');
         cards.appendChild(card);
     }
 }
@@ -935,7 +933,7 @@ function updateMetricValue(key, value, unit) {
     if (!node) return;
     node.textContent = formatValue(value, unit);
     const card = node.closest('.card');
-    applyMetricCardColor(card, key, value);
+    applyMetricCardColor(card, key, value, unit || '');
 }
 
 function choose(payload, keys) {

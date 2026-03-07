@@ -152,7 +152,7 @@ function tempChip(value, unit = '°C', decimals = 0) {
     const luma = (0.2126 * r) + (0.7152 * g) + (0.0722 * b);
     const fg = luma < 145 ? '#ffffff' : '#102137';
     const label = `${n.toFixed(decimals)}°`;
-    return `<span class=\"temp-gradient-chip\" style=\"background:linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.36), rgba(${r}, ${g}, ${b}, 0.18)); border:1px solid rgba(${r}, ${g}, ${b}, 0.78); color:${fg};\">${label}</span>`;
+    return `<span class=\"temp-gradient-chip\" style=\"background:linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.82), rgba(${r}, ${g}, ${b}, 0.56)); border:1px solid rgba(${r}, ${g}, ${b}, 0.82); color:${fg};\">${label}</span>`;
 }
 
 function renderHourly(rows) {

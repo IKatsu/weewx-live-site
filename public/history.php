@@ -143,7 +143,17 @@ function temperature_ratio_from_value(?float $value, string $unit): ?float
     }
     $stops = [-15.0, 0.0, 10.0, 20.0, 25.0];
     $x = max($stops[0], min($stops[count($stops) - 1], $tempC));
-    return ($x - $stops[0]) / ($stops[count($stops) - 1] - $stops[0]);
+    // Map to equal stop spacing to match defined palette anchors.
+    if ($x <= 0.0) {
+        return (($x - (-15.0)) / 15.0) * 0.25;
+    }
+    if ($x <= 10.0) {
+        return 0.25 + (($x - 0.0) / 10.0) * 0.25;
+    }
+    if ($x <= 20.0) {
+        return 0.50 + (($x - 10.0) / 10.0) * 0.25;
+    }
+    return 0.75 + (($x - 20.0) / 5.0) * 0.25;
 }
 
 function cell_style(
@@ -173,7 +183,7 @@ function cell_style(
     $luma = (0.2126 * $r) + (0.7152 * $g) + (0.0722 * $b);
     $fg = $luma < 145 ? '#ffffff' : '#102137';
     return sprintf(
-        ' style="background: linear-gradient(180deg, rgba(%1$d,%2$d,%3$d,0.42), rgba(%1$d,%2$d,%3$d,0.20)); color: %4$s; border-color: rgba(%1$d,%2$d,%3$d,0.78);"',
+        ' style="background: linear-gradient(180deg, rgba(%1$d,%2$d,%3$d,0.82), rgba(%1$d,%2$d,%3$d,0.56)); color: %4$s; border-color: rgba(%1$d,%2$d,%3$d,0.82);"',
         $r,
         $g,
         $b,
