@@ -32,6 +32,7 @@ Open `http://127.0.0.1:8080`.
 - MySQL/MariaDB server containing WeeWX archive data
 - Apache or another PHP-capable web server
 - Optional (for WeeWX extension install): `weectl` command on the WeeWX 5+ host
+- Optional (for live browser updates): WeeWX MQTT extension [`matthewwall/weewx-mqtt`](https://github.com/matthewwall/weewx-mqtt)
 
 ## Configuration model
 
@@ -48,6 +49,7 @@ Environment variables (optional overrides):
 - `PWS_DB_USER` (default from local config)
 - `PWS_DB_PASS` (default from local config)
 - `PWS_MQTT_URL` (default from local config)
+- `PWS_MQTT_ENABLED` (default `true`)
 - `PWS_MQTT_USER` (default from local config)
 - `PWS_MQTT_PASS` (default from local config)
 - `PWS_MQTT_TOPIC` (default `weewx/#`)
@@ -91,8 +93,26 @@ Edit `src/config.local.php` to control filesystem/UI settings and field mappings
 - `ui.css_*` and `ui.css_themes` for theme files
 - `ui.time_format` for clock style (`24h` default, or `12h`)
 - `ui.plotly_js` for plotly loading (`auto` default)
+- `mqtt.enabled` to enable/disable live MQTT updates (`true` default)
+- `ui.battery_status_labels` to map integer battery status codes (for example `5`) to text labels
 - `ui.graphs.*` to enable/disable specific graphs
 - `field_map.*` to map logical fields to database column names
+
+If `mqtt.enabled = false`, the site still works with MySQL polling/history/forecast, but live browser push updates are disabled.
+
+Battery note:
+- Battery series are auto-detected as status-style values when they are integer codes (for example `0`, `1`, `5`, `9`).
+- In that case, cards/charts show status labels instead of assuming volts.
+
+### WeeWX MQTT extension setup (for live updates)
+
+Install WeeWX MQTT publisher extension on your WeeWX host (WeeWX 5+):
+
+```bash
+weectl extension install https://github.com/matthewwall/weewx-mqtt/archive/master.zip
+```
+
+Then add/configure `[StdRESTful][[MQTT]]` in `weewx.conf` (server URL, topic, binding `archive, loop`) so data is published to your broker topic used by this dashboard.
 
 Relative paths are resolved against `paths.base_dir`.
 

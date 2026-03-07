@@ -22,6 +22,16 @@ return [
         // "auto" selects the highest plotly-*.min.js found in public/assets/vendor.
         'plotly_js' => 'auto',
         'plotly_wind_rose' => true,
+        // Optional mapping for battery status-like integer values (0,1,5,9,...).
+        'battery_status_labels' => [
+            '0' => 'Normal',
+            '1' => 'Low',
+            '2' => 'Low',
+            '3' => 'Critical',
+            '4' => 'Critical',
+            '5' => 'OK',
+            '9' => 'Low',
+        ],
         // Layout controls for all standard charts.
         'layout' => [
             'graph_max_columns' => 3,
@@ -140,6 +150,7 @@ return [
         'password' => '',
     ],
     'mqtt' => [
+        'enabled' => true,
         'url' => 'ws://127.0.0.1:9001/mqtt',
         'username' => 'CHANGE_ME',
         'password' => 'CHANGE_ME',

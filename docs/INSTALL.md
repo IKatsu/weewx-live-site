@@ -76,11 +76,14 @@ Set `ui.time_format` to `24h` (default) or `12h` for all displayed times.
 Set `ui.plotly_js` to:
 - `auto` (default): highest `plotly-*.min.js` in `public/assets/vendor`
 - explicit file path to pin a specific Plotly build
+Set `mqtt.enabled` to `false` if you want to run without live MQTT push updates.
+Use `ui.battery_status_labels` to label integer battery status codes (for example `5 = OK`).
 
 Environment variable overrides:
 
 - `PWS_DB_HOST`, `PWS_DB_PORT`, `PWS_DB_NAME`, `PWS_DB_USER`, `PWS_DB_PASS`
 - `PWS_MQTT_URL`, `PWS_MQTT_USER`, `PWS_MQTT_PASS`, `PWS_MQTT_TOPIC`
+- `PWS_MQTT_ENABLED`
 - `PWS_HISTORY_DEFAULT_HOURS`, `PWS_HISTORY_MAX_HOURS`
 
 If you run the site over HTTPS, use secure MQTT WebSocket (`wss://...`) to avoid browser mixed-content blocking.
@@ -151,7 +154,36 @@ The provided ACL grants:
 - `weewx`: read/write on `weewx/#`
 - `weewx-readonly`: read-only on `weewx/#`
 
-## 6. Plotly upgrades
+## 6. WeeWX MQTT publisher extension (for live updates)
+
+The dashboard's browser live updates require WeeWX to publish LOOP/archive data to MQTT.
+
+Recommended extension:
+
+- [`matthewwall/weewx-mqtt`](https://github.com/matthewwall/weewx-mqtt)
+
+Install on WeeWX 5+:
+
+```bash
+weectl extension install https://github.com/matthewwall/weewx-mqtt/archive/master.zip
+```
+
+Then configure in `weewx.conf`:
+
+```ini
+[StdRESTful]
+    [[MQTT]]
+        server_url = mqtt://weewx:YOUR_PASSWORD@localhost:1883
+        topic = weewx
+        unit_system = METRIC
+        retain = true
+        binding = archive, loop
+        aggregation = aggregate
+```
+
+If you skip this, set `mqtt.enabled = false` in this project so the UI does not try to connect.
+
+## 7. Plotly upgrades
 
 To upgrade Plotly, copy a new build into:
 
@@ -165,7 +197,7 @@ cp plotly-3.1.0.min.js /path/to/pws-live-site/public/assets/vendor/
 
 With `ui.plotly_js = 'auto'`, the site will automatically use the newest `plotly-*.min.js` file.
 
-## 7. Verification checklist
+## 8. Verification checklist
 
 1. Open the dashboard page.
 2. Confirm weather cards load values from MySQL.
@@ -183,7 +215,7 @@ API format check:
    - `/api/dump.php?type=json`
    - `/api/dump.php?type=xml`
 
-## 8. WU forecast DB cache (option 1)
+## 9. WU forecast DB cache (option 1)
 
 Apply the SQL schema (run with a user that has CREATE TABLE rights):
 
@@ -204,7 +236,7 @@ Cron example (15 min):
 */15 * * * * cd /path/to/pws-live-site && php src/cli/fetch_wu_forecast.php >> /var/log/pws-forecast-cron.log 2>&1
 ```
 
-## 9. WeeWX custom_obs extension (optional but recommended for skyfield live fields)
+## 10. WeeWX custom_obs extension (optional but recommended for skyfield live fields)
 
 This repo includes an extension package at:
 
@@ -232,7 +264,7 @@ Full details:
 
 - `docs/WEEWX_CUSTOM_OBS_EXTENSION.md`
 
-## 10. Optional database optimization suggestions
+## 11. Optional database optimization suggestions
 
 If `archive` grows large, add indexes to speed latest/history queries:
 

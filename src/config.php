@@ -9,6 +9,12 @@ function env_value(string $key, string $default): string
     return ($value === false || $value === '') ? $default : $value;
 }
 
+function env_bool(string $key, bool $default): bool
+{
+    $raw = env_value($key, $default ? '1' : '0');
+    return filter_var($raw, FILTER_VALIDATE_BOOLEAN);
+}
+
 function array_merge_deep(array $base, array $override): array
 {
     foreach ($override as $key => $value) {
@@ -151,6 +157,7 @@ function app_config(): array
             'password' => env_value('PWS_FORECAST_DB_PASS', (string) ($forecastWriterDbCfg['password'] ?? '')),
         ],
         'mqtt' => [
+            'enabled' => env_bool('PWS_MQTT_ENABLED', (bool) ($mqttCfg['enabled'] ?? true)),
             'url' => env_value('PWS_MQTT_URL', (string) ($mqttCfg['url'] ?? 'ws://127.0.0.1:9001/mqtt')),
             'username' => env_value('PWS_MQTT_USER', (string) ($mqttCfg['username'] ?? '')),
             'password' => env_value('PWS_MQTT_PASS', (string) ($mqttCfg['password'] ?? '')),
@@ -174,6 +181,7 @@ function app_config(): array
             ],
             'layout' => (array) ($uiCfg['layout'] ?? []),
             'graphs' => (array) ($uiCfg['graphs'] ?? []),
+            'battery_status_labels' => (array) ($uiCfg['battery_status_labels'] ?? []),
         ],
         'field_map' => (array) ($local['field_map'] ?? []),
         'location' => [

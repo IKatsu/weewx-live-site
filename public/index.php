@@ -258,6 +258,7 @@ $forecastConfig = $config['forecast'] ?? ['provider' => 'none'];
 <script>
 const APP = {
     mqtt: {
+        enabled: <?= json_encode((bool) ($config['mqtt']['enabled'] ?? true)) ?>,
         url: <?= json_encode($config['mqtt']['url']) ?>,
         username: <?= json_encode($config['mqtt']['username']) ?>,
         password: <?= json_encode($config['mqtt']['password']) ?>,
@@ -268,6 +269,7 @@ const APP = {
     defaultTheme: <?= json_encode($defaultTheme) ?>,
     themes: <?= json_encode(array_keys($cssThemes)) ?>,
     graphToggles: <?= json_encode($graphToggles) ?>,
+    batteryStatusLabels: <?= json_encode($config['ui']['battery_status_labels'] ?? []) ?>,
     location: <?= json_encode($locationConfig) ?>,
     forecast: <?= json_encode($forecastConfig) ?>,
     timeFormat: <?= json_encode($timeFormat) ?>,
@@ -328,6 +330,8 @@ const graphFieldRequirements = {
     battery_indoor: ['inTempBatteryStatus'],
 };
 
+const batteryMetricKeys = ['windBatteryStatus', 'rainBatteryStatus', 'lightning_Batt', 'pm25_Batt1', 'inTempBatteryStatus'];
+
 function graphEnabled(key) {
     return APP.graphToggles[key] !== false;
 }
@@ -346,6 +350,30 @@ function formatValue(value, unit) {
     const n = Number(value);
     const fixed = Math.abs(n) >= 100 ? 0 : (Math.abs(n) >= 10 ? 1 : 2);
     return `${n.toFixed(fixed)} ${unit || ''}`.trim();
+}
+
+function isBatteryMetric(metricKey) {
+    return batteryMetricKeys.includes(metricKey);
+}
+
+function isLikelyBatteryStatusValue(value) {
+    const n = Number(value);
+    return Number.isFinite(n) && Math.abs(n - Math.round(n)) < 0.000001 && n >= 0 && n <= 10;
+}
+
+function batteryStatusLabel(code) {
+    const labels = APP.batteryStatusLabels && typeof APP.batteryStatusLabels === 'object' ? APP.batteryStatusLabels : {};
+    const key = String(code);
+    return Object.prototype.hasOwnProperty.call(labels, key) ? String(labels[key]) : '';
+}
+
+function formatMetricValue(metricKey, value, unit) {
+    if (isBatteryMetric(metricKey) && isLikelyBatteryStatusValue(value)) {
+        const code = Math.round(Number(value));
+        const label = batteryStatusLabel(code);
+        return label !== '' ? `${label} (${code})` : `Status ${code}`;
+    }
+    return formatValue(value, unit);
 }
 
 function tempToCelsius(value, unit) {
@@ -808,7 +836,7 @@ function renderCards() {
         const card = document.createElement('article');
         card.className = 'card';
         card.dataset.metric = key;
-        card.innerHTML = `<div class="label">${metric.label || key}</div><div class="value" id="metric-${key}">${formatValue(metric.value, metric.unit)}</div>`;
+        card.innerHTML = `<div class="label">${metric.label || key}</div><div class="value" id="metric-${key}">${formatMetricValue(key, metric.value, metric.unit)}</div>`;
         applyInitialTempTextStyle(card.querySelector('.value'), key, metric.value, metric.unit || '');
         applyMetricCardColor(card, key, metric.value, metric.unit || '');
         cards.appendChild(card);
@@ -819,7 +847,7 @@ function renderCards() {
         const card = document.createElement('article');
         card.className = 'card';
         card.dataset.metric = key;
-        card.innerHTML = `<div class="label">${metric.label || key}</div><div class="value" id="metric-${key}">${formatValue(metric.value, metric.unit)}</div>`;
+        card.innerHTML = `<div class="label">${metric.label || key}</div><div class="value" id="metric-${key}">${formatMetricValue(key, metric.value, metric.unit)}</div>`;
         applyInitialTempTextStyle(card.querySelector('.value'), key, metric.value, metric.unit || '');
         applyMetricCardColor(card, key, metric.value, metric.unit || '');
         cards.appendChild(card);
@@ -1079,7 +1107,7 @@ function updateMetricValue(key, value, unit) {
     node.style.color = '';
     if (isTemperatureMetric(key)) {
         const n = Number(value);
-        const display = formatValue(value, unit);
+        const display = formatMetricValue(key, value, unit);
         const tStyle = temperatureGradientStyle(n, unit || '°C');
         if (tStyle && display !== 'n/a') {
             node.classList.add('temp-gradient-text');
@@ -1090,7 +1118,7 @@ function updateMetricValue(key, value, unit) {
             node.textContent = display;
         }
     } else {
-        node.textContent = formatValue(value, unit);
+        node.textContent = formatMetricValue(key, value, unit);
     }
     const card = node.closest('.card');
     applyMetricCardColor(card, key, value, unit || '');
@@ -1500,17 +1528,36 @@ function buildCharts(history) {
 
     function batteryChart(canvasId, label, data, color) {
         const cfg = lineOptions(xMin, xMax);
+        const points = Array.isArray(data) ? data : [];
+        const statusLike = points.length > 0 && points.every((p) => isLikelyBatteryStatusValue(p?.y));
+        if (statusLike) {
+            const maxStatus = points.reduce((m, p) => Math.max(m, Math.round(Number(p?.y ?? 0))), 0);
+            cfg.options.elements.line.stepped = true;
+            cfg.options.scales.y = {
+                beginAtZero: true,
+                suggestedMax: Math.max(1, maxStatus),
+                ticks: {
+                    stepSize: 1,
+                    callback(value) {
+                        const code = Math.round(Number(value));
+                        const mapped = batteryStatusLabel(code);
+                        return mapped !== '' ? `${mapped} (${code})` : `${code}`;
+                    },
+                },
+                title: { display: true, text: 'Battery status' },
+            };
+        }
         cfg.data = {
-            datasets: [{ label, data: data || [], borderColor: color, backgroundColor: color }],
+            datasets: [{ label, data: points, borderColor: color, backgroundColor: color }],
         };
         state.charts[canvasId] = new Chart(document.getElementById(canvasId), cfg);
     }
 
-    batteryChart('chart-batt-wind', 'Wind Battery (V)', s.windBatteryStatus, '#8c3f2b');
-    batteryChart('chart-batt-rain', 'Rain Battery (V)', s.rainBatteryStatus, '#2f7a5f');
-    batteryChart('chart-batt-lightning', 'Lightning Battery (V)', s.lightning_Batt, '#9f7a19');
-    batteryChart('chart-batt-pm25', 'PM2.5 Battery (V)', s.pm25_Batt1, '#6b4ea5');
-    batteryChart('chart-batt-indoor', 'Indoor Temp Battery (V)', s.inTempBatteryStatus, '#40658f');
+    batteryChart('chart-batt-wind', 'Wind Battery', s.windBatteryStatus, '#8c3f2b');
+    batteryChart('chart-batt-rain', 'Rain Battery', s.rainBatteryStatus, '#2f7a5f');
+    batteryChart('chart-batt-lightning', 'Lightning Battery', s.lightning_Batt, '#9f7a19');
+    batteryChart('chart-batt-pm25', 'PM2.5 Battery', s.pm25_Batt1, '#6b4ea5');
+    batteryChart('chart-batt-indoor', 'Indoor Temp Battery', s.inTempBatteryStatus, '#40658f');
 }
 
 async function loadLatest() {
@@ -1563,6 +1610,14 @@ function initRangeButtons() {
 }
 
 function connectMqtt() {
+    if (!APP.mqtt.enabled) {
+        setMqttStatus('MQTT: disabled', null);
+        return;
+    }
+    if (!window.mqtt || !APP.mqtt.url || !APP.mqtt.topic) {
+        setMqttStatus('MQTT: unavailable', 'error');
+        return;
+    }
     setMqttStatus('MQTT: connecting', null);
 
     const client = mqtt.connect(APP.mqtt.url, {
@@ -1585,7 +1640,8 @@ function connectMqtt() {
     client.on('offline', () => setMqttStatus('MQTT: offline', 'error'));
 
     client.on('message', (topic, payload) => {
-        if (!topic.startsWith('weewx/')) return;
+        const rootTopic = String(APP.mqtt.topic || '').replace(/[#/+].*$/, '');
+        if (rootTopic !== '' && !topic.startsWith(rootTopic)) return;
         try {
             mergeMqttUpdate(JSON.parse(payload.toString()));
         } catch {
