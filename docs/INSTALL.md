@@ -59,7 +59,7 @@ sudo systemctl restart httpd
 Create a local config file from template:
 
 ```bash
-cp src/config.example.php src/config.local.php
+cp src/config.defaults.php src/config.local.php
 ```
 
 Edit `src/config.local.php` with your DB/MQTT settings and optional field mappings/graph toggles/themes.

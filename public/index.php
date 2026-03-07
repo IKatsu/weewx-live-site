@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+putenv('PWS_BASE_DIR=' . __DIR__);
+
 $srcCandidates = [
     dirname(__DIR__) . '/src',
     dirname(__DIR__, 2) . '/src',
@@ -33,6 +35,11 @@ $plotlyConfig = $config['ui']['plotly'] ?? [];
 $plotlyJs = (string) ($plotlyConfig['js'] ?? '');
 $plotlyWindRose = (bool) ($plotlyConfig['wind_rose'] ?? false);
 $graphToggles = $config['ui']['graphs'] ?? [];
+$layoutConfig = $config['ui']['layout'] ?? [];
+$graphMaxColumns = (int) ($layoutConfig['graph_max_columns'] ?? 3);
+$graphMinWidthPx = (int) ($layoutConfig['graph_min_width_px'] ?? 320);
+$graphHeightPx = (int) ($layoutConfig['graph_height_px'] ?? 260);
+$windRoseHeightPx = (int) ($layoutConfig['wind_rose_height_px'] ?? 380);
 ?>
 <!doctype html>
 <html lang="en">
@@ -64,6 +71,10 @@ $graphToggles = $config['ui']['graphs'] ?? [];
             <div class="status-pill"><span class="dot" id="mqtt-dot"></span><span id="mqtt-status">MQTT: idle</span></div>
         </div>
     </header>
+
+    <section class="sky-panel">
+        <canvas id="sky-canvas" height="170"></canvas>
+    </section>
 
     <section class="cards" id="cards"></section>
 
@@ -145,6 +156,9 @@ $graphToggles = $config['ui']['graphs'] ?? [];
             <h3 class="chart-title">Lightning Strike Count</h3>
             <div class="chart-wrap"><canvas id="chart-lightning"></canvas></div>
         </article>
+    </section>
+
+    <section class="charts wind-rose-row">
         <article class="chart-card" data-graph="wind_rose">
             <h3 class="chart-title">Wind Rose (Direction x Speed Class)</h3>
             <div class="chart-wrap wind-rose">
@@ -199,6 +213,12 @@ const APP = {
     defaultTheme: <?= json_encode($defaultTheme) ?>,
     themes: <?= json_encode(array_keys($cssThemes)) ?>,
     graphToggles: <?= json_encode($graphToggles) ?>,
+    layout: {
+        maxColumns: <?= max(1, $graphMaxColumns) ?>,
+        minWidthPx: <?= max(220, $graphMinWidthPx) ?>,
+        graphHeightPx: <?= max(160, $graphHeightPx) ?>,
+        windRoseHeightPx: <?= max(220, $windRoseHeightPx) ?>,
+    },
 };
 
 const historyRanges = {
@@ -212,7 +232,8 @@ const historyRanges = {
 const metricOrder = [
     'outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'appTemp', 'heatindex', 'windchill', 'humidex',
     'outHumidity', 'inHumidity', 'barometer', 'pressure', 'windSpeed', 'windGust', 'windDir', 'windrun',
-    'rainRate', 'rain', 'rainDur', 'UV', 'radiation', 'cloudbase', 'ET', 'solarAltitude', 'sunshineDur',
+    'rainRate', 'rain', 'rainDur', 'UV', 'radiation', 'cloudbase', 'ET', 'solarAltitude', 'solarAzimuth', 'solarTime',
+    'lunarAltitude', 'lunarAzimuth', 'lunarTime', 'sunshineDur',
     'pm2_5', 'lightning_strike_count', 'windBatteryStatus', 'rainBatteryStatus', 'lightning_Batt',
     'pm25_Batt1', 'inTempBatteryStatus'
 ];
@@ -274,6 +295,89 @@ function formatTimestamp(epochSeconds) {
     return new Date(Number(epochSeconds) * 1000).toLocaleString();
 }
 
+function clamp(v, min, max) {
+    return Math.max(min, Math.min(max, v));
+}
+
+// Draw a compact sky diagram from the latest solar/lunar altitude+azimuth values.
+function renderSkyWidget(metrics) {
+    const canvas = document.getElementById('sky-canvas');
+    if (!canvas || !metrics) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(1, Math.floor(rect.width * dpr));
+    const height = Math.max(1, Math.floor(rect.height * dpr));
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const solarAlt = Number(metrics.solarAltitude?.value ?? NaN);
+    const solarAz = Number(metrics.solarAzimuth?.value ?? NaN);
+    const lunarAlt = Number(metrics.lunarAltitude?.value ?? NaN);
+    const lunarAz = Number(metrics.lunarAzimuth?.value ?? NaN);
+
+    // Blend sky tone by solar altitude to mimic day/night transition.
+    const skyMix = Number.isNaN(solarAlt) ? 0.2 : clamp((solarAlt + 12) / 48, 0, 1);
+    const grad = ctx.createLinearGradient(0, 0, 0, height);
+    grad.addColorStop(0, `rgba(${Math.floor(20 + skyMix * 120)}, ${Math.floor(35 + skyMix * 150)}, ${Math.floor(65 + skyMix * 160)}, 1)`);
+    grad.addColorStop(1, `rgba(${Math.floor(8 + skyMix * 60)}, ${Math.floor(12 + skyMix * 85)}, ${Math.floor(22 + skyMix * 120)}, 1)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+
+    const horizonY = Math.floor(height * 0.74);
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = 2 * dpr;
+    ctx.beginPath();
+    ctx.moveTo(0, horizonY);
+    ctx.lineTo(width, horizonY);
+    ctx.stroke();
+
+    const cx = width / 2;
+    const radius = Math.min(width * 0.44, height * 0.65);
+
+    // Sun/moon path arcs (above horizon only).
+    ctx.setLineDash([6 * dpr, 6 * dpr]);
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.strokeStyle = 'rgba(255,220,120,0.55)';
+    ctx.beginPath();
+    ctx.arc(cx, horizonY, radius, Math.PI, 2 * Math.PI);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(180,200,255,0.5)';
+    ctx.beginPath();
+    ctx.arc(cx, horizonY, radius * 0.88, Math.PI, 2 * Math.PI);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    function projectedPoint(alt, az, scale = 1) {
+        const r = radius * scale;
+        // Map azimuth 90..270 (E->W over S) to 0..1 across the arc.
+        const azNorm = Number.isNaN(az) ? 0.5 : clamp((az - 90) / 180, 0, 1);
+        const x = cx - r + (2 * r * azNorm);
+        const yByAlt = horizonY - (clamp(alt, 0, 90) / 90) * r;
+        const arcY = horizonY - Math.sqrt(Math.max(0, r * r - Math.pow(x - cx, 2)));
+        return { x, y: Math.max(arcY, yByAlt) };
+    }
+
+    if (!Number.isNaN(solarAlt) && solarAlt > 0) {
+        const p = projectedPoint(solarAlt, solarAz, 1);
+        ctx.fillStyle = '#ffd84d';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 8 * dpr, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+
+    if (!Number.isNaN(lunarAlt) && lunarAlt > 0) {
+        const p = projectedPoint(lunarAlt, lunarAz, 0.88);
+        ctx.fillStyle = '#dfe8ff';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 6 * dpr, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+}
+
 function setMqttStatus(text, mode) {
     const status = document.getElementById('mqtt-status');
     const dot = document.getElementById('mqtt-dot');
@@ -326,6 +430,24 @@ function initThemeSelector() {
     select.addEventListener('change', () => {
         applyTheme(select.value);
     });
+}
+
+function applyLayoutConfig() {
+    const root = document.documentElement;
+    root.style.setProperty('--graph-height-px', `${APP.layout.graphHeightPx}px`);
+    root.style.setProperty('--wind-rose-height-px', `${APP.layout.windRoseHeightPx}px`);
+
+    for (const grid of document.querySelectorAll('.charts')) {
+        if (grid.classList.contains('wind-rose-row')) {
+            grid.style.gridTemplateColumns = '1fr';
+            continue;
+        }
+        const width = grid.clientWidth || grid.parentElement?.clientWidth || window.innerWidth;
+        const minWidth = Math.max(220, APP.layout.minWidthPx);
+        const maxCols = Math.max(1, APP.layout.maxColumns);
+        const columns = Math.max(1, Math.min(maxCols, Math.floor(width / minWidth)));
+        grid.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
+    }
 }
 
 function renderCards() {
@@ -389,6 +511,12 @@ function mergeMqttUpdate(payload) {
         heatindex: ['heatindex', 'heatindex_C', 'heatindex_F'],
         windchill: ['windchill', 'windchill_C', 'windchill_F'],
         appTemp: ['appTemp', 'appTemp_C', 'appTemp_F'],
+        solarAltitude: ['solarAltitude'],
+        solarAzimuth: ['solarAzimuth'],
+        solarTime: ['solarTime'],
+        lunarAltitude: ['lunarAltitude'],
+        lunarAzimuth: ['lunarAzimuth'],
+        lunarTime: ['lunarTime'],
         pm2_5: ['pm2_5'],
         lightning_strike_count: ['lightning_strike_count'],
         windBatteryStatus: ['windBatteryStatus'],
@@ -409,6 +537,8 @@ function mergeMqttUpdate(payload) {
     if (ts !== null) {
         document.getElementById('db-updated').textContent = formatTimestamp(ts);
     }
+
+    renderSkyWidget(state.latest.metrics);
 }
 
 function lineOptions(xMin, xMax) {
@@ -772,6 +902,7 @@ async function loadLatest() {
     state.latest = await response.json();
     document.getElementById('db-updated').textContent = formatTimestamp(state.latest.timestamp);
     renderCards();
+    renderSkyWidget(state.latest.metrics);
 }
 
 async function loadHistory(rangeKey = APP.historyRange) {
@@ -847,6 +978,7 @@ function connectMqtt() {
 (async function init() {
     applyGraphVisibility();
     initThemeSelector();
+    applyLayoutConfig();
     try {
         await loadLatest();
         await loadHistory(APP.historyRange);
@@ -861,6 +993,10 @@ function connectMqtt() {
     setInterval(() => {
         loadLatest().catch(() => {});
     }, 60000);
+
+    window.addEventListener('resize', () => {
+        applyLayoutConfig();
+    });
 })();
 </script>
 </body>

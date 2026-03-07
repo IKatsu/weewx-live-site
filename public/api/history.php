@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+putenv('PWS_BASE_DIR=' . dirname(__DIR__));
+
 $srcCandidates = [
     dirname(__DIR__, 2) . '/src',
     dirname(__DIR__, 3) . '/src',
@@ -58,9 +60,11 @@ if (isset($_GET['fields'])) {
 }
 
 $includeRainHourly = in_array('rainHourly', $fields, true);
+// `rainHourly` is derived from `rain` and does not directly map to a DB column.
 $dbFields = array_values(array_filter($fields, static fn (string $field): bool => $field !== 'rainHourly' && $field !== 'dateTime' && $field !== 'usUnits'));
 
 $aggregateMap = [
+    // Totals/count-like fields should be summed per bucket; others use AVG.
     'rain' => 'SUM',
     'ET' => 'SUM',
     'windrun' => 'SUM',
@@ -99,6 +103,7 @@ try {
     $rows = [];
     if ($mapped !== []) {
         if ($bucketMinutes > 0) {
+            // For long windows we aggregate server-side so response size stays manageable.
             $expressions = [];
             foreach ($mapped as $field => $column) {
                 $fn = $aggregateMap[$field] ?? 'AVG';

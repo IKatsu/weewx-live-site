@@ -82,6 +82,7 @@ function archive_columns(PDO $pdo): array
         return $cache[$key];
     }
 
+    // Cache archive column metadata per-connection to avoid repeated DESCRIBE/SHOW calls.
     $rows = $pdo->query('SHOW COLUMNS FROM archive')->fetchAll();
     $columns = [];
     foreach ($rows as $row) {
@@ -94,6 +95,7 @@ function archive_columns(PDO $pdo): array
 
 function mapped_archive_column(array $config, array $archiveColumns, string $field): ?string
 {
+    // Field names are configurable; we still validate identifiers to prevent SQL injection.
     $mapped = $config['field_map'][$field] ?? null;
     if (!is_string($mapped) || $mapped === '') {
         return null;

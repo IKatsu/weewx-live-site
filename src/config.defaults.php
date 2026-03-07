@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 return [
     'paths' => [
-        'base_dir' => '..',
-        'src_dir' => 'src',
-        'public_dir' => 'weewx/new',
-        'docs_dir' => 'docs',
-        'cache_dir' => 'var/cache/pws-live-site',
+        // `__DIR__` means the public web root (set by entrypoint via PWS_BASE_DIR).
+        'base_dir' => '__DIR__',
+        // Keep config/src outside of the served directory.
+        'src_dir' => '../src',
     ],
     'ui' => [
         'css_base' => 'assets/css/base.css',
@@ -20,6 +19,14 @@ return [
         'css_custom' => '',
         'plotly_js' => 'assets/vendor/plotly-2.35.2.min.js',
         'plotly_wind_rose' => true,
+        // Layout controls for all standard charts.
+        'layout' => [
+            'graph_max_columns' => 3,
+            'graph_min_width_px' => 320,
+            'graph_height_px' => 260,
+            // Wind rose keeps its own row/size for readability.
+            'wind_rose_height_px' => 380,
+        ],
         'graphs' => [
             'temp_outside' => true,
             'temp_inside' => true,
@@ -73,6 +80,11 @@ return [
         'cloudbase' => 'cloudbase',
         'ET' => 'ET',
         'solarAltitude' => 'solarAltitude',
+        'solarAzimuth' => 'solarAzimuth',
+        'solarTime' => 'solarTime',
+        'lunarAltitude' => 'lunarAltitude',
+        'lunarAzimuth' => 'lunarAzimuth',
+        'lunarTime' => 'lunarTime',
         'sunshineDur' => 'sunshineDur',
         'pm2_5' => 'pm2_5',
         'lightning_strike_count' => 'lightning_strike_count',

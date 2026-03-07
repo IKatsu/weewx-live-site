@@ -79,6 +79,20 @@ body {
     margin-bottom: 1rem;
 }
 
+.sky-panel {
+    margin: 0.6rem 0 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.8rem;
+    overflow: hidden;
+    background: var(--card);
+}
+
+#sky-canvas {
+    width: 100%;
+    height: 170px;
+    display: block;
+}
+
 .card {
     background: var(--card);
     border: 1px solid var(--border);
@@ -131,7 +145,7 @@ body {
 
 .charts {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: 1fr;
     gap: 0.9rem;
 }
 
@@ -150,11 +164,11 @@ body {
 
 .chart-wrap {
     position: relative;
-    height: 260px;
+    height: var(--graph-height-px, 260px);
 }
 
 .chart-wrap.wind-rose {
-    height: 380px;
+    height: var(--wind-rose-height-px, 380px);
 }
 
 #chart-wind-rose {
@@ -172,9 +186,9 @@ body {
         width: calc(100% - 1rem);
     }
     .chart-wrap {
-        height: 220px;
+        height: max(220px, var(--graph-height-px, 260px));
     }
     .chart-wrap.wind-rose {
-        height: 300px;
+        height: max(300px, var(--wind-rose-height-px, 380px));
     }
 }

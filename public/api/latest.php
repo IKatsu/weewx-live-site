@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+putenv('PWS_BASE_DIR=' . dirname(__DIR__));
+
 $srcCandidates = [
     dirname(__DIR__, 2) . '/src',
     dirname(__DIR__, 3) . '/src',
@@ -51,6 +53,11 @@ $metricSpec = [
     'cloudbase' => ['label' => 'Cloudbase', 'unit' => 'meters'],
     'ET' => ['label' => 'Evapotranspiration', 'unit' => 'rain'],
     'solarAltitude' => ['label' => 'Solar Altitude', 'unit' => 'degree'],
+    'solarAzimuth' => ['label' => 'Solar Azimuth', 'unit' => 'degree'],
+    'solarTime' => ['label' => 'Solar Time', 'unit' => 'hours'],
+    'lunarAltitude' => ['label' => 'Lunar Altitude', 'unit' => 'degree'],
+    'lunarAzimuth' => ['label' => 'Lunar Azimuth', 'unit' => 'degree'],
+    'lunarTime' => ['label' => 'Lunar Time', 'unit' => 'hours'],
     'sunshineDur' => ['label' => 'Sunshine Duration', 'unit' => 'seconds'],
     'pm2_5' => ['label' => 'PM2.5', 'unit' => 'ugm3'],
     'lightning_strike_count' => ['label' => 'Lightning Strikes', 'unit' => 'count'],
@@ -68,6 +75,7 @@ $unitOverride = [
     'ugm3' => 'µg/m³',
     'count' => 'count',
     'voltage' => 'V',
+    'hours' => 'h',
 ];
 
 try {
@@ -86,6 +94,7 @@ try {
     ];
 
     $included = [];
+    // Select only metrics that are both configured and physically present in archive.
     foreach (array_keys($metricSpec) as $field) {
         $col = mapped_archive_column($config, $columns, $field);
         if ($col === null) {

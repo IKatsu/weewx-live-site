@@ -5,24 +5,7 @@ declare(strict_types=1);
 function env_value(string $key, string $default): string
 {
     $value = getenv($key);
-    if ($value === false || $value === '') {
-        return $default;
-    }
-
-    return $value;
-}
-
-function resolve_path(string $path, string $baseDir): string
-{
-    if ($path === '') {
-        return $baseDir;
-    }
-
-    if ($path[0] === '/') {
-        return $path;
-    }
-
-    return rtrim($baseDir, '/') . '/' . $path;
+    return ($value === false || $value === '') ? $default : $value;
 }
 
 function array_merge_deep(array $base, array $override): array
@@ -40,49 +23,76 @@ function array_merge_deep(array $base, array $override): array
 
 function load_local_config(): array
 {
-    $examplePath = __DIR__ . '/config.example.php';
-    if (!is_file($examplePath)) {
-        throw new RuntimeException('Missing src/config.example.php');
+    $defaultsPath = __DIR__ . '/config.defaults.php';
+    if (!is_file($defaultsPath)) {
+        throw new RuntimeException('Missing src/config.defaults.php');
     }
 
-    $base = require $examplePath;
+    $base = require $defaultsPath;
     if (!is_array($base)) {
-        throw new RuntimeException('src/config.example.php must return an array');
+        throw new RuntimeException('src/config.defaults.php must return an array');
     }
 
     $localPath = __DIR__ . '/config.local.php';
-    if (is_file($localPath)) {
-        $local = require $localPath;
-        if (!is_array($local)) {
-            throw new RuntimeException('src/config.local.php must return an array');
-        }
-        return array_merge_deep($base, $local);
+    if (!is_file($localPath)) {
+        return $base;
     }
 
-    return $base;
+    $local = require $localPath;
+    if (!is_array($local)) {
+        throw new RuntimeException('src/config.local.php must return an array');
+    }
+
+    return array_merge_deep($base, $local);
+}
+
+function resolve_base_dir(string $baseValue): string
+{
+    // Entry points set PWS_BASE_DIR to their own __DIR__, so '__DIR__'
+    // in config always maps to the served web root for that entry point.
+    $entryBaseDir = env_value('PWS_BASE_DIR', dirname(__DIR__));
+    if ($baseValue === '__DIR__') {
+        return $entryBaseDir;
+    }
+
+    if ($baseValue !== '' && $baseValue[0] === '/') {
+        return $baseValue;
+    }
+
+    return rtrim($entryBaseDir, '/') . '/' . $baseValue;
+}
+
+function resolve_relative_path(string $path, string $baseDir): string
+{
+    if ($path === '') {
+        return $baseDir;
+    }
+
+    if ($path[0] === '/') {
+        return $path;
+    }
+
+    return rtrim($baseDir, '/') . '/' . $path;
 }
 
 function app_config(): array
 {
     $local = load_local_config();
 
-    $baseDir = env_value('PWS_BASE_DIR', dirname(__DIR__));
-    $pathsCfg = $local['paths'] ?? [];
-    $uiCfg = $local['ui'] ?? [];
-    $dbCfg = $local['db'] ?? [];
-    $mqttCfg = $local['mqtt'] ?? [];
-    $historyCfg = $local['history'] ?? [];
+    $pathsCfg = (array) ($local['paths'] ?? []);
+    $uiCfg = (array) ($local['ui'] ?? []);
+    $dbCfg = (array) ($local['db'] ?? []);
+    $mqttCfg = (array) ($local['mqtt'] ?? []);
+    $historyCfg = (array) ($local['history'] ?? []);
 
-    $paths = [
-        'base_dir' => resolve_path((string) ($pathsCfg['base_dir'] ?? '..'), $baseDir),
-    ];
-    $paths['src_dir'] = resolve_path((string) ($pathsCfg['src_dir'] ?? 'src'), $paths['base_dir']);
-    $paths['public_dir'] = resolve_path((string) ($pathsCfg['public_dir'] ?? 'public'), $paths['base_dir']);
-    $paths['docs_dir'] = resolve_path((string) ($pathsCfg['docs_dir'] ?? 'docs'), $paths['base_dir']);
-    $paths['cache_dir'] = resolve_path((string) ($pathsCfg['cache_dir'] ?? 'var/cache/pws-live-site'), $paths['base_dir']);
+    $baseDir = resolve_base_dir((string) ($pathsCfg['base_dir'] ?? '__DIR__'));
+    $srcDir = resolve_relative_path((string) ($pathsCfg['src_dir'] ?? '../src'), $baseDir);
 
     return [
-        'paths' => $paths,
+        'paths' => [
+            'base_dir' => $baseDir,
+            'src_dir' => $srcDir,
+        ],
         'db' => [
             'host' => env_value('PWS_DB_HOST', (string) ($dbCfg['host'] ?? '127.0.0.1')),
             'port' => (int) env_value('PWS_DB_PORT', (string) ($dbCfg['port'] ?? '3306')),
@@ -107,6 +117,7 @@ function app_config(): array
                 'js' => (string) ($uiCfg['plotly_js'] ?? ''),
                 'wind_rose' => (bool) ($uiCfg['plotly_wind_rose'] ?? false),
             ],
+            'layout' => (array) ($uiCfg['layout'] ?? []),
             'graphs' => (array) ($uiCfg['graphs'] ?? []),
         ],
         'field_map' => (array) ($local['field_map'] ?? []),
