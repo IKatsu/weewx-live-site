@@ -16,6 +16,7 @@ That said, I have no idea how safe mqtt is to have open to the internet, use at 
 So this whole project took about 4 days of 2-3 hours a day of telling codex what to do, figuring out issues with missing weewx values, basic troubleshooting and on the fly design changes because I am indecisive and come up with new things on the go.
 Overall it turned out pretty nice, better than I had expected for sure.
 
+# Info
 
 Live weather dashboard for weewx data with:
 - latest conditions from MySQL (`weather.archive`)
