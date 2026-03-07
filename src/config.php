@@ -144,6 +144,7 @@ function app_config(): array
             'dashboard_hours' => (int) ($forecastCfg['dashboard_hours'] ?? 5),
             'wu_base_url' => (string) ($forecastCfg['wu_base_url'] ?? 'https://api.weather.com'),
             'wu_api_key' => env_value('PWS_WU_API_KEY', (string) ($forecastCfg['wu_api_key'] ?? '')),
+            'wu_hourly_enabled' => (bool) ($forecastCfg['wu_hourly_enabled'] ?? true),
             'wu_units' => (string) ($forecastCfg['wu_units'] ?? 'm'),
             'wu_language' => (string) ($forecastCfg['wu_language'] ?? 'en-US'),
             'wu_latitude' => (float) ($forecastCfg['wu_latitude'] ?? 0.0),

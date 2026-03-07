@@ -68,6 +68,8 @@ return [
         'dashboard_hours' => 5,
         'wu_base_url' => 'https://api.weather.com',
         'wu_api_key' => 'CHANGE_ME',
+        // Disable hourly fetch when subscription only includes daily forecast.
+        'wu_hourly_enabled' => true,
         'wu_units' => 'm',
         'wu_language' => 'en-US',
         // Leave at 0.0 to inherit from location.latitude/location.longitude.

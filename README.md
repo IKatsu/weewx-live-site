@@ -55,6 +55,7 @@ mysql -u weather -p weather < docs/sql/create_pws_wu_forecast_cache.sql
 2. Configure WU values in `src/config.local.php`:
 - `forecast.provider = 'wu'`
 - `forecast.wu_api_key`
+- Set `forecast.wu_hourly_enabled = false` if your plan only includes daily forecast APIs.
 - `location.latitude` / `location.longitude` (used by both astro widgets and, by default, WU geocode)
 - `forecast_writer_db.*` for the cron writer account (optional but recommended)
 

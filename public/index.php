@@ -629,9 +629,13 @@ function renderForecastData(payload) {
 
     const nextHours = Array.isArray(payload?.dashboard?.next_hours) ? payload.dashboard.next_hours : [];
     const tomorrow = payload?.dashboard?.tomorrow || null;
+    const hourlyErr = payload?.cache?.hourly?.error || '';
 
     if (nextHours.length === 0) {
-        renderForecastPlaceholders('No hourly forecast rows in cache.');
+        const message = hourlyErr !== ''
+            ? `Hourly forecast unavailable (${hourlyErr}).`
+            : 'No hourly forecast rows in cache.';
+        renderForecastPlaceholders(message);
     } else {
         five.innerHTML = nextHours.map((row) => {
             const t = row?.time_local ? new Date(row.time_local) : null;
