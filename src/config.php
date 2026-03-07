@@ -86,6 +86,7 @@ function app_config(): array
     $historyCfg = (array) ($local['history'] ?? []);
     $locationCfg = (array) ($local['location'] ?? []);
     $forecastCfg = (array) ($local['forecast'] ?? []);
+    $forecastWriterDbCfg = (array) ($local['forecast_writer_db'] ?? []);
 
     $baseDir = resolve_base_dir((string) ($pathsCfg['base_dir'] ?? '__DIR__'));
     $srcDir = resolve_relative_path((string) ($pathsCfg['src_dir'] ?? '../src'), $baseDir);
@@ -101,6 +102,13 @@ function app_config(): array
             'database' => env_value('PWS_DB_NAME', (string) ($dbCfg['database'] ?? 'weather')),
             'username' => env_value('PWS_DB_USER', (string) ($dbCfg['username'] ?? 'weather')),
             'password' => env_value('PWS_DB_PASS', (string) ($dbCfg['password'] ?? '')),
+        ],
+        'forecast_writer_db' => [
+            'host' => env_value('PWS_FORECAST_DB_HOST', (string) ($forecastWriterDbCfg['host'] ?? ($dbCfg['host'] ?? '127.0.0.1'))),
+            'port' => (int) env_value('PWS_FORECAST_DB_PORT', (string) ($forecastWriterDbCfg['port'] ?? ($dbCfg['port'] ?? '3306'))),
+            'database' => env_value('PWS_FORECAST_DB_NAME', (string) ($forecastWriterDbCfg['database'] ?? ($dbCfg['database'] ?? 'weather'))),
+            'username' => env_value('PWS_FORECAST_DB_USER', (string) ($forecastWriterDbCfg['username'] ?? '')),
+            'password' => env_value('PWS_FORECAST_DB_PASS', (string) ($forecastWriterDbCfg['password'] ?? '')),
         ],
         'mqtt' => [
             'url' => env_value('PWS_MQTT_URL', (string) ($mqttCfg['url'] ?? 'ws://127.0.0.1:9001/mqtt')),

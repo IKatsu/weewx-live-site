@@ -7,7 +7,7 @@ return [
         // `__DIR__` means the public web root (set by entrypoint via PWS_BASE_DIR).
         'base_dir' => '__DIR__',
         // Keep config/src outside of the served directory.
-        'src_dir' => '../src',
+        'src_dir' => '../../src',
     ],
     'ui' => [
         'css_base' => 'assets/css/base.css',
@@ -123,6 +123,15 @@ return [
         'database' => 'weather',
         'username' => 'weather',
         'password' => 'CHANGE_ME',
+    ],
+    // Dedicated writer credentials for cron forecast cache refreshes.
+    // Leave empty to fall back to the read-only `db` credentials.
+    'forecast_writer_db' => [
+        'host' => '127.0.0.1',
+        'port' => '3306',
+        'database' => 'weather',
+        'username' => '',
+        'password' => '',
     ],
     'mqtt' => [
         'url' => 'ws://127.0.0.1:9001/mqtt',

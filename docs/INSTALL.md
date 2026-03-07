@@ -96,6 +96,7 @@ Then set in `src/config.local.php`:
 - `forecast.provider = 'wu'`
 - `forecast.wu_api_key = '...'`
 - station geocode via `location.latitude` + `location.longitude` (or `forecast.wu_latitude` / `forecast.wu_longitude`)
+- `forecast_writer_db.*` to use a cron-only DB account for forecast cache writes
 
 Cron example (15 min):
 

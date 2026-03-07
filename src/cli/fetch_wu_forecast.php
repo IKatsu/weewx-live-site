@@ -25,7 +25,22 @@ if (($config['forecast']['provider'] ?? 'none') !== 'wu') {
 $force = in_array('--force', $argv, true);
 
 try {
-    $pdo = pdo_from_config($config);
+    $writerDb = (array) ($config['forecast_writer_db'] ?? []);
+    $writerUser = (string) ($writerDb['username'] ?? '');
+    if ($writerUser !== '') {
+        // Forecast refresh can run with a dedicated DB writer account.
+        $writerConfig = $config;
+        $writerConfig['db'] = [
+            'host' => (string) ($writerDb['host'] ?? $config['db']['host']),
+            'port' => (int) ($writerDb['port'] ?? $config['db']['port']),
+            'database' => (string) ($writerDb['database'] ?? $config['db']['database']),
+            'username' => $writerUser,
+            'password' => (string) ($writerDb['password'] ?? ''),
+        ];
+        $pdo = pdo_from_config($writerConfig);
+    } else {
+        $pdo = pdo_from_config($config);
+    }
 
     if (!$force && !forecast_should_refresh($pdo, $config)) {
         fwrite(STDOUT, "WU cache refresh skipped (interval not reached).\n");

@@ -17,3 +17,9 @@ CREATE TABLE IF NOT EXISTS pws_wu_forecast_cache (
     KEY idx_expires_at (expires_at),
     KEY idx_fetched_at (fetched_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dedicated cron writer account (change password before running).
+CREATE USER IF NOT EXISTS 'pws_forecast_writer'@'%' IDENTIFIED BY 'CHANGE_ME_FORECAST_WRITER_PASSWORD';
+
+-- Minimum privileges for the cron forecast refresh script.
+GRANT SELECT, INSERT, UPDATE ON weather.pws_wu_forecast_cache TO 'pws_forecast_writer'@'%';

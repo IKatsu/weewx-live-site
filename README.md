@@ -41,6 +41,7 @@ Environment variables (optional overrides):
 - `PWS_HISTORY_DEFAULT_HOURS` (default `24`)
 - `PWS_HISTORY_MAX_HOURS` (default `8784`)
 - `PWS_WU_API_KEY` (overrides `forecast.wu_api_key`)
+- `PWS_FORECAST_DB_HOST`, `PWS_FORECAST_DB_PORT`, `PWS_FORECAST_DB_NAME`, `PWS_FORECAST_DB_USER`, `PWS_FORECAST_DB_PASS`
 
 ## Forecast cache setup (WU option 1)
 
@@ -53,7 +54,8 @@ mysql -u weather -p weather < docs/sql/create_pws_wu_forecast_cache.sql
 2. Configure WU values in `src/config.local.php`:
 - `forecast.provider = 'wu'`
 - `forecast.wu_api_key`
-- `location.latitude` / `location.longitude` (or `forecast.wu_latitude` / `forecast.wu_longitude`)
+- `location.latitude` / `location.longitude` (used by both astro widgets and, by default, WU geocode)
+- `forecast_writer_db.*` for the cron writer account (optional but recommended)
 
 3. Refresh cache manually:
 
