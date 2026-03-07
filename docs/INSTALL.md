@@ -1,4 +1,8 @@
-# Install Guide (Fedora 43)
+# Install Guide (Fedora 43 tested, Ubuntu notes included)
+
+This deployment was tested on Fedora 43.
+It should also work on other Linux distributions; Ubuntu examples are included below.
+The WeeWX database integration has been tested with WeeWX 5.x archives.
 
 ## 1. Required software
 
@@ -15,7 +19,7 @@ Notes:
 
 Optional WeeWX-side requirement (if installing the included WeeWX extension package):
 
-- WeeWX with `wee_extension` command available.
+- WeeWX 5+ with `weectl` command available.
 
 ## 2. Deploy the project
 
@@ -81,7 +85,73 @@ Environment variable overrides:
 
 If you run the site over HTTPS, use secure MQTT WebSocket (`wss://...`) to avoid browser mixed-content blocking.
 
-## 5. Plotly upgrades
+## 5. Mosquitto broker setup (MQTT/WebSocket)
+
+Reference config files in this repository:
+
+- `docs/reference/mosquitto.conf`
+- `docs/reference/acl.conf`
+
+### Fedora
+
+Install package:
+
+```bash
+sudo dnf install -y mosquitto
+```
+
+### Ubuntu
+
+Install packages:
+
+```bash
+sudo apt update
+sudo apt install -y mosquitto mosquitto-clients
+```
+
+### Common configuration steps
+
+1. Place reference config files:
+
+```bash
+sudo cp /path/to/pws-live-site/docs/reference/mosquitto.conf /etc/mosquitto/mosquitto.conf
+sudo cp /path/to/pws-live-site/docs/reference/acl.conf /etc/mosquitto/acl.conf
+```
+
+2. Create password file and users required by the provided ACL:
+
+```bash
+sudo mosquitto_passwd -c /etc/mosquitto/pwfile weewx
+sudo mosquitto_passwd /etc/mosquitto/pwfile weewx-readonly
+```
+
+3. Ensure file permissions allow mosquitto service user to read:
+
+```bash
+sudo chown root:mosquitto /etc/mosquitto/pwfile /etc/mosquitto/acl.conf
+sudo chmod 640 /etc/mosquitto/pwfile /etc/mosquitto/acl.conf
+```
+
+4. Enable and restart broker:
+
+```bash
+sudo systemctl enable --now mosquitto
+sudo systemctl restart mosquitto
+sudo systemctl status mosquitto
+```
+
+5. Verify ACL behavior quickly:
+
+```bash
+mosquitto_sub -h 127.0.0.1 -p 1883 -u weewx-readonly -P 'YOUR_PASSWORD' -t 'weewx/#' -v
+```
+
+The provided ACL grants:
+
+- `weewx`: read/write on `weewx/#`
+- `weewx-readonly`: read-only on `weewx/#`
+
+## 6. Plotly upgrades
 
 To upgrade Plotly, copy a new build into:
 
@@ -95,7 +165,7 @@ cp plotly-3.1.0.min.js /path/to/pws-live-site/public/assets/vendor/
 
 With `ui.plotly_js = 'auto'`, the site will automatically use the newest `plotly-*.min.js` file.
 
-## 6. Verification checklist
+## 7. Verification checklist
 
 1. Open the dashboard page.
 2. Confirm weather cards load values from MySQL.
@@ -106,7 +176,14 @@ With `ui.plotly_js = 'auto'`, the site will automatically use the newest `plotly
 7. Confirm battery charts render for wind/rain/lightning/pm25 battery fields.
 8. Confirm `php src/cli/fetch_wu_forecast.php --force` succeeds and dashboard forecast panels fill.
 
-## 7. WU forecast DB cache (option 1)
+API format check:
+
+9. Confirm archive export formats:
+   - `/api/dump.php` (CSV default)
+   - `/api/dump.php?type=json`
+   - `/api/dump.php?type=xml`
+
+## 8. WU forecast DB cache (option 1)
 
 Apply the SQL schema (run with a user that has CREATE TABLE rights):
 
@@ -127,7 +204,7 @@ Cron example (15 min):
 */15 * * * * cd /path/to/pws-live-site && php src/cli/fetch_wu_forecast.php >> /var/log/pws-forecast-cron.log 2>&1
 ```
 
-## 8. WeeWX custom_obs extension (optional but recommended for skyfield live fields)
+## 9. WeeWX custom_obs extension (optional but recommended for skyfield live fields)
 
 This repo includes an extension package at:
 
@@ -137,7 +214,7 @@ Install from your WeeWX host:
 
 ```bash
 cd /path/to/pws-live-site/weewx/custom_obs
-wee_extension --install .
+weectl extension install .
 ```
 
 Then ensure archive columns exist for these observations:
@@ -155,7 +232,7 @@ Full details:
 
 - `docs/WEEWX_CUSTOM_OBS_EXTENSION.md`
 
-## 9. Optional database optimization suggestions
+## 10. Optional database optimization suggestions
 
 If `archive` grows large, add indexes to speed latest/history queries:
 

@@ -35,8 +35,12 @@ From your WeeWX host:
 
 ```bash
 cd /path/to/pws-live-site/weewx/custom_obs
-wee_extension --install .
+weectl extension install .
 ```
+
+Compatibility note:
+
+- This extension workflow has been tested with WeeWX 5.x.
 
 ## Service wiring
 

@@ -11,6 +11,10 @@ Live weather dashboard for weewx data with:
 - cached WU/TWC forecast integration (dashboard + dedicated forecast page)
 - optional WeeWX `custom_obs` extension package for solar/lunar custom field registration
 
+Compatibility note:
+- This project has been tested against a WeeWX 5.x archive database layout.
+- Runtime stack and MQTT setup have been tested on Fedora 43; Ubuntu instructions are in `docs/INSTALL.md`.
+
 ## Run locally
 
 ```bash
@@ -27,7 +31,7 @@ Open `http://127.0.0.1:8080`.
 - PHP 8.0+ (`php`, `php-mysqlnd`, `php-json`, `php-mbstring`, `php-curl`)
 - MySQL/MariaDB server containing WeeWX archive data
 - Apache or another PHP-capable web server
-- Optional (for WeeWX extension install): `wee_extension` command on the WeeWX host
+- Optional (for WeeWX extension install): `weectl` command on the WeeWX 5+ host
 
 ## Configuration model
 
@@ -117,3 +121,7 @@ See:
 - `GET /api/latest.php`
 - `GET /api/history.php?hours=24&endOffsetHours=0&bucketMinutes=5&fields=outTemp,dewpoint,outHumidity,windSpeed,windGust,windDir,barometer,pressure,rainRate,rainHourly`
 - `GET /api/forecast.php` (reads cached WU forecast from DB)
+- `GET /api/dump.php` (default output: CSV)
+  - `GET /api/dump.php?type=csv` -> `text/csv`
+  - `GET /api/dump.php?type=json` -> `application/json`
+  - `GET /api/dump.php?type=xml` -> `application/xml`
