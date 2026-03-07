@@ -326,6 +326,65 @@ function formatValue(value, unit) {
     return `${n.toFixed(fixed)} ${unit || ''}`.trim();
 }
 
+function metricPalette(metricKey) {
+    if (['outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'heatindex', 'windchill', 'appTemp', 'humidex'].includes(metricKey)) return 'temperature';
+    if (['rain', 'rainRate', 'ET', 'rainDur'].includes(metricKey)) return 'rain';
+    if (['windSpeed', 'windGust', 'windrun'].includes(metricKey)) return 'wind';
+    return 'default';
+}
+
+function metricScale(metricKey) {
+    if (['outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'heatindex', 'windchill', 'appTemp', 'humidex'].includes(metricKey)) return { min: -15, max: 35 };
+    if (['rainRate'].includes(metricKey)) return { min: 0, max: 20 };
+    if (['rain', 'ET'].includes(metricKey)) return { min: 0, max: 50 };
+    if (['windSpeed', 'windGust'].includes(metricKey)) return { min: 0, max: 25 };
+    if (['windrun'].includes(metricKey)) return { min: 0, max: 400 };
+    return null;
+}
+
+function colorStops(palette) {
+    if (palette === 'temperature') return [[43, 92, 168], [54, 172, 214], [96, 187, 120], [240, 211, 82], [237, 149, 62], [201, 66, 56]];
+    if (palette === 'rain') return [[236, 244, 252], [189, 220, 246], [120, 179, 231], [61, 131, 200], [30, 78, 156]];
+    if (palette === 'wind') return [[52, 120, 204], [54, 172, 114], [235, 208, 78], [219, 111, 60], [138, 74, 171]];
+    return [[226, 236, 247], [154, 188, 224], [84, 132, 186]];
+}
+
+function colorForRatio(palette, ratio) {
+    const stops = colorStops(palette);
+    const t = Math.max(0, Math.min(1, ratio));
+    const segments = stops.length - 1;
+    const pos = t * segments;
+    const idx = Math.min(segments - 1, Math.floor(pos));
+    const frac = pos - idx;
+    const a = stops[idx];
+    const b = stops[idx + 1];
+    return [
+        Math.round(a[0] + (b[0] - a[0]) * frac),
+        Math.round(a[1] + (b[1] - a[1]) * frac),
+        Math.round(a[2] + (b[2] - a[2]) * frac),
+    ];
+}
+
+function applyMetricCardColor(cardNode, metricKey, value) {
+    if (!cardNode) return;
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+        cardNode.style.background = '';
+        cardNode.style.borderColor = '';
+        return;
+    }
+    const scale = metricScale(metricKey);
+    if (!scale) {
+        cardNode.style.background = '';
+        cardNode.style.borderColor = '';
+        return;
+    }
+    const ratio = (numeric - scale.min) / Math.max(0.00001, scale.max - scale.min);
+    const [r, g, b] = colorForRatio(metricPalette(metricKey), ratio);
+    cardNode.style.background = `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.24), rgba(${r}, ${g}, ${b}, 0.12))`;
+    cardNode.style.borderColor = `rgba(${r}, ${g}, ${b}, 0.72)`;
+}
+
 function formatTimestamp(epochSeconds) {
     if (!epochSeconds) return '-';
     return new Date(Number(epochSeconds) * 1000).toLocaleString();
@@ -499,7 +558,9 @@ function renderCards() {
         rendered.add(key);
         const card = document.createElement('article');
         card.className = 'card';
+        card.dataset.metric = key;
         card.innerHTML = `<div class="label">${metric.label || key}</div><div class="value" id="metric-${key}">${formatValue(metric.value, metric.unit)}</div>`;
+        applyMetricCardColor(card, key, metric.value);
         cards.appendChild(card);
     }
 
@@ -507,7 +568,9 @@ function renderCards() {
         if (rendered.has(key)) continue;
         const card = document.createElement('article');
         card.className = 'card';
+        card.dataset.metric = key;
         card.innerHTML = `<div class="label">${metric.label || key}</div><div class="value" id="metric-${key}">${formatValue(metric.value, metric.unit)}</div>`;
+        applyMetricCardColor(card, key, metric.value);
         cards.appendChild(card);
     }
 }
@@ -693,7 +756,10 @@ async function loadForecast() {
 
 function updateMetricValue(key, value, unit) {
     const node = document.getElementById(`metric-${key}`);
-    if (node) node.textContent = formatValue(value, unit);
+    if (!node) return;
+    node.textContent = formatValue(value, unit);
+    const card = node.closest('.card');
+    applyMetricCardColor(card, key, value);
 }
 
 function choose(payload, keys) {
