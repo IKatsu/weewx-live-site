@@ -36,6 +36,8 @@ $plotlyJs = (string) ($plotlyConfig['js'] ?? '');
 $plotlyWindRose = (bool) ($plotlyConfig['wind_rose'] ?? false);
 $graphToggles = $config['ui']['graphs'] ?? [];
 $layoutConfig = $config['ui']['layout'] ?? [];
+$timeConfig = $config['ui']['time'] ?? ['format' => '24h'];
+$timeFormat = (string) ($timeConfig['format'] ?? '24h');
 $graphMaxColumns = (int) ($layoutConfig['graph_max_columns'] ?? 3);
 $graphMinWidthPx = (int) ($layoutConfig['graph_min_width_px'] ?? 320);
 $graphHeightPx = (int) ($layoutConfig['graph_height_px'] ?? 260);
@@ -266,6 +268,7 @@ const APP = {
     graphToggles: <?= json_encode($graphToggles) ?>,
     location: <?= json_encode($locationConfig) ?>,
     forecast: <?= json_encode($forecastConfig) ?>,
+    timeFormat: <?= json_encode($timeFormat) ?>,
     layout: {
         maxColumns: <?= max(1, $graphMaxColumns) ?>,
         minWidthPx: <?= max(220, $graphMinWidthPx) ?>,
@@ -492,7 +495,17 @@ function applyMetricCardColor(cardNode, metricKey, value, unit = '') {
 
 function formatTimestamp(epochSeconds) {
     if (!epochSeconds) return '-';
-    return new Date(Number(epochSeconds) * 1000).toLocaleString();
+    const dt = new Date(Number(epochSeconds) * 1000);
+    if (Number.isNaN(dt.getTime())) return '-';
+    return new Intl.DateTimeFormat([], {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: APP.timeFormat !== '24h',
+    }).format(dt);
 }
 
 function clamp(v, min, max) {
@@ -815,7 +828,12 @@ function weatherIconForMetrics(metrics) {
 
 function formatClock(dateObj, timezone) {
     if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return 'n/a';
-    return dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: timezone || 'UTC' });
+    return dateObj.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: timezone || 'UTC',
+        hour12: APP.timeFormat !== '24h',
+    });
 }
 
 function moonPhaseLabel(phase) {
@@ -944,7 +962,11 @@ function renderForecastCacheStatus(cache) {
     if (!cache?.hourly?.fetched_at) return;
     const fetched = new Date(`${cache.hourly.fetched_at}Z`);
     if (Number.isNaN(fetched.getTime())) return;
-    node.textContent += `  Forecast cache ${fetched.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    node.textContent += `  Forecast cache ${fetched.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: APP.timeFormat !== '24h',
+    })}`;
 }
 
 function renderForecastPlaceholders(message = 'Forecast cache not available yet.') {
@@ -988,7 +1010,11 @@ function renderForecastData(payload) {
         five.innerHTML = nextHours.map((row) => {
             const t = row?.time_local ? new Date(row.time_local) : null;
             const timeText = t && !Number.isNaN(t.getTime())
-                ? t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                ? t.toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: APP.timeFormat !== '24h',
+                })
                 : '--:--';
             const temp = row?.temperature !== null && row?.temperature !== undefined ? `${Number(row.temperature).toFixed(0)}°` : '--';
             const tempHtml = row?.temperature !== null && row?.temperature !== undefined ? tempChipHtml(row.temperature, '°C', 0) : temp;

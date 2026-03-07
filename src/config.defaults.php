@@ -16,6 +16,8 @@ return [
             'dark' => 'assets/css/theme-dark.css',
         ],
         'default_theme' => 'bright',
+        // Supported: "24h" (default) or "12h".
+        'time_format' => '24h',
         'css_custom' => '',
         'plotly_js' => 'assets/vendor/plotly-2.35.2.min.js',
         'plotly_wind_rose' => true,

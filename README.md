@@ -77,6 +77,7 @@ Edit `src/config.local.php` to control filesystem/UI settings and field mappings
 
 - `paths.*` for filesystem locations (relative paths supported)
 - `ui.css_*` and `ui.css_themes` for theme files
+- `ui.time_format` for clock style (`24h` default, or `12h`)
 - `ui.graphs.*` to enable/disable specific graphs
 - `field_map.*` to map logical fields to database column names
 

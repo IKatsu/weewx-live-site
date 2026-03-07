@@ -123,6 +123,11 @@ function app_config(): array
                 'default_theme' => (string) ($uiCfg['default_theme'] ?? 'bright'),
                 'custom' => (string) ($uiCfg['css_custom'] ?? ''),
             ],
+            'time' => [
+                'format' => in_array((string) ($uiCfg['time_format'] ?? '24h'), ['12h', '24h'], true)
+                    ? (string) ($uiCfg['time_format'] ?? '24h')
+                    : '24h',
+            ],
             'plotly' => [
                 'js' => (string) ($uiCfg['plotly_js'] ?? ''),
                 'wind_rose' => (bool) ($uiCfg['plotly_wind_rose'] ?? false),

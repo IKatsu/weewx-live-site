@@ -63,6 +63,7 @@ cp src/config.defaults.php src/config.local.php
 ```
 
 Edit `src/config.local.php` with your DB/MQTT settings and optional field mappings/graph toggles/themes.
+Set `ui.time_format` to `24h` (default) or `12h` for all displayed times.
 
 Environment variable overrides:
 

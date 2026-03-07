@@ -30,6 +30,8 @@ $cssConfig = $config['ui']['css'] ?? [];
 $cssBase = (string) ($cssConfig['base'] ?? 'assets/css/base.css');
 $cssThemes = $cssConfig['themes'] ?? ['bright' => 'assets/css/theme-bright.css', 'dark' => 'assets/css/theme-dark.css'];
 $defaultTheme = (string) ($cssConfig['default_theme'] ?? 'bright');
+$timeConfig = $config['ui']['time'] ?? ['format' => '24h'];
+$timeFormat = (string) ($timeConfig['format'] ?? '24h');
 ?>
 <!doctype html>
 <html lang="en">
@@ -74,6 +76,7 @@ $defaultTheme = (string) ($cssConfig['default_theme'] ?? 'bright');
 const FORECAST_APP = {
     defaultTheme: <?= json_encode($defaultTheme) ?>,
     themes: <?= json_encode(array_keys($cssThemes)) ?>,
+    timeFormat: <?= json_encode($timeFormat) ?>,
 };
 
 function setTheme(theme) {
@@ -103,7 +106,27 @@ function initThemeSelector() {
 
 function cacheLabel(cacheRow) {
     if (!cacheRow?.fetched_at) return 'missing';
-    return `${cacheRow.fetched_at} UTC`;
+    const dt = new Date(`${cacheRow.fetched_at}Z`);
+    if (Number.isNaN(dt.getTime())) return `${cacheRow.fetched_at} UTC`;
+    return `${dt.toLocaleString([], {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: FORECAST_APP.timeFormat !== '24h',
+        timeZone: 'UTC',
+    })} UTC`;
+}
+
+function formatClock(dateObj) {
+    if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return '--:--';
+    return dateObj.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: FORECAST_APP.timeFormat !== '24h',
+    });
 }
 
 function tempToCelsius(value, unit) {
@@ -170,7 +193,7 @@ function renderHourly(rows) {
     host.innerHTML = rows.map((r) => {
         const t = r.time_local ? new Date(r.time_local) : null;
         const timeText = t && !Number.isNaN(t.getTime())
-            ? t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            ? formatClock(t)
             : '--:--';
         const temp = r.temperature !== null && r.temperature !== undefined ? tempChip(r.temperature, '°C', 0) : '--';
         const precip = r.precip_chance !== null && r.precip_chance !== undefined ? `${Number(r.precip_chance).toFixed(0)}%` : '-';
