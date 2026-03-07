@@ -96,6 +96,11 @@ function fmt_val(?float $value, int $decimals): string
 }
 
 $config = app_config();
+$cssConfig = $config['ui']['css'] ?? [];
+$cssBase = (string) ($cssConfig['base'] ?? 'assets/css/base.css');
+$cssThemes = $cssConfig['themes'] ?? ['bright' => 'assets/css/theme-bright.css', 'dark' => 'assets/css/theme-dark.css'];
+$defaultTheme = (string) ($cssConfig['default_theme'] ?? 'bright');
+$cssCustom = (string) ($cssConfig['custom'] ?? '');
 
 $metricDefs = [
     ['field' => 'outTemp', 'label' => 'Outside Temperature', 'unit_key' => 'temperature', 'decimals' => 1],
@@ -196,8 +201,15 @@ try {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Monthly History</title>
-    <link rel="stylesheet" href="assets/css/base.css">
-    <link rel="stylesheet" href="assets/css/theme-bright.css">
+    <link rel="stylesheet" href="<?= htmlspecialchars($cssBase, ENT_QUOTES, 'UTF-8') ?>">
+<?php foreach ($cssThemes as $themePath): ?>
+<?php if (is_string($themePath) && $themePath !== ''): ?>
+    <link rel="stylesheet" href="<?= htmlspecialchars($themePath, ENT_QUOTES, 'UTF-8') ?>">
+<?php endif; ?>
+<?php endforeach; ?>
+<?php if ($cssCustom !== ''): ?>
+    <link rel="stylesheet" href="<?= htmlspecialchars($cssCustom, ENT_QUOTES, 'UTF-8') ?>">
+<?php endif; ?>
     <style>
         .history-wrap { max-width: 1400px; margin: 1rem auto; width: calc(100% - 2rem); }
         .history-grid { display: grid; gap: .9rem; }
@@ -215,6 +227,10 @@ try {
 <div class="history-wrap">
     <div class="status-row" style="margin-bottom: .7rem;">
         <a class="status-pill" href="./">Dashboard</a>
+        <label class="status-pill" for="theme-select">
+            <span>Theme:</span>
+            <select id="theme-select"></select>
+        </label>
     </div>
     <h1 class="title">Monthly High / Average / Low History</h1>
     <p class="muted">Monthly high/average/low by metric (Jan-Dec columns, last 3 years) from available <code>archive_day_*</code> tables.</p>
@@ -282,5 +298,43 @@ try {
     </section>
     <?php endif; ?>
 </div>
+<script>
+const HISTORY_APP = {
+    defaultTheme: <?= json_encode($defaultTheme) ?>,
+    themes: <?= json_encode(array_keys($cssThemes)) ?>,
+};
+
+function setTheme(themeName) {
+    const allowed = Array.isArray(HISTORY_APP.themes) ? HISTORY_APP.themes : [];
+    const selected = allowed.includes(themeName) ? themeName : HISTORY_APP.defaultTheme;
+    document.body.dataset.theme = selected;
+    try { localStorage.setItem('pws-theme', selected); } catch {}
+}
+
+function initThemeSelector() {
+    const select = document.getElementById('theme-select');
+    if (!select) return;
+
+    const themes = Array.isArray(HISTORY_APP.themes) ? HISTORY_APP.themes : ['bright', 'dark'];
+    for (const theme of themes) {
+        const opt = document.createElement('option');
+        opt.value = theme;
+        opt.textContent = theme;
+        select.appendChild(opt);
+    }
+
+    let initial = HISTORY_APP.defaultTheme;
+    try {
+        const saved = localStorage.getItem('pws-theme');
+        if (saved && themes.includes(saved)) initial = saved;
+    } catch {}
+
+    setTheme(initial);
+    select.value = initial;
+    select.addEventListener('change', () => setTheme(select.value));
+}
+
+initThemeSelector();
+</script>
 </body>
 </html>
