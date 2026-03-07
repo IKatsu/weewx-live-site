@@ -76,23 +76,23 @@ $forecastConfig = $config['forecast'] ?? ['provider' => 'none'];
 
     <section class="hero-grid">
         <article class="hero-card current-visual">
-            <div class="current-main">
-                <img id="current-icon" class="current-icon" src="assets/weathericons/unknown.svg" alt="Current weather icon">
-                <div class="current-copy">
-                    <h2 id="current-condition">Current Weather</h2>
-                    <div id="current-temp" class="current-temp">--</div>
-                    <div id="current-sub" class="current-sub">Forecast provider: pending</div>
+            <div class="current-top">
+                <div class="current-main">
+                    <img id="current-icon" class="current-icon" src="assets/weathericons/unknown.svg" alt="Current weather icon">
+                    <div class="current-copy">
+                        <h2 id="current-condition">Current Weather</h2>
+                        <div id="current-temp" class="current-temp">--</div>
+                        <div id="current-sub" class="current-sub">Forecast provider: pending</div>
+                    </div>
                 </div>
-            </div>
-            <div class="forecast-strip">
-                <div class="forecast-col">
+                <div class="forecast-now-col">
                     <h3>Next 5 Hours</h3>
                     <div id="forecast-5h" class="forecast-list"></div>
                 </div>
-                <div class="forecast-col">
-                    <h3>Tomorrow</h3>
-                    <div id="forecast-tomorrow" class="forecast-list"></div>
-                </div>
+            </div>
+            <div class="forecast-5day">
+                <h3>5-Day Forecast</h3>
+                <div id="forecast-5day" class="forecast-5day-grid"></div>
             </div>
         </article>
 
@@ -612,23 +612,34 @@ function renderForecastCacheStatus(cache) {
 
 function renderForecastPlaceholders(message = 'Forecast cache not available yet.') {
     const five = document.getElementById('forecast-5h');
-    const tom = document.getElementById('forecast-tomorrow');
+    const fiveDay = document.getElementById('forecast-5day');
     const provider = APP.forecast?.provider || 'none';
     if (five) {
         five.innerHTML = `<div>Provider: ${provider}</div><div>${message}</div>`;
     }
-    if (tom) {
-        tom.innerHTML = `<div>Provider: ${provider}</div><div>${message}</div>`;
+    if (fiveDay) {
+        fiveDay.innerHTML = `<div>Provider: ${provider}</div><div>${message}</div>`;
     }
+}
+
+function iconFromNarrative(text) {
+    const t = String(text || '').toLowerCase();
+    if (t.includes('thunder')) return 'thunderstorm.svg';
+    if (t.includes('snow') || t.includes('sleet') || t.includes('ice')) return 'snow.svg';
+    if (t.includes('drizzle') || t.includes('shower') || t.includes('rain')) return 'rain.svg';
+    if (t.includes('fog') || t.includes('mist') || t.includes('haze')) return 'fog.svg';
+    if (t.includes('cloud')) return 'mostly-cloudy-day.svg';
+    if (t.includes('sun') || t.includes('clear')) return 'clear-day.svg';
+    return 'unknown.svg';
 }
 
 function renderForecastData(payload) {
     const five = document.getElementById('forecast-5h');
-    const tom = document.getElementById('forecast-tomorrow');
-    if (!five || !tom) return;
+    const fiveDay = document.getElementById('forecast-5day');
+    if (!five || !fiveDay) return;
 
     const nextHours = Array.isArray(payload?.dashboard?.next_hours) ? payload.dashboard.next_hours : [];
-    const tomorrow = payload?.dashboard?.tomorrow || null;
+    const daily = Array.isArray(payload?.daily) ? payload.daily.slice(0, 5) : [];
     const hourlyErr = payload?.cache?.hourly?.error || '';
 
     if (nextHours.length === 0) {
@@ -649,17 +660,24 @@ function renderForecastData(payload) {
         }).join('');
     }
 
-    if (!tomorrow) {
-        tom.innerHTML = '<div>No tomorrow forecast row in cache.</div>';
+    if (daily.length === 0) {
+        fiveDay.innerHTML = '<div>No daily forecast rows in cache.</div>';
     } else {
-        const high = tomorrow.temp_max !== null && tomorrow.temp_max !== undefined ? `${Number(tomorrow.temp_max).toFixed(0)}°` : '--';
-        const low = tomorrow.temp_min !== null && tomorrow.temp_min !== undefined ? `${Number(tomorrow.temp_min).toFixed(0)}°` : '--';
-        const phrase = tomorrow.narrative || tomorrow.day_of_week || 'Tomorrow';
-        tom.innerHTML = [
-            `<div><strong>${tomorrow.day_of_week || 'Tomorrow'}</strong></div>`,
-            `<div>${phrase}</div>`,
-            `<div>High ${high} / Low ${low}</div>`,
-        ].join('');
+        fiveDay.innerHTML = daily.map((row) => {
+            const high = row.temp_max !== null && row.temp_max !== undefined ? `${Number(row.temp_max).toFixed(0)}°` : '--';
+            const low = row.temp_min !== null && row.temp_min !== undefined ? `${Number(row.temp_min).toFixed(0)}°` : '--';
+            const phrase = row.narrative || '';
+            const day = row.day_of_week || 'Day';
+            const icon = iconFromNarrative(phrase);
+            return `
+                <article class="forecast-day">
+                    <div class="forecast-day-head">${day}</div>
+                    <img class="forecast-day-icon" src="assets/weathericons/${icon}" alt="${day} icon">
+                    <div class="forecast-day-temps">${high} / ${low}</div>
+                    <div class="forecast-day-text">${phrase}</div>
+                </article>
+            `;
+        }).join('');
     }
 
     renderForecastCacheStatus(payload?.cache);
