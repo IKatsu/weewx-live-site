@@ -88,6 +88,8 @@ $forecastConfig = $config['forecast'] ?? ['provider' => 'none'];
                     <div class="wind-compass-card" aria-label="Wind compass">
                         <div class="wind-compass-title">Wind</div>
                         <div class="wind-compass-ring">
+                            <div id="wind-gust-arc" class="wind-arc wind-arc-gust"></div>
+                            <div id="wind-speed-arc" class="wind-arc wind-arc-speed"></div>
                             <div id="wind-needle" class="wind-needle"></div>
                             <div class="wind-compass-center"></div>
                             <span class="wind-mark wind-mark-n">N</span>
@@ -98,6 +100,7 @@ $forecastConfig = $config['forecast'] ?? ['provider' => 'none'];
                         <div id="wind-dir-short" class="wind-compass-main">--</div>
                         <div id="wind-dir-deg" class="wind-compass-sub">--°</div>
                         <div id="wind-speed-ms" class="wind-compass-sub">-- m/s</div>
+                        <div id="wind-gust-ms" class="wind-compass-sub">Gust -- m/s</div>
                     </div>
                 </div>
                 <div class="forecast-now-col">
@@ -408,10 +411,9 @@ function clamp(v, min, max) {
     return Math.max(min, Math.min(max, v));
 }
 
-// Draw a compact sky diagram from the latest solar/lunar altitude+azimuth values.
 function renderSkyWidget(metrics) {
     const canvas = document.getElementById('sky-canvas');
-    if (!canvas || !metrics) return;
+    if (!canvas || !metrics || !window.SunCalc) return;
 
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
@@ -424,54 +426,92 @@ function renderSkyWidget(metrics) {
     if (!ctx) return;
 
     const solarAlt = Number(metrics.solarAltitude?.value ?? NaN);
-    const solarAz = Number(metrics.solarAzimuth?.value ?? NaN);
     const lunarAlt = Number(metrics.lunarAltitude?.value ?? NaN);
-    const lunarAz = Number(metrics.lunarAzimuth?.value ?? NaN);
+    const lat = Number(APP.location?.latitude ?? 0);
+    const lon = Number(APP.location?.longitude ?? 0);
+    const tz = APP.location?.timezone || 'UTC';
+    const now = new Date();
+    const sunTimes = SunCalc.getTimes(now, lat, lon);
+    const moonTimes = SunCalc.getMoonTimes(now, lat, lon);
 
-    // Blend sky tone by solar altitude to mimic day/night transition.
-    const skyMix = Number.isNaN(solarAlt) ? 0.2 : clamp((solarAlt + 12) / 48, 0, 1);
+    // Blend sky tone by solar altitude to mimic day/night transition with stronger contrast.
+    const skyMix = Number.isNaN(solarAlt) ? 0.2 : clamp((solarAlt + 14) / 50, 0, 1);
     const grad = ctx.createLinearGradient(0, 0, 0, height);
-    grad.addColorStop(0, `rgba(${Math.floor(20 + skyMix * 120)}, ${Math.floor(35 + skyMix * 150)}, ${Math.floor(65 + skyMix * 160)}, 1)`);
-    grad.addColorStop(1, `rgba(${Math.floor(8 + skyMix * 60)}, ${Math.floor(12 + skyMix * 85)}, ${Math.floor(22 + skyMix * 120)}, 1)`);
+    grad.addColorStop(0, `rgba(${Math.floor(10 + skyMix * 145)}, ${Math.floor(22 + skyMix * 165)}, ${Math.floor(44 + skyMix * 170)}, 1)`);
+    grad.addColorStop(1, `rgba(${Math.floor(8 + skyMix * 90)}, ${Math.floor(14 + skyMix * 110)}, ${Math.floor(24 + skyMix * 125)}, 1)`);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
 
-    const horizonY = Math.floor(height * 0.74);
-    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    const horizonY = Math.floor(height * 0.60);
+    const cx = width / 2;
+    const radius = Math.min(width * 0.44, height * 0.58);
+
     ctx.lineWidth = 2 * dpr;
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
     ctx.beginPath();
     ctx.moveTo(0, horizonY);
     ctx.lineTo(width, horizonY);
     ctx.stroke();
 
-    const cx = width / 2;
-    const radius = Math.min(width * 0.44, height * 0.65);
-
-    // Sun/moon path arcs (above horizon only).
-    ctx.setLineDash([6 * dpr, 6 * dpr]);
-    ctx.lineWidth = 1.5 * dpr;
-    ctx.strokeStyle = 'rgba(255,220,120,0.55)';
-    ctx.beginPath();
-    ctx.arc(cx, horizonY, radius, Math.PI, 2 * Math.PI);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(180,200,255,0.5)';
-    ctx.beginPath();
-    ctx.arc(cx, horizonY, radius * 0.88, Math.PI, 2 * Math.PI);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    function projectedPoint(alt, az, scale = 1) {
+    function arcPointFromAltitude(altitudeDeg, scale = 1) {
         const r = radius * scale;
-        // Map azimuth 90..270 (E->W over S) to 0..1 across the arc.
-        const azNorm = Number.isNaN(az) ? 0.5 : clamp((az - 90) / 180, 0, 1);
-        const x = cx - r + (2 * r * azNorm);
-        const yByAlt = horizonY - (clamp(alt, 0, 90) / 90) * r;
+        const alt = clamp(altitudeDeg, 0, 90);
+        const x = cx - r + (2 * r * (alt / 90));
+        const yByAlt = horizonY - (alt / 90) * r;
         const arcY = horizonY - Math.sqrt(Math.max(0, r * r - Math.pow(x - cx, 2)));
         return { x, y: Math.max(arcY, yByAlt) };
     }
 
+    // Daylight dome fill.
+    const sunrise = sunTimes.sunrise;
+    const sunset = sunTimes.sunset;
+    if (sunrise instanceof Date && sunset instanceof Date && !Number.isNaN(sunrise.getTime()) && !Number.isNaN(sunset.getTime())) {
+        const dayStart = sunrise.getTime();
+        const dayEnd = sunset.getTime();
+        const dayProgress = clamp((now.getTime() - dayStart) / Math.max(1, dayEnd - dayStart), 0, 1);
+        const dayR = radius;
+        const leftX = cx - dayR;
+        const rightX = cx + dayR;
+
+        const dome = ctx.createLinearGradient(0, 0, 0, horizonY);
+        dome.addColorStop(0, 'rgba(150, 206, 255, 0.55)');
+        dome.addColorStop(1, 'rgba(91, 121, 214, 0.42)');
+        ctx.fillStyle = dome;
+        ctx.beginPath();
+        ctx.moveTo(leftX, horizonY);
+        ctx.arc(cx, horizonY, dayR, Math.PI, 2 * Math.PI);
+        ctx.lineTo(rightX, horizonY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Current daylight progress marker on arc.
+        const angle = Math.PI + (Math.PI * dayProgress);
+        const sunX = cx + dayR * Math.cos(angle);
+        const sunY = horizonY + dayR * Math.sin(angle);
+        ctx.fillStyle = 'rgba(255, 190, 96, 0.92)';
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 7 * dpr, 0, 2 * Math.PI);
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(255,255,255,0.82)';
+        ctx.font = `${11 * dpr}px sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.fillText(`Sunrise ${formatClock(sunrise, tz)}`, 8 * dpr, (18 * dpr));
+        ctx.textAlign = 'right';
+        ctx.fillText(`Sunset ${formatClock(sunset, tz)}`, width - (8 * dpr), (18 * dpr));
+    }
+
+    // Moon path arc and marker.
+    ctx.setLineDash([4 * dpr, 4 * dpr]);
+    ctx.lineWidth = 1.3 * dpr;
+    ctx.strokeStyle = 'rgba(196, 212, 255, 0.58)';
+    ctx.beginPath();
+    ctx.arc(cx, horizonY + (6 * dpr), radius * 0.88, Math.PI, 2 * Math.PI);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
     if (!Number.isNaN(solarAlt) && solarAlt > 0) {
-        const p = projectedPoint(solarAlt, solarAz, 1);
+        const p = arcPointFromAltitude(solarAlt, 1);
         ctx.fillStyle = '#ffd84d';
         ctx.beginPath();
         ctx.arc(p.x, p.y, 8 * dpr, 0, 2 * Math.PI);
@@ -479,11 +519,20 @@ function renderSkyWidget(metrics) {
     }
 
     if (!Number.isNaN(lunarAlt) && lunarAlt > 0) {
-        const p = projectedPoint(lunarAlt, lunarAz, 0.88);
+        const p = arcPointFromAltitude(lunarAlt, 0.88);
         ctx.fillStyle = '#dfe8ff';
         ctx.beginPath();
         ctx.arc(p.x, p.y, 6 * dpr, 0, 2 * Math.PI);
         ctx.fill();
+    }
+
+    if (moonTimes.rise instanceof Date || moonTimes.set instanceof Date) {
+        ctx.fillStyle = 'rgba(223,232,255,0.84)';
+        ctx.font = `${10 * dpr}px sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.fillText(`Moonrise ${moonTimes.rise ? formatClock(moonTimes.rise, tz) : 'n/a'}`, 8 * dpr, height - (20 * dpr));
+        ctx.textAlign = 'right';
+        ctx.fillText(`Moonset ${moonTimes.set ? formatClock(moonTimes.set, tz) : 'n/a'}`, width - (8 * dpr), height - (20 * dpr));
     }
 }
 
@@ -642,20 +691,30 @@ function windDirectionShort(degrees) {
 
 function renderWindCompass(metrics) {
     const needle = document.getElementById('wind-needle');
+    const speedArc = document.getElementById('wind-speed-arc');
+    const gustArc = document.getElementById('wind-gust-arc');
     const shortNode = document.getElementById('wind-dir-short');
     const degNode = document.getElementById('wind-dir-deg');
     const speedNode = document.getElementById('wind-speed-ms');
-    if (!needle || !shortNode || !degNode || !speedNode) return;
+    const gustNode = document.getElementById('wind-gust-ms');
+    if (!needle || !speedArc || !gustArc || !shortNode || !degNode || !speedNode || !gustNode) return;
 
     const rawDir = Number(metrics?.windDir?.value);
     const rawSpeed = Number(metrics?.windSpeed?.value);
+    const rawGust = Number(metrics?.windGust?.value);
     const windUnit = metrics?.windSpeed?.unit || 'm/s';
     const dir = Number.isFinite(rawDir) ? (((rawDir % 360) + 360) % 360) : NaN;
     const speedMs = Number.isFinite(rawSpeed) ? toMetersPerSecond(rawSpeed, windUnit) : NaN;
+    const gustMs = Number.isFinite(rawGust) ? toMetersPerSecond(rawGust, windUnit) : NaN;
+    const speedPct = clamp((Number.isFinite(speedMs) ? speedMs : 0) / 25, 0, 1);
+    const gustPct = clamp((Number.isFinite(gustMs) ? gustMs : 0) / 35, 0, 1);
 
     shortNode.textContent = windDirectionShort(dir);
     degNode.textContent = Number.isFinite(dir) ? `${Math.round(dir)}°` : '--°';
     speedNode.textContent = Number.isFinite(speedMs) ? `${speedMs.toFixed(1)} m/s` : '-- m/s';
+    gustNode.textContent = Number.isFinite(gustMs) ? `Gust ${gustMs.toFixed(1)} m/s` : 'Gust -- m/s';
+    speedArc.style.setProperty('--pct', `${Math.round(speedPct * 360)}deg`);
+    gustArc.style.setProperty('--pct', `${Math.round(gustPct * 360)}deg`);
     needle.style.transform = Number.isFinite(dir) ? `translateX(-50%) rotate(${dir}deg)` : 'translateX(-50%) rotate(0deg)';
 }
 
