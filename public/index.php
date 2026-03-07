@@ -601,17 +601,71 @@ function renderCurrentVisual(metrics) {
     }
 }
 
-function renderForecastPlaceholders() {
-    // TODO: Replace placeholders with cached WU forecast once provider strategy is selected.
+function renderForecastCacheStatus(cache) {
+    const node = document.getElementById('current-sub');
+    if (!node) return;
+    if (!cache?.hourly?.fetched_at) return;
+    const fetched = new Date(`${cache.hourly.fetched_at}Z`);
+    if (Number.isNaN(fetched.getTime())) return;
+    node.textContent += `  Forecast cache ${fetched.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+function renderForecastPlaceholders(message = 'Forecast cache not available yet.') {
     const five = document.getElementById('forecast-5h');
     const tom = document.getElementById('forecast-tomorrow');
     const provider = APP.forecast?.provider || 'none';
     if (five) {
-        five.innerHTML = `<div>Provider: ${provider}</div><div>Pending strategy selection for cached WU fetch.</div>`;
+        five.innerHTML = `<div>Provider: ${provider}</div><div>${message}</div>`;
     }
     if (tom) {
-        tom.innerHTML = `<div>Provider: ${provider}</div><div>Daily forecast pending WU integration.</div>`;
+        tom.innerHTML = `<div>Provider: ${provider}</div><div>${message}</div>`;
     }
+}
+
+function renderForecastData(payload) {
+    const five = document.getElementById('forecast-5h');
+    const tom = document.getElementById('forecast-tomorrow');
+    if (!five || !tom) return;
+
+    const nextHours = Array.isArray(payload?.dashboard?.next_hours) ? payload.dashboard.next_hours : [];
+    const tomorrow = payload?.dashboard?.tomorrow || null;
+
+    if (nextHours.length === 0) {
+        renderForecastPlaceholders('No hourly forecast rows in cache.');
+    } else {
+        five.innerHTML = nextHours.map((row) => {
+            const t = row?.time_local ? new Date(row.time_local) : null;
+            const timeText = t && !Number.isNaN(t.getTime())
+                ? t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : '--:--';
+            const temp = row?.temperature !== null && row?.temperature !== undefined ? `${Number(row.temperature).toFixed(0)}°` : '--';
+            const phrase = row?.phrase || 'n/a';
+            const precip = row?.precip_chance !== null && row?.precip_chance !== undefined ? `${Number(row.precip_chance).toFixed(0)}%` : '-';
+            return `<div><strong>${timeText}</strong> ${temp}  ${phrase}  (rain ${precip})</div>`;
+        }).join('');
+    }
+
+    if (!tomorrow) {
+        tom.innerHTML = '<div>No tomorrow forecast row in cache.</div>';
+    } else {
+        const high = tomorrow.temp_max !== null && tomorrow.temp_max !== undefined ? `${Number(tomorrow.temp_max).toFixed(0)}°` : '--';
+        const low = tomorrow.temp_min !== null && tomorrow.temp_min !== undefined ? `${Number(tomorrow.temp_min).toFixed(0)}°` : '--';
+        const phrase = tomorrow.narrative || tomorrow.day_of_week || 'Tomorrow';
+        tom.innerHTML = [
+            `<div><strong>${tomorrow.day_of_week || 'Tomorrow'}</strong></div>`,
+            `<div>${phrase}</div>`,
+            `<div>High ${high} / Low ${low}</div>`,
+        ].join('');
+    }
+
+    renderForecastCacheStatus(payload?.cache);
+}
+
+async function loadForecast() {
+    const response = await fetch('api/forecast.php', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`forecast ${response.status}`);
+    const payload = await response.json();
+    renderForecastData(payload);
 }
 
 function updateMetricValue(key, value, unit) {
@@ -1120,10 +1174,11 @@ function connectMqtt() {
 (async function init() {
     applyGraphVisibility();
     initThemeSelector();
-    renderForecastPlaceholders();
+    renderForecastPlaceholders('Loading cached forecast...');
     applyLayoutConfig();
     try {
         await loadLatest();
+        await loadForecast();
         await loadHistory(APP.historyRange);
     } catch (err) {
         console.error(err);
@@ -1135,6 +1190,7 @@ function connectMqtt() {
 
     setInterval(() => {
         loadLatest().catch(() => {});
+        loadForecast().catch(() => {});
     }, 60000);
 
     window.addEventListener('resize', () => {

@@ -8,6 +8,7 @@ Live weather dashboard for weewx data with:
 - wind rose + wind direction point chart
 - separate rain chart with rain rate and hourly rain totals
 - dedicated battery charts (`windBatteryStatus`, `rainBatteryStatus`, `lightning_Batt`, `pm25_Batt1`)
+- cached WU/TWC forecast integration (dashboard + dedicated forecast page)
 
 ## Run locally
 
@@ -39,6 +40,32 @@ Environment variables (optional overrides):
 - `PWS_MQTT_TOPIC` (default `weewx/#`)
 - `PWS_HISTORY_DEFAULT_HOURS` (default `24`)
 - `PWS_HISTORY_MAX_HOURS` (default `8784`)
+- `PWS_WU_API_KEY` (overrides `forecast.wu_api_key`)
+
+## Forecast cache setup (WU option 1)
+
+1. Apply SQL schema:
+
+```bash
+mysql -u weather -p weather < docs/sql/create_pws_wu_forecast_cache.sql
+```
+
+2. Configure WU values in `src/config.local.php`:
+- `forecast.provider = 'wu'`
+- `forecast.wu_api_key`
+- `location.latitude` / `location.longitude` (or `forecast.wu_latitude` / `forecast.wu_longitude`)
+
+3. Refresh cache manually:
+
+```bash
+php src/cli/fetch_wu_forecast.php --force
+```
+
+4. Add cron (example every 15 minutes):
+
+```cron
+*/15 * * * * cd /path/to/pws-live-site && php src/cli/fetch_wu_forecast.php >> /var/log/pws-forecast-cron.log 2>&1
+```
 
 ## Path and theme configuration
 
@@ -55,3 +82,4 @@ Relative paths are resolved against `paths.base_dir`.
 
 - `GET /api/latest.php`
 - `GET /api/history.php?hours=24&endOffsetHours=0&bucketMinutes=5&fields=outTemp,dewpoint,outHumidity,windSpeed,windGust,windDir,barometer,pressure,rainRate,rainHourly`
+- `GET /api/forecast.php` (reads cached WU forecast from DB)

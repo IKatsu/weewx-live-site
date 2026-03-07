@@ -2,10 +2,10 @@
 
 ## 1. Required software
 
-Install Apache, PHP 8+, and MySQL driver:
+Install Apache, PHP 8+, MySQL driver, and cURL extension for WU fetch:
 
 ```bash
-sudo dnf install -y httpd php php-mysqlnd php-json php-mbstring
+sudo dnf install -y httpd php php-mysqlnd php-json php-mbstring php-curl
 ```
 
 Notes:
@@ -81,6 +81,27 @@ If you run the site over HTTPS, use secure MQTT WebSocket (`wss://...`) to avoid
 5. Confirm the range buttons (`Today`, `Yesterday`, `Last Week`, `Last Month`, `Last Year`) reload history successfully.
 6. Confirm rain chart shows both rain rate and hourly rain sum.
 7. Confirm battery charts render for wind/rain/lightning/pm25 battery fields.
+8. Confirm `php src/cli/fetch_wu_forecast.php --force` succeeds and dashboard forecast panels fill.
+
+## 6. WU forecast DB cache (option 1)
+
+Apply the SQL schema (run with a user that has CREATE TABLE rights):
+
+```bash
+mysql -u weather -p weather < docs/sql/create_pws_wu_forecast_cache.sql
+```
+
+Then set in `src/config.local.php`:
+
+- `forecast.provider = 'wu'`
+- `forecast.wu_api_key = '...'`
+- station geocode via `location.latitude` + `location.longitude` (or `forecast.wu_latitude` / `forecast.wu_longitude`)
+
+Cron example (15 min):
+
+```cron
+*/15 * * * * cd /path/to/pws-live-site && php src/cli/fetch_wu_forecast.php >> /var/log/pws-forecast-cron.log 2>&1
+```
 
 ## Optional database optimization suggestions
 

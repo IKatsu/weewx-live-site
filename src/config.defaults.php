@@ -60,11 +60,21 @@ return [
         'timezone' => 'UTC',
     ],
     'forecast' => [
-        // Placeholder options; provider wiring added after strategy selection.
-        'provider' => 'none',
+        // Provider should be "wu" when WU/TWC forecast integration is enabled.
+        'provider' => 'wu',
         'cache_ttl_seconds' => 900,
         'refresh_interval_seconds' => 900,
+        'cache_table' => 'pws_wu_forecast_cache',
+        'dashboard_hours' => 5,
+        'wu_base_url' => 'https://api.weather.com',
         'wu_api_key' => 'CHANGE_ME',
+        'wu_units' => 'm',
+        'wu_language' => 'en-US',
+        // Leave at 0.0 to inherit from location.latitude/location.longitude.
+        'wu_latitude' => 0.0,
+        'wu_longitude' => 0.0,
+        'wu_hourly_duration_hours' => 24,
+        'wu_daily_duration_days' => 10,
     ],
     'field_map' => [
         'dateTime' => 'dateTime',
