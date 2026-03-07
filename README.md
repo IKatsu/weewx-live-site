@@ -52,9 +52,14 @@ Environment variables (optional overrides):
 - `PWS_DB_PASS` (default from local config)
 - `PWS_MQTT_URL` (default from local config)
 - `PWS_MQTT_ENABLED` (default `true`)
+- `PWS_MQTT_EXPOSE_PASSWORD` (default `false`)
 - `PWS_MQTT_USER` (default from local config)
 - `PWS_MQTT_PASS` (default from local config)
 - `PWS_MQTT_TOPIC` (default `weewx/#`)
+- `PWS_API_DUMP_ENABLED` (default `true`)
+- `PWS_API_DUMP_DEFAULT_ROWS` (default `1000`)
+- `PWS_API_DUMP_MAX_ROWS` (default `10000`)
+- `PWS_API_DUMP_TOKEN` (optional)
 - `PWS_HISTORY_DEFAULT_HOURS` (default `24`)
 - `PWS_HISTORY_MAX_HOURS` (default `8784`)
 - `PWS_WU_API_KEY` (overrides `forecast.wu_api_key`)
@@ -96,11 +101,13 @@ Edit `src/config.local.php` to control filesystem/UI settings and field mappings
 - `ui.time_format` for clock style (`24h` default, or `12h`)
 - `ui.plotly_js` for plotly loading (`auto` default)
 - `mqtt.enabled` to enable/disable live MQTT updates (`true` default)
+- `mqtt.expose_password` to explicitly expose MQTT password to browser JS (`false` default)
 - `ui.battery_status_labels` to map integer battery status codes (for example `5`) to text labels
 - `ui.graphs.*` to enable/disable specific graphs
 - `field_map.*` to map logical fields to database column names
 
 If `mqtt.enabled = false`, the site still works with MySQL polling/history/forecast, but live browser push updates are disabled.
+Keep `mqtt.expose_password = false` unless browser auth is unavoidable for your broker.
 
 Battery note:
 - Battery series are auto-detected as status-style values when they are integer codes (for example `0`, `1`, `5`, `9`).
@@ -143,10 +150,15 @@ See:
 - `GET /api/latest.php`
 - `GET /api/history.php?hours=24&endOffsetHours=0&bucketMinutes=5&fields=outTemp,dewpoint,outHumidity,windSpeed,windGust,windDir,barometer,pressure,rainRate,rainHourly`
 - `GET /api/forecast.php` (reads cached WU forecast from DB)
-- `GET /api/dump.php` (default output: CSV)
+- `GET /api/dump.php` (default output: CSV, row-limited)
   - `GET /api/dump.php?type=csv` -> `text/csv`
   - `GET /api/dump.php?type=json` -> `application/json`
   - `GET /api/dump.php?type=xml` -> `application/xml`
+  - Optional paging/limits:
+    - `limit` (capped by `api.dump_max_rows`)
+    - `offset`
+  - Optional token protection:
+    - `token=...` query or `X-Api-Token` header when `api.dump_token` is configured
 
 ---
 Author: Codex (GPT-5)

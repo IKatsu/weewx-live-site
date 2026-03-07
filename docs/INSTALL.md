@@ -79,6 +79,7 @@ Set `ui.plotly_js` to:
 - `auto` (default): highest `plotly-*.min.js` in `public/assets/vendor`
 - explicit file path to pin a specific Plotly build
 Set `mqtt.enabled` to `false` if you want to run without live MQTT push updates.
+Set `mqtt.expose_password` to `true` only if browser-side MQTT auth is unavoidable.
 Use `ui.battery_status_labels` to label integer battery status codes (for example `5 = OK`).
 
 Environment variable overrides:
@@ -86,6 +87,8 @@ Environment variable overrides:
 - `PWS_DB_HOST`, `PWS_DB_PORT`, `PWS_DB_NAME`, `PWS_DB_USER`, `PWS_DB_PASS`
 - `PWS_MQTT_URL`, `PWS_MQTT_USER`, `PWS_MQTT_PASS`, `PWS_MQTT_TOPIC`
 - `PWS_MQTT_ENABLED`
+- `PWS_MQTT_EXPOSE_PASSWORD`
+- `PWS_API_DUMP_ENABLED`, `PWS_API_DUMP_DEFAULT_ROWS`, `PWS_API_DUMP_MAX_ROWS`, `PWS_API_DUMP_TOKEN`
 - `PWS_HISTORY_DEFAULT_HOURS`, `PWS_HISTORY_MAX_HOURS`
 
 If you run the site over HTTPS, use secure MQTT WebSocket (`wss://...`) to avoid browser mixed-content blocking.
@@ -213,9 +216,10 @@ With `ui.plotly_js = 'auto'`, the site will automatically use the newest `plotly
 API format check:
 
 9. Confirm archive export formats:
-   - `/api/dump.php` (CSV default)
-   - `/api/dump.php?type=json`
-   - `/api/dump.php?type=xml`
+   - `/api/dump.php` (CSV default, limited rows)
+   - `/api/dump.php?type=json&limit=500`
+   - `/api/dump.php?type=xml&limit=500&offset=0`
+   - If `api.dump_token` is configured, include `token=...` or `X-Api-Token` header
 
 ## 9. WU forecast DB cache (option 1)
 

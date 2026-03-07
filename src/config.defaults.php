@@ -151,10 +151,20 @@ return [
     ],
     'mqtt' => [
         'enabled' => true,
+        // Keep false unless browser-side MQTT authentication is strictly required.
+        'expose_password' => false,
         'url' => 'ws://127.0.0.1:9001/mqtt',
         'username' => 'CHANGE_ME',
         'password' => 'CHANGE_ME',
         'topic' => 'weewx/#',
+    ],
+    'api' => [
+        // Harden dump endpoint by default while keeping it available.
+        'dump_enabled' => true,
+        'dump_default_rows' => 1000,
+        'dump_max_rows' => 10000,
+        // If set, /api/dump.php requires this token (GET token= or X-Api-Token header).
+        'dump_token' => '',
     ],
     'history' => [
         'default_hours' => '24',

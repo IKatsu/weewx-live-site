@@ -130,6 +130,7 @@ function app_config(): array
     $dbCfg = (array) ($local['db'] ?? []);
     $mqttCfg = (array) ($local['mqtt'] ?? []);
     $historyCfg = (array) ($local['history'] ?? []);
+    $apiCfg = (array) ($local['api'] ?? []);
     $locationCfg = (array) ($local['location'] ?? []);
     $forecastCfg = (array) ($local['forecast'] ?? []);
     $forecastWriterDbCfg = (array) ($local['forecast_writer_db'] ?? []);
@@ -158,10 +159,17 @@ function app_config(): array
         ],
         'mqtt' => [
             'enabled' => env_bool('PWS_MQTT_ENABLED', (bool) ($mqttCfg['enabled'] ?? true)),
+            'expose_password' => env_bool('PWS_MQTT_EXPOSE_PASSWORD', (bool) ($mqttCfg['expose_password'] ?? false)),
             'url' => env_value('PWS_MQTT_URL', (string) ($mqttCfg['url'] ?? 'ws://127.0.0.1:9001/mqtt')),
             'username' => env_value('PWS_MQTT_USER', (string) ($mqttCfg['username'] ?? '')),
             'password' => env_value('PWS_MQTT_PASS', (string) ($mqttCfg['password'] ?? '')),
             'topic' => env_value('PWS_MQTT_TOPIC', (string) ($mqttCfg['topic'] ?? 'weewx/#')),
+        ],
+        'api' => [
+            'dump_enabled' => env_bool('PWS_API_DUMP_ENABLED', (bool) ($apiCfg['dump_enabled'] ?? true)),
+            'dump_default_rows' => max(1, (int) env_value('PWS_API_DUMP_DEFAULT_ROWS', (string) ($apiCfg['dump_default_rows'] ?? 1000))),
+            'dump_max_rows' => max(1, (int) env_value('PWS_API_DUMP_MAX_ROWS', (string) ($apiCfg['dump_max_rows'] ?? 10000))),
+            'dump_token' => env_value('PWS_API_DUMP_TOKEN', (string) ($apiCfg['dump_token'] ?? '')),
         ],
         'ui' => [
             'css' => [

@@ -9,6 +9,7 @@ function json_response(array $payload, int $statusCode = 200): void
     // Central JSON response helper so all API endpoints behave consistently.
     http_response_code($statusCode);
     header('Content-Type: application/json; charset=utf-8');
+    header('X-Content-Type-Options: nosniff');
     echo json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     exit;
 }

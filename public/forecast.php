@@ -131,6 +131,15 @@ function formatClock(dateObj) {
     });
 }
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function tempToCelsius(value, unit) {
     const n = Number(value);
     if (!Number.isFinite(n)) return NaN;
@@ -199,7 +208,7 @@ function renderHourly(rows) {
             : '--:--';
         const temp = r.temperature !== null && r.temperature !== undefined ? tempChip(r.temperature, '°C', 0) : '--';
         const precip = r.precip_chance !== null && r.precip_chance !== undefined ? `${Number(r.precip_chance).toFixed(0)}%` : '-';
-        return `<article class="card"><div class="forecast-row"><strong>${timeText}</strong></div><div class="forecast-row">${temp} ${r.phrase || ''}</div><div class="forecast-row muted">Rain chance ${precip}</div></article>`;
+        return `<article class="card"><div class="forecast-row"><strong>${timeText}</strong></div><div class="forecast-row">${temp} ${escapeHtml(r.phrase || '')}</div><div class="forecast-row muted">Rain chance ${precip}</div></article>`;
     }).join('');
 }
 
@@ -214,7 +223,7 @@ function renderDaily(rows) {
     host.innerHTML = rows.map((r) => {
         const high = r.temp_max !== null && r.temp_max !== undefined ? tempChip(r.temp_max, '°C', 0) : '--';
         const low = r.temp_min !== null && r.temp_min !== undefined ? tempChip(r.temp_min, '°C', 0) : '--';
-        return `<article class="card"><div class="forecast-row"><strong>${r.day_of_week || 'Day'}</strong></div><div class="forecast-row">High ${high} / Low ${low}</div><div class="forecast-row muted">${r.narrative || ''}</div></article>`;
+        return `<article class="card"><div class="forecast-row"><strong>${escapeHtml(r.day_of_week || 'Day')}</strong></div><div class="forecast-row">High ${high} / Low ${low}</div><div class="forecast-row muted">${escapeHtml(r.narrative || '')}</div></article>`;
     }).join('');
 }
 

@@ -261,7 +261,7 @@ const APP = {
         enabled: <?= json_encode((bool) ($config['mqtt']['enabled'] ?? true)) ?>,
         url: <?= json_encode($config['mqtt']['url']) ?>,
         username: <?= json_encode($config['mqtt']['username']) ?>,
-        password: <?= json_encode($config['mqtt']['password']) ?>,
+        password: <?= json_encode(((bool) ($config['mqtt']['expose_password'] ?? false)) ? $config['mqtt']['password'] : '') ?>,
         topic: <?= json_encode($config['mqtt']['topic']) ?>,
     },
     historyRange: 'today',
@@ -350,6 +350,15 @@ function formatValue(value, unit) {
     const n = Number(value);
     const fixed = Math.abs(n) >= 100 ? 0 : (Math.abs(n) >= 10 ? 1 : 2);
     return `${n.toFixed(fixed)} ${unit || ''}`.trim();
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 function isBatteryMetric(metricKey) {
@@ -1060,7 +1069,7 @@ function renderForecastData(payload) {
                 : '--:--';
             const temp = row?.temperature !== null && row?.temperature !== undefined ? `${Number(row.temperature).toFixed(0)}°` : '--';
             const tempHtml = row?.temperature !== null && row?.temperature !== undefined ? tempChipHtml(row.temperature, '°C', 0) : temp;
-            const phrase = row?.phrase || 'n/a';
+            const phrase = escapeHtml(row?.phrase || 'n/a');
             const precip = row?.precip_chance !== null && row?.precip_chance !== undefined ? `${Number(row.precip_chance).toFixed(0)}%` : '-';
             return `<div><strong>${timeText}</strong> ${tempHtml}  ${phrase}  (rain ${precip})</div>`;
         }).join('');
@@ -1074,9 +1083,10 @@ function renderForecastData(payload) {
             const low = row.temp_min !== null && row.temp_min !== undefined ? `${Number(row.temp_min).toFixed(0)}°` : '--';
             const highHtml = row.temp_max !== null && row.temp_max !== undefined ? tempChipHtml(row.temp_max, '°C', 0) : high;
             const lowHtml = row.temp_min !== null && row.temp_min !== undefined ? tempChipHtml(row.temp_min, '°C', 0) : low;
-            const phrase = row.narrative || '';
-            const day = row.day_of_week || 'Day';
-            const icon = iconFromNarrative(phrase);
+            const rawPhrase = String(row.narrative || '');
+            const phrase = escapeHtml(rawPhrase);
+            const day = escapeHtml(row.day_of_week || 'Day');
+            const icon = iconFromNarrative(rawPhrase);
             return `
                 <article class="forecast-day">
                     <div class="forecast-day-head">${day}</div>
