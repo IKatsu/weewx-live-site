@@ -121,11 +121,18 @@ function tempToCelsius(value, unit) {
 
 function tempScaleColor(tempC) {
     const stops = [
-        { t: -15, rgb: [82, 162, 255] },
-        { t: 0, rgb: [54, 120, 232] },
-        { t: 10, rgb: [244, 206, 72] },
-        { t: 20, rgb: [84, 220, 90] },
-        { t: 25, rgb: [222, 76, 68] },
+        { t: -25, rgb: [198, 168, 235] },
+        { t: -15, rgb: [140, 28, 255] },
+        { t: -8, rgb: [96, 24, 228] },
+        { t: -3, rgb: [54, 74, 214] },
+        { t: 0, rgb: [22, 164, 140] },
+        { t: 4, rgb: [32, 186, 84] },
+        { t: 10, rgb: [182, 230, 54] },
+        { t: 15, rgb: [248, 224, 64] },
+        { t: 20, rgb: [255, 176, 44] },
+        { t: 25, rgb: [255, 102, 34] },
+        { t: 30, rgb: [255, 44, 22] },
+        { t: 35, rgb: [224, 12, 126] },
     ];
     const x = Math.max(stops[0].t, Math.min(stops[stops.length - 1].t, tempC));
     for (let i = 0; i < stops.length - 1; i++) {
@@ -149,10 +156,13 @@ function tempChip(value, unit = '°C', decimals = 0) {
     const tempC = tempToCelsius(n, unit);
     if (!Number.isFinite(tempC)) return `${n.toFixed(decimals)}°`;
     const [r, g, b] = tempScaleColor(tempC);
-    const luma = (0.2126 * r) + (0.7152 * g) + (0.0722 * b);
-    const fg = luma < 145 ? '#ffffff' : '#102137';
+    const hi = [
+        Math.min(255, Math.round(r + (255 - r) * 0.22)),
+        Math.min(255, Math.round(g + (255 - g) * 0.22)),
+        Math.min(255, Math.round(b + (255 - b) * 0.22)),
+    ];
     const label = `${n.toFixed(decimals)}°`;
-    return `<span class=\"temp-gradient-chip\" style=\"background:linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.82), rgba(${r}, ${g}, ${b}, 0.56)); border:1px solid rgba(${r}, ${g}, ${b}, 0.82); color:${fg};\">${label}</span>`;
+    return `<span class=\"temp-gradient-chip\" style=\"background-image:linear-gradient(180deg, rgb(${hi[0]}, ${hi[1]}, ${hi[2]}), rgb(${r}, ${g}, ${b}));-webkit-background-clip:text;background-clip:text;color:transparent;\">${label}</span>`;
 }
 
 function renderHourly(rows) {

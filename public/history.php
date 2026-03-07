@@ -89,7 +89,20 @@ function color_stops(string $palette): array
     return match ($palette) {
         // Unified temperature scale requested for all pages.
         // -15C and below frosty blue, 0 blue, 10 yellow, 20 green, 25+ red.
-        'temperature' => [[82, 162, 255], [54, 120, 232], [244, 206, 72], [84, 220, 90], [222, 76, 68]],
+        'temperature' => [
+            [198, 168, 235], // light purple
+            [140, 28, 255],  // violet
+            [96, 24, 228],   // blue-violet
+            [54, 74, 214],   // indigo
+            [22, 164, 140],  // blue-green edge
+            [32, 186, 84],   // green edge
+            [182, 230, 54],  // yellow-green
+            [248, 224, 64],  // yellow
+            [255, 176, 44],  // orange
+            [255, 102, 34],  // red-orange edge
+            [255, 44, 22],   // red
+            [224, 12, 126],  // red-violet
+        ],
         // Rainfall: very light to deep blue
         'rain' => [[236, 244, 252], [189, 220, 246], [120, 179, 231], [61, 131, 200], [30, 78, 156]],
         // Standard wind severity gradient.
@@ -141,19 +154,15 @@ function temperature_ratio_from_value(?float $value, string $unit): ?float
     if ($tempC === null) {
         return null;
     }
-    $stops = [-15.0, 0.0, 10.0, 20.0, 25.0];
+    $stops = [-25.0, -15.0, -8.0, -3.0, 0.0, 4.0, 10.0, 15.0, 20.0, 25.0, 30.0, 35.0];
     $x = max($stops[0], min($stops[count($stops) - 1], $tempC));
-    // Map to equal stop spacing to match defined palette anchors.
-    if ($x <= 0.0) {
-        return (($x - (-15.0)) / 15.0) * 0.25;
+    for ($i = 0, $n = count($stops) - 1; $i < $n; $i++) {
+        if ($x >= $stops[$i] && $x <= $stops[$i + 1]) {
+            $local = ($x - $stops[$i]) / max(0.0001, ($stops[$i + 1] - $stops[$i]));
+            return (($i + $local) / $n);
+        }
     }
-    if ($x <= 10.0) {
-        return 0.25 + (($x - 0.0) / 10.0) * 0.25;
-    }
-    if ($x <= 20.0) {
-        return 0.50 + (($x - 10.0) / 10.0) * 0.25;
-    }
-    return 0.75 + (($x - 20.0) / 5.0) * 0.25;
+    return 1.0;
 }
 
 function cell_style(
@@ -168,10 +177,7 @@ function cell_style(
         return '';
     }
     if ($palette === 'temperature') {
-        $ratio = temperature_ratio_from_value($value, $unit);
-        if ($ratio === null) {
-            return '';
-        }
+        return '';
     } else {
         if ($min === null || $max === null || abs($max - $min) < 0.00001) {
             return '';
@@ -188,6 +194,34 @@ function cell_style(
         $g,
         $b,
         $fg
+    );
+}
+
+function temp_text_html(?float $value, int $decimals, string $unit): string
+{
+    if ($value === null) {
+        return '-';
+    }
+    $ratio = temperature_ratio_from_value($value, $unit);
+    if ($ratio === null) {
+        return number_format($value, $decimals);
+    }
+    [$r, $g, $b] = color_for_ratio('temperature', $ratio);
+    $hi = [
+        (int) min(255, round($r + (255 - $r) * 0.22)),
+        (int) min(255, round($g + (255 - $g) * 0.22)),
+        (int) min(255, round($b + (255 - $b) * 0.22)),
+    ];
+    $label = number_format($value, $decimals);
+    return sprintf(
+        '<span class="temp-gradient-chip" style="background-image:linear-gradient(180deg, rgb(%d,%d,%d), rgb(%d,%d,%d));-webkit-background-clip:text;background-clip:text;color:transparent;">%s</span>',
+        $hi[0],
+        $hi[1],
+        $hi[2],
+        $r,
+        $g,
+        $b,
+        $label
     );
 }
 
@@ -377,19 +411,19 @@ try {
                             <tr>
                                 <td><?= (int) $year ?> High</td>
                                 <?php foreach ($bucket['high'] as $v): ?>
-                                    <td<?= cell_style($v, $highMin, $highMax, $section['palette'], $section['unit']) ?>><?= fmt_val($v, $section['decimals']) ?></td>
+                                    <td<?= cell_style($v, $highMin, $highMax, $section['palette'], $section['unit']) ?>><?= $section['palette'] === 'temperature' ? temp_text_html($v, $section['decimals'], $section['unit']) : fmt_val($v, $section['decimals']) ?></td>
                                 <?php endforeach; ?>
                             </tr>
                             <tr>
                                 <td><?= (int) $year ?> Average</td>
                                 <?php foreach ($bucket['avg'] as $v): ?>
-                                    <td<?= cell_style($v, $avgMin, $avgMax, $section['palette'], $section['unit']) ?>><?= fmt_val($v, $section['decimals']) ?></td>
+                                    <td<?= cell_style($v, $avgMin, $avgMax, $section['palette'], $section['unit']) ?>><?= $section['palette'] === 'temperature' ? temp_text_html($v, $section['decimals'], $section['unit']) : fmt_val($v, $section['decimals']) ?></td>
                                 <?php endforeach; ?>
                             </tr>
                             <tr>
                                 <td><?= (int) $year ?> Low</td>
                                 <?php foreach ($bucket['low'] as $v): ?>
-                                    <td<?= cell_style($v, $lowMin, $lowMax, $section['palette'], $section['unit']) ?>><?= fmt_val($v, $section['decimals']) ?></td>
+                                    <td<?= cell_style($v, $lowMin, $lowMax, $section['palette'], $section['unit']) ?>><?= $section['palette'] === 'temperature' ? temp_text_html($v, $section['decimals'], $section['unit']) : fmt_val($v, $section['decimals']) ?></td>
                                 <?php endforeach; ?>
                             </tr>
                         <?php endforeach; ?>
