@@ -222,7 +222,7 @@ API format check:
 Apply the SQL schema (run with a user that has CREATE TABLE rights):
 
 ```bash
-mysql -u weather -p weather < docs/sql/create_pws_wu_forecast_cache.sql
+mysql -u DB_USER -p DB_NAME < docs/sql/create_pws_wu_forecast_cache.sql
 ```
 
 Then set in `src/config.local.php`:
@@ -265,22 +265,12 @@ Then ensure archive columns exist for these observations:
 Helper SQL:
 
 ```bash
-mysql -u weather -p weather < /path/to/pws-live-site/docs/sql/add_weewx_custom_obs_columns.sql
+mysql -u DB_USER -p DB_NAME < /path/to/pws-live-site/docs/sql/add_weewx_custom_obs_columns.sql
 ```
 
 Full details:
 
 - `docs/WEEWX_CUSTOM_OBS_EXTENSION.md`
-
-## 11. Optional database optimization suggestions
-
-If `archive` grows large, add indexes to speed latest/history queries:
-
-```sql
-ALTER TABLE archive ADD INDEX idx_archive_dateTime (dateTime);
-```
-
-For pre-aggregated chart periods, consider creating summary views/tables (hourly or daily) and querying those for long time ranges.
 
 ---
 Author: Codex (GPT-5)

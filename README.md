@@ -65,7 +65,7 @@ Environment variables (optional overrides):
 1. Apply SQL schema:
 
 ```bash
-mysql -u weather -p weather < docs/sql/create_pws_wu_forecast_cache.sql
+mysql -u DB_USER -p DB_NAME < docs/sql/create_pws_wu_forecast_cache.sql
 ```
 
 2. Configure WU values in `src/config.local.php`:
