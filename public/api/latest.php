@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+// API entrypoints can run from local dev or mounted deploy paths.
 putenv('PWS_BASE_DIR=' . dirname(__DIR__));
 
 $srcCandidates = [
@@ -28,6 +29,7 @@ require_once $bootstrapPath;
 
 $config = app_config();
 
+// Logical metric definitions map to DB fields via src/config*.php field_map.
 $metricSpec = [
     'outTemp' => ['label' => 'Outside Temperature', 'unit' => 'temperature'],
     'inTemp' => ['label' => 'Inside Temperature', 'unit' => 'temperature'],
@@ -88,6 +90,7 @@ try {
         json_response(['error' => 'Missing mapped dateTime/usUnits columns.'], 500);
     }
 
+    // Start with timestamp + unit system; metrics are added dynamically below.
     $select = [
         sprintf('%s AS dateTime', $dateTimeCol),
         sprintf('%s AS usUnits', $usUnitsCol),

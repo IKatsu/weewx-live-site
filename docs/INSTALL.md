@@ -11,6 +11,11 @@ sudo dnf install -y httpd php php-mysqlnd php-json php-mbstring php-curl
 Notes:
 - Fedora 43 ships a PHP 8.x release, which satisfies the minimum requirement.
 - Frontend libraries (Chart.js + MQTT.js) are loaded from CDN by default.
+- Plotly is loaded from `public/assets/vendor` (auto-detected version by default).
+
+Optional WeeWX-side requirement (if installing the included WeeWX extension package):
+
+- WeeWX with `wee_extension` command available.
 
 ## 2. Deploy the project
 
@@ -64,6 +69,9 @@ cp src/config.defaults.php src/config.local.php
 
 Edit `src/config.local.php` with your DB/MQTT settings and optional field mappings/graph toggles/themes.
 Set `ui.time_format` to `24h` (default) or `12h` for all displayed times.
+Set `ui.plotly_js` to:
+- `auto` (default): highest `plotly-*.min.js` in `public/assets/vendor`
+- explicit file path to pin a specific Plotly build
 
 Environment variable overrides:
 
@@ -73,7 +81,21 @@ Environment variable overrides:
 
 If you run the site over HTTPS, use secure MQTT WebSocket (`wss://...`) to avoid browser mixed-content blocking.
 
-## 5. Verification checklist
+## 5. Plotly upgrades
+
+To upgrade Plotly, copy a new build into:
+
+- `public/assets/vendor`
+
+Example:
+
+```bash
+cp plotly-3.1.0.min.js /path/to/pws-live-site/public/assets/vendor/
+```
+
+With `ui.plotly_js = 'auto'`, the site will automatically use the newest `plotly-*.min.js` file.
+
+## 6. Verification checklist
 
 1. Open the dashboard page.
 2. Confirm weather cards load values from MySQL.
@@ -84,7 +106,7 @@ If you run the site over HTTPS, use secure MQTT WebSocket (`wss://...`) to avoid
 7. Confirm battery charts render for wind/rain/lightning/pm25 battery fields.
 8. Confirm `php src/cli/fetch_wu_forecast.php --force` succeeds and dashboard forecast panels fill.
 
-## 6. WU forecast DB cache (option 1)
+## 7. WU forecast DB cache (option 1)
 
 Apply the SQL schema (run with a user that has CREATE TABLE rights):
 
@@ -105,7 +127,35 @@ Cron example (15 min):
 */15 * * * * cd /path/to/pws-live-site && php src/cli/fetch_wu_forecast.php >> /var/log/pws-forecast-cron.log 2>&1
 ```
 
-## Optional database optimization suggestions
+## 8. WeeWX custom_obs extension (optional but recommended for skyfield live fields)
+
+This repo includes an extension package at:
+
+- `weewx/custom_obs`
+
+Install from your WeeWX host:
+
+```bash
+cd /path/to/pws-live-site/weewx/custom_obs
+wee_extension --install .
+```
+
+Then ensure archive columns exist for these observations:
+
+- `solarAzimuth`, `solarAltitude`, `solarTime`
+- `lunarAzimuth`, `lunarAltitude`, `lunarTime`
+
+Helper SQL:
+
+```bash
+mysql -u weather -p weather < /path/to/pws-live-site/docs/sql/add_weewx_custom_obs_columns.sql
+```
+
+Full details:
+
+- `docs/WEEWX_CUSTOM_OBS_EXTENSION.md`
+
+## 9. Optional database optimization suggestions
 
 If `archive` grows large, add indexes to speed latest/history queries:
 

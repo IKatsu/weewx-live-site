@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+// Page entrypoints can run from local dev or mounted deploy paths.
 putenv('PWS_BASE_DIR=' . __DIR__);
 
 $srcCandidates = [
@@ -42,6 +43,7 @@ function month_labels_short(): array
 
 function fetch_monthly_hilo(PDO $pdo, string $tableName): array
 {
+    // archive_day_* already stores daily rollups; this query aggregates those into months.
     $sql = sprintf(
         "SELECT
             DATE_FORMAT(FROM_UNIXTIME(dateTime), '%%Y-%%m') AS month_key,

@@ -12,6 +12,7 @@ function arr_idx(array $array, int $idx, mixed $default = null): mixed
 
 function forecast_cache_table(array $config): string
 {
+    // Table name is configurable but must stay a plain SQL identifier.
     $table = (string) ($config['forecast']['cache_table'] ?? 'pws_wu_forecast_cache');
     return is_safe_identifier($table) ? $table : 'pws_wu_forecast_cache';
 }
@@ -23,6 +24,7 @@ function forecast_now_utc(): DateTimeImmutable
 
 function forecast_http_get_json(string $url, int $timeoutSeconds = 10): array
 {
+    // Prefer cURL when available to expose HTTP status and richer error details.
     if (function_exists('curl_init')) {
         $ch = curl_init($url);
         if ($ch === false) {
@@ -152,6 +154,7 @@ function wu_fetch_daily(array $config): array
 
 function forecast_read_dataset(PDO $pdo, array $config, string $dataset): ?array
 {
+    // Each dataset (hourly/daily) is cached in one row keyed by provider+dataset.
     $table = forecast_cache_table($config);
     $sql = "SELECT dataset, payload_json, fetched_at, expires_at, source_status, source_error
             FROM {$table}
@@ -212,6 +215,7 @@ function forecast_last_fetch_time(PDO $pdo, array $config): ?DateTimeImmutable
 
 function forecast_should_refresh(PDO $pdo, array $config): bool
 {
+    // Refresh policy is time-based so dashboard/API reads never trigger vendor calls.
     $forecast = (array) ($config['forecast'] ?? []);
     $interval = max(60, (int) ($forecast['refresh_interval_seconds'] ?? 900));
     $last = forecast_last_fetch_time($pdo, $config);
@@ -280,6 +284,7 @@ function forecast_parse_hourly_for_dashboard(array $hourlyPayload, int $takeHour
         }
 
         $ts = strtotime($local);
+        // Skip clearly stale slots to keep "next hours" focused on near-future values.
         if ($ts !== false && $ts + 1800 < $nowTs) {
             continue;
         }
@@ -327,6 +332,7 @@ function forecast_parse_tomorrow(array $dailyPayload): ?array
         }
     }
 
+    // Fallback to second daily row when exact local-date match is not available.
     if ($idx === null && count($valid) > 1) {
         $idx = 1;
     }

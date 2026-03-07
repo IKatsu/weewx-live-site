@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+// API entrypoints can run from local dev or mounted deploy paths.
 putenv('PWS_BASE_DIR=' . dirname(__DIR__));
 
 $srcCandidates = [
@@ -44,6 +45,7 @@ $defaultFields = [
 ];
 
 $hours = isset($_GET['hours']) ? (int) $_GET['hours'] : (int) $config['history_default_hours'];
+// Guardrails prevent unbounded queries from expensive client requests.
 $hours = max(1, min($hours, (int) $config['history_max_hours']));
 $bucketMinutes = isset($_GET['bucketMinutes']) ? (int) $_GET['bucketMinutes'] : 0;
 $bucketMinutes = max(0, min($bucketMinutes, 24 * 60));
@@ -88,6 +90,7 @@ try {
     }
 
     $mapped = [];
+    // Keep only mapped archive columns that physically exist in this database.
     foreach ($dbFields as $field) {
         $col = mapped_archive_column($config, $columns, $field);
         if ($col !== null) {
@@ -165,6 +168,7 @@ try {
     if ($includeRainHourly) {
         $rainColumn = mapped_archive_column($config, $columns, 'rain');
         if ($rainColumn !== null) {
+            // Derive per-hour rainfall totals regardless of display bucket size.
             $rainHourlySql = sprintf(
                 'SELECT FLOOR(%s / 3600) * 3600 AS hour_ts, SUM(%s) AS rain_sum, MIN(%s) AS usUnits
                  FROM archive

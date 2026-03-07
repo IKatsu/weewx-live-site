@@ -42,6 +42,7 @@ try {
         $pdo = pdo_from_config($config);
     }
 
+    // Normal mode respects refresh interval; --force bypasses for testing/manual refresh.
     if (!$force && !forecast_should_refresh($pdo, $config)) {
         fwrite(STDOUT, "WU cache refresh skipped (interval not reached).\n");
         exit(0);

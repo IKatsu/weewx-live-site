@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 function env_value(string $key, string $default): string
 {
+    // Empty env vars should not erase required defaults.
     $value = getenv($key);
     return ($value === false || $value === '') ? $default : $value;
 }
@@ -23,6 +24,7 @@ function array_merge_deep(array $base, array $override): array
 
 function load_local_config(): array
 {
+    // Defaults are always present; local config selectively overrides and holds secrets.
     $defaultsPath = __DIR__ . '/config.defaults.php';
     if (!is_file($defaultsPath)) {
         throw new RuntimeException('Missing src/config.defaults.php');
@@ -73,6 +75,44 @@ function resolve_relative_path(string $path, string $baseDir): string
     }
 
     return rtrim($baseDir, '/') . '/' . $path;
+}
+
+function resolve_plotly_js_asset(array $uiCfg, string $baseDir): string
+{
+    $configured = trim((string) ($uiCfg['plotly_js'] ?? 'auto'));
+
+    // Allow explicit pinning (or disabling with an empty string) from local config.
+    if ($configured !== '' && strtolower($configured) !== 'auto') {
+        return $configured;
+    }
+
+    // Vendor path is resolved from configured public base_dir.
+    $vendorDir = rtrim($baseDir, '/') . '/assets/vendor';
+    if (!is_dir($vendorDir)) {
+        return '';
+    }
+
+    // Auto mode: pick the highest versioned "plotly-X.Y.Z.min.js" dropped in vendor.
+    $candidates = glob($vendorDir . '/plotly-*.min.js') ?: [];
+    if ($candidates !== []) {
+        usort($candidates, static function (string $a, string $b): int {
+            $ma = [];
+            $mb = [];
+            preg_match('/plotly-([0-9A-Za-z.\-+_]+)\.min\.js$/', basename($a), $ma);
+            preg_match('/plotly-([0-9A-Za-z.\-+_]+)\.min\.js$/', basename($b), $mb);
+            $va = $ma[1] ?? '0';
+            $vb = $mb[1] ?? '0';
+            return version_compare($va, $vb);
+        });
+        return 'assets/vendor/' . basename((string) end($candidates));
+    }
+
+    // Compatibility fallback for manual vendor file naming.
+    if (is_file($vendorDir . '/plotly.min.js')) {
+        return 'assets/vendor/plotly.min.js';
+    }
+
+    return '';
 }
 
 function app_config(): array
@@ -129,7 +169,7 @@ function app_config(): array
                     : '24h',
             ],
             'plotly' => [
-                'js' => (string) ($uiCfg['plotly_js'] ?? ''),
+                'js' => resolve_plotly_js_asset($uiCfg, $baseDir),
                 'wind_rose' => (bool) ($uiCfg['plotly_wind_rose'] ?? false),
             ],
             'layout' => (array) ($uiCfg['layout'] ?? []),

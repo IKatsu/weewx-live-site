@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+// Page entrypoints can run from local dev or mounted deploy paths.
 putenv('PWS_BASE_DIR=' . __DIR__);
 
 $srcCandidates = [
@@ -26,6 +27,7 @@ if ($configPath === null) {
 require_once $configPath;
 
 $config = app_config();
+// Theme/time settings are read server-side and forwarded to JS config below.
 $cssConfig = $config['ui']['css'] ?? [];
 $cssBase = (string) ($cssConfig['base'] ?? 'assets/css/base.css');
 $cssThemes = $cssConfig['themes'] ?? ['bright' => 'assets/css/theme-bright.css', 'dark' => 'assets/css/theme-dark.css'];

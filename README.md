@@ -9,6 +9,7 @@ Live weather dashboard for weewx data with:
 - separate rain chart with rain rate and hourly rain totals
 - dedicated battery charts (`windBatteryStatus`, `rainBatteryStatus`, `lightning_Batt`, `pm25_Batt1`)
 - cached WU/TWC forecast integration (dashboard + dedicated forecast page)
+- optional WeeWX `custom_obs` extension package for solar/lunar custom field registration
 
 ## Run locally
 
@@ -20,6 +21,13 @@ php -S 127.0.0.1:8080 -t public
 ```
 
 Open `http://127.0.0.1:8080`.
+
+## Software requirements
+
+- PHP 8.0+ (`php`, `php-mysqlnd`, `php-json`, `php-mbstring`, `php-curl`)
+- MySQL/MariaDB server containing WeeWX archive data
+- Apache or another PHP-capable web server
+- Optional (for WeeWX extension install): `wee_extension` command on the WeeWX host
 
 ## Configuration model
 
@@ -78,10 +86,31 @@ Edit `src/config.local.php` to control filesystem/UI settings and field mappings
 - `paths.*` for filesystem locations (relative paths supported)
 - `ui.css_*` and `ui.css_themes` for theme files
 - `ui.time_format` for clock style (`24h` default, or `12h`)
+- `ui.plotly_js` for plotly loading (`auto` default)
 - `ui.graphs.*` to enable/disable specific graphs
 - `field_map.*` to map logical fields to database column names
 
 Relative paths are resolved against `paths.base_dir`.
+
+### Plotly auto-discovery
+
+With `ui.plotly_js = 'auto'` (default), the app scans `public/assets/vendor` and automatically uses the highest `plotly-*.min.js` version it finds.
+
+That means you can update Plotly by dropping a newer file, for example:
+
+- `public/assets/vendor/plotly-3.1.0.min.js`
+
+No code changes are needed.
+
+If you want to pin a specific file, set `ui.plotly_js` to an explicit path (for example `assets/vendor/plotly-2.35.2.min.js`).
+
+## WeeWX custom_obs extension
+
+The repository includes a WeeWX extension package that registers custom skyfield live-data observation names (`solarAzimuth`, `solarAltitude`, `solarTime`, `lunarAzimuth`, `lunarAltitude`, `lunarTime`) with WeeWX unit groups.
+
+See:
+
+- `docs/WEEWX_CUSTOM_OBS_EXTENSION.md`
 
 ## API endpoints
 

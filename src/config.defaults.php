@@ -19,7 +19,8 @@ return [
         // Supported: "24h" (default) or "12h".
         'time_format' => '24h',
         'css_custom' => '',
-        'plotly_js' => 'assets/vendor/plotly-2.35.2.min.js',
+        // "auto" selects the highest plotly-*.min.js found in public/assets/vendor.
+        'plotly_js' => 'auto',
         'plotly_wind_rose' => true,
         // Layout controls for all standard charts.
         'layout' => [

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+// API entrypoints can run from local dev or mounted deploy paths.
 putenv('PWS_BASE_DIR=' . dirname(__DIR__));
 
 $srcCandidates = [
@@ -33,6 +34,7 @@ if (!in_array($type, ['csv', 'json', 'xml'], true)) {
 
 try {
     $pdo = pdo_from_config($config);
+    // Stream rows directly from DB cursor to avoid holding full archive in memory.
     $stmt = $pdo->query('SELECT * FROM archive ORDER BY dateTime DESC');
     $first = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($first === false) {
@@ -59,6 +61,7 @@ try {
 
     if ($type === 'json') {
         header('Content-Type: application/json; charset=utf-8');
+        // Emit as a JSON array stream to keep memory usage low.
         echo "[";
         echo json_encode($first, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
