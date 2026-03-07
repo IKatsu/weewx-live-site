@@ -183,6 +183,7 @@ function app_config(): array
                     ? (string) ($uiCfg['time_format'] ?? '24h')
                     : '24h',
             ],
+            'poll_interval_seconds' => max(5, (int) env_value('PWS_UI_POLL_INTERVAL_SECONDS', (string) ($uiCfg['poll_interval_seconds'] ?? 15))),
             'plotly' => [
                 'js' => resolve_plotly_js_asset($uiCfg, $baseDir),
                 'wind_rose' => (bool) ($uiCfg['plotly_wind_rose'] ?? false),

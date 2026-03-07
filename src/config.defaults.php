@@ -18,6 +18,8 @@ return [
         'default_theme' => 'bright',
         // Supported: "24h" (default) or "12h".
         'time_format' => '24h',
+        // Browser polling interval for latest values when API polling is used.
+        'poll_interval_seconds' => 15,
         'css_custom' => '',
         // "auto" selects the highest plotly-*.min.js found in public/assets/vendor.
         'plotly_js' => 'auto',

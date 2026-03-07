@@ -273,6 +273,7 @@ const APP = {
     location: <?= json_encode($locationConfig) ?>,
     forecast: <?= json_encode($forecastConfig) ?>,
     timeFormat: <?= json_encode($timeFormat) ?>,
+    pollIntervalMs: <?= max(5000, ((int) ($config['ui']['poll_interval_seconds'] ?? 15)) * 1000) ?>,
     layout: {
         maxColumns: <?= max(1, $graphMaxColumns) ?>,
         minWidthPx: <?= max(220, $graphMinWidthPx) ?>,
@@ -1630,13 +1631,14 @@ function connectMqtt() {
     }
     setMqttStatus('MQTT: connecting', null);
 
-    const client = mqtt.connect(APP.mqtt.url, {
-        username: APP.mqtt.username,
-        password: APP.mqtt.password,
+    const options = {
         clean: true,
         reconnectPeriod: 5000,
         connectTimeout: 8000,
-    });
+    };
+    if (APP.mqtt.username) options.username = APP.mqtt.username;
+    if (APP.mqtt.password) options.password = APP.mqtt.password;
+    const client = mqtt.connect(APP.mqtt.url, options);
 
     client.on('connect', () => {
         setMqttStatus('MQTT: connected', 'connected');
@@ -1646,7 +1648,10 @@ function connectMqtt() {
     });
 
     client.on('reconnect', () => setMqttStatus('MQTT: reconnecting', null));
-    client.on('error', () => setMqttStatus('MQTT: error', 'error'));
+    client.on('error', (err) => {
+        const msg = err && err.message ? `MQTT: ${String(err.message)}` : 'MQTT: error';
+        setMqttStatus(msg, 'error');
+    });
     client.on('offline', () => setMqttStatus('MQTT: offline', 'error'));
 
     client.on('message', (topic, payload) => {
@@ -1679,8 +1684,7 @@ function connectMqtt() {
 
     setInterval(() => {
         loadLatest().catch(() => {});
-        loadForecast().catch(() => {});
-    }, 60000);
+    }, APP.pollIntervalMs);
 
     window.addEventListener('resize', () => {
         applyLayoutConfig();
