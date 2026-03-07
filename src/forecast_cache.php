@@ -105,8 +105,11 @@ function wu_endpoint_url(array $config, string $path, array $extraParams = []): 
         throw new RuntimeException('Missing forecast.wu_api_key');
     }
 
-    $lat = (float) ($forecast['wu_latitude'] ?? $config['location']['latitude'] ?? 0.0);
-    $lon = (float) ($forecast['wu_longitude'] ?? $config['location']['longitude'] ?? 0.0);
+    $cfgLat = (float) ($forecast['wu_latitude'] ?? 0.0);
+    $cfgLon = (float) ($forecast['wu_longitude'] ?? 0.0);
+    // 0.0 is treated as "inherit from location.*" for easier local config.
+    $lat = (abs($cfgLat) < 0.000001) ? (float) ($config['location']['latitude'] ?? 0.0) : $cfgLat;
+    $lon = (abs($cfgLon) < 0.000001) ? (float) ($config['location']['longitude'] ?? 0.0) : $cfgLon;
     $geocode = sprintf('%.6f,%.6f', $lat, $lon);
 
     $query = array_merge([
@@ -231,11 +234,11 @@ function forecast_write_dataset(PDO $pdo, array $config, string $dataset, array 
                 source_error = VALUES(source_error),
                 updated_at = CURRENT_TIMESTAMP";
 
-    $locationKey = sprintf(
-        '%.4f,%.4f',
-        (float) ($forecast['wu_latitude'] ?? $config['location']['latitude'] ?? 0.0),
-        (float) ($forecast['wu_longitude'] ?? $config['location']['longitude'] ?? 0.0)
-    );
+    $cfgLat = (float) ($forecast['wu_latitude'] ?? 0.0);
+    $cfgLon = (float) ($forecast['wu_longitude'] ?? 0.0);
+    $lat = (abs($cfgLat) < 0.000001) ? (float) ($config['location']['latitude'] ?? 0.0) : $cfgLat;
+    $lon = (abs($cfgLon) < 0.000001) ? (float) ($config['location']['longitude'] ?? 0.0) : $cfgLon;
+    $locationKey = sprintf('%.4f,%.4f', $lat, $lon);
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
