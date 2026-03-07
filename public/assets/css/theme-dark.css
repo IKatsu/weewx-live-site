@@ -8,5 +8,6 @@
     --accent: #7ec2ff;
     --accent-soft: #203a55;
     --border: #28435c;
+    --temp-text-shadow: 0 0 0.35rem rgba(255, 255, 255, 0.2);
     --font-family: "Source Sans 3", "Segoe UI", sans-serif;
 }

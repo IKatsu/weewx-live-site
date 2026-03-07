@@ -314,6 +314,107 @@ body {
     border: 1px solid transparent;
 }
 
+.temp-gradient-text {
+    --temp-base-rgb: 255, 255, 255;
+    --temp-hi-rgb: 255, 255, 255;
+    background-image: linear-gradient(180deg, rgb(var(--temp-hi-rgb)), rgb(var(--temp-base-rgb)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent !important;
+    text-shadow: var(--temp-text-shadow, none);
+}
+
+.metric-tone-card {
+    --metric-rgb: 120, 150, 190;
+    background: linear-gradient(180deg, rgba(var(--metric-rgb), 0.24), rgba(var(--metric-rgb), 0.12));
+    border-color: rgba(var(--metric-rgb), 0.72);
+}
+
+.metric-tone-cell {
+    --metric-rgb: 120, 150, 190;
+    --metric-fg: #102137;
+    background: linear-gradient(180deg, rgba(var(--metric-rgb), 0.82), rgba(var(--metric-rgb), 0.56));
+    color: var(--metric-fg);
+    border-color: rgba(var(--metric-rgb), 0.82);
+}
+
+.history-wrap {
+    max-width: 1400px;
+    margin: 1rem auto;
+    width: calc(100% - 2rem);
+}
+
+.history-grid {
+    display: grid;
+    gap: 0.9rem;
+}
+
+.history-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0.8rem;
+    padding: 0.85rem;
+    overflow-x: auto;
+}
+
+.history-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    align-items: baseline;
+    margin-bottom: 0.5rem;
+}
+
+.history-title {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.history-unit {
+    color: var(--muted);
+    font-size: 0.86rem;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+}
+
+.history-table th,
+.history-table td {
+    padding: 0.45rem 0.4rem;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.history-table th:first-child,
+.history-table td:first-child {
+    text-align: left;
+    font-weight: 700;
+}
+
+.forecast-wrap {
+    max-width: 1200px;
+    margin: 1rem auto;
+    width: calc(100% - 2rem);
+}
+
+.forecast-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.forecast-row {
+    margin-bottom: 0.4rem;
+}
+
+.status-row-spaced {
+    margin-bottom: 0.7rem;
+}
+
 .forecast-day-text {
     color: var(--muted);
     font-size: 0.8rem;

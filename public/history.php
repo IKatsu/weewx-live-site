@@ -189,7 +189,7 @@ function cell_style(
     $luma = (0.2126 * $r) + (0.7152 * $g) + (0.0722 * $b);
     $fg = $luma < 145 ? '#ffffff' : '#102137';
     return sprintf(
-        ' style="background: linear-gradient(180deg, rgba(%1$d,%2$d,%3$d,0.82), rgba(%1$d,%2$d,%3$d,0.56)); color: %4$s; border-color: rgba(%1$d,%2$d,%3$d,0.82);"',
+        ' class="metric-tone-cell" style="--metric-rgb:%1$d,%2$d,%3$d;--metric-fg:%4$s;"',
         $r,
         $g,
         $b,
@@ -214,7 +214,7 @@ function temp_text_html(?float $value, int $decimals, string $unit): string
     ];
     $label = number_format($value, $decimals);
     return sprintf(
-        '<span class="temp-gradient-chip" style="background-image:linear-gradient(180deg, rgb(%d,%d,%d), rgb(%d,%d,%d));-webkit-background-clip:text;background-clip:text;color:transparent;">%s</span>',
+        '<span class="temp-gradient-chip temp-gradient-text" style="--temp-hi-rgb:%d,%d,%d;--temp-base-rgb:%d,%d,%d;">%s</span>',
         $hi[0],
         $hi[1],
         $hi[2],
@@ -346,22 +346,10 @@ try {
 <?php if ($cssCustom !== ''): ?>
     <link rel="stylesheet" href="<?= htmlspecialchars($cssCustom, ENT_QUOTES, 'UTF-8') ?>">
 <?php endif; ?>
-    <style>
-        .history-wrap { max-width: 1400px; margin: 1rem auto; width: calc(100% - 2rem); }
-        .history-grid { display: grid; gap: .9rem; }
-        .history-card { background: var(--card); border: 1px solid var(--border); border-radius: .8rem; padding: .85rem; overflow-x: auto; }
-        .history-head { display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; margin-bottom: .5rem; }
-        .history-title { margin: 0; font-size: 1rem; }
-        .history-unit { color: var(--muted); font-size: .86rem; }
-        table { width: 100%; border-collapse: collapse; min-width: 900px; }
-        th, td { padding: .45rem .4rem; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
-        th:first-child, td:first-child { text-align: left; font-weight: 700; }
-        .muted { color: var(--muted); }
-    </style>
 </head>
 <body>
 <div class="history-wrap">
-    <div class="status-row" style="margin-bottom: .7rem;">
+    <div class="status-row status-row-spaced">
         <a class="status-pill" href="./">Dashboard</a>
         <label class="status-pill" for="theme-select">
             <span>Theme:</span>
@@ -396,7 +384,7 @@ try {
                     <h2 class="history-title"><?= htmlspecialchars($section['label'], ENT_QUOTES, 'UTF-8') ?></h2>
                     <span class="history-unit"><?= htmlspecialchars($section['unit'], ENT_QUOTES, 'UTF-8') ?></span>
                 </div>
-                <table>
+                <table class="history-table">
                     <thead>
                         <tr>
                             <th>Year / Type</th>

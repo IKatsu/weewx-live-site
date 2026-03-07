@@ -43,12 +43,6 @@ $defaultTheme = (string) ($cssConfig['default_theme'] ?? 'bright');
     <link rel="stylesheet" href="<?= htmlspecialchars($themePath, ENT_QUOTES, 'UTF-8') ?>">
 <?php endif; ?>
 <?php endforeach; ?>
-    <style>
-        .forecast-wrap { max-width: 1200px; margin: 1rem auto; width: calc(100% - 2rem); }
-        .forecast-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-        .muted { color: var(--muted); }
-        .row { margin-bottom: .4rem; }
-    </style>
 </head>
 <body>
 <div class="forecast-wrap">
@@ -84,8 +78,8 @@ const FORECAST_APP = {
 
 function setTheme(theme) {
     if (!FORECAST_APP.themes.includes(theme)) return;
-    document.body.dataset.theme = theme;
-    localStorage.setItem('pws-theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('pws_theme', theme);
 }
 
 function initThemeSelector() {
@@ -99,7 +93,7 @@ function initThemeSelector() {
         select.appendChild(opt);
     }
 
-    const saved = localStorage.getItem('pws-theme');
+    const saved = localStorage.getItem('pws_theme');
     const theme = FORECAST_APP.themes.includes(saved) ? saved : FORECAST_APP.defaultTheme;
     select.value = theme;
     setTheme(theme);
@@ -162,7 +156,7 @@ function tempChip(value, unit = '°C', decimals = 0) {
         Math.min(255, Math.round(b + (255 - b) * 0.22)),
     ];
     const label = `${n.toFixed(decimals)}°`;
-    return `<span class=\"temp-gradient-chip\" style=\"background-image:linear-gradient(180deg, rgb(${hi[0]}, ${hi[1]}, ${hi[2]}), rgb(${r}, ${g}, ${b}));-webkit-background-clip:text;background-clip:text;color:transparent;\">${label}</span>`;
+    return `<span class=\"temp-gradient-chip temp-gradient-text\" style=\"--temp-hi-rgb:${hi[0]},${hi[1]},${hi[2]};--temp-base-rgb:${r},${g},${b};\">${label}</span>`;
 }
 
 function renderHourly(rows) {
@@ -180,7 +174,7 @@ function renderHourly(rows) {
             : '--:--';
         const temp = r.temperature !== null && r.temperature !== undefined ? tempChip(r.temperature, '°C', 0) : '--';
         const precip = r.precip_chance !== null && r.precip_chance !== undefined ? `${Number(r.precip_chance).toFixed(0)}%` : '-';
-        return `<article class="card"><div class="row"><strong>${timeText}</strong></div><div class="row">${temp} ${r.phrase || ''}</div><div class="row muted">Rain chance ${precip}</div></article>`;
+        return `<article class="card"><div class="forecast-row"><strong>${timeText}</strong></div><div class="forecast-row">${temp} ${r.phrase || ''}</div><div class="forecast-row muted">Rain chance ${precip}</div></article>`;
     }).join('');
 }
 
@@ -195,7 +189,7 @@ function renderDaily(rows) {
     host.innerHTML = rows.map((r) => {
         const high = r.temp_max !== null && r.temp_max !== undefined ? tempChip(r.temp_max, '°C', 0) : '--';
         const low = r.temp_min !== null && r.temp_min !== undefined ? tempChip(r.temp_min, '°C', 0) : '--';
-        return `<article class="card"><div class="row"><strong>${r.day_of_week || 'Day'}</strong></div><div class="row">High ${high} / Low ${low}</div><div class="row muted">${r.narrative || ''}</div></article>`;
+        return `<article class="card"><div class="forecast-row"><strong>${r.day_of_week || 'Day'}</strong></div><div class="forecast-row">High ${high} / Low ${low}</div><div class="forecast-row muted">${r.narrative || ''}</div></article>`;
     }).join('');
 }
 

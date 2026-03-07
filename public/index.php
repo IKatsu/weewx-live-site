@@ -386,29 +386,48 @@ function temperatureGradientStyle(value, unit = '°C') {
     const tempC = tempToCelsius(value, unit);
     if (!Number.isFinite(tempC)) return null;
     const [r, g, b] = tempScaleColor(tempC);
-    const luma = (0.2126 * r) + (0.7152 * g) + (0.0722 * b);
-    const fg = luma < 145 ? '#ffffff' : '#102137';
     const hi = [
         Math.min(255, Math.round(r + (255 - r) * 0.22)),
         Math.min(255, Math.round(g + (255 - g) * 0.22)),
         Math.min(255, Math.round(b + (255 - b) * 0.22)),
     ];
     return {
-        textGradient: `linear-gradient(180deg, rgb(${hi[0]}, ${hi[1]}, ${hi[2]}), rgb(${r}, ${g}, ${b}))`,
-        borderColor: `rgba(${r}, ${g}, ${b}, 0.78)`,
-        color: fg,
+        hi,
+        base: [r, g, b],
     };
 }
 
+function temperatureMetricKeys() {
+    return ['outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'heatindex', 'windchill', 'appTemp', 'humidex'];
+}
+
+function isTemperatureMetric(metricKey) {
+    return temperatureMetricKeys().includes(metricKey);
+}
+
+function tempGradientVars(style) {
+    if (!style) return '';
+    return `--temp-hi-rgb:${style.hi[0]},${style.hi[1]},${style.hi[2]};--temp-base-rgb:${style.base[0]},${style.base[1]},${style.base[2]};`;
+}
+
+function tempChipHtml(value, unit = '°C', decimals = 0) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '--';
+    const style = temperatureGradientStyle(n, unit);
+    const label = `${n.toFixed(decimals)}°`;
+    if (!style) return label;
+    return `<span class="temp-gradient-chip temp-gradient-text" style="${tempGradientVars(style)}">${label}</span>`;
+}
+
 function metricPalette(metricKey) {
-    if (['outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'heatindex', 'windchill', 'appTemp', 'humidex'].includes(metricKey)) return 'temperature';
+    if (isTemperatureMetric(metricKey)) return 'temperature';
     if (['rain', 'rainRate', 'ET', 'rainDur'].includes(metricKey)) return 'rain';
     if (['windSpeed', 'windGust', 'windrun'].includes(metricKey)) return 'wind';
     return 'default';
 }
 
 function metricScale(metricKey) {
-    if (['outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'heatindex', 'windchill', 'appTemp', 'humidex'].includes(metricKey)) return { min: -15, max: 35 };
+    if (isTemperatureMetric(metricKey)) return { min: -15, max: 35 };
     if (['rainRate'].includes(metricKey)) return { min: 0, max: 20 };
     if (['rain', 'ET'].includes(metricKey)) return { min: 0, max: 50 };
     if (['windSpeed', 'windGust'].includes(metricKey)) return { min: 0, max: 25 };
@@ -442,37 +461,33 @@ function colorForRatio(palette, ratio) {
 function applyMetricCardColor(cardNode, metricKey, value, unit = '') {
     if (!cardNode) return;
     const numeric = Number(value);
+    cardNode.classList.remove('metric-tone-card');
     if (!Number.isFinite(numeric)) {
         cardNode.style.background = '';
         cardNode.style.borderColor = '';
+        cardNode.style.removeProperty('--metric-rgb');
         return;
     }
     const scale = metricScale(metricKey);
     if (!scale) {
         cardNode.style.background = '';
         cardNode.style.borderColor = '';
+        cardNode.style.removeProperty('--metric-rgb');
         return;
     }
-    if (['outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'heatindex', 'windchill', 'appTemp', 'humidex'].includes(metricKey)) {
+    if (isTemperatureMetric(metricKey)) {
         const style = temperatureGradientStyle(numeric, unit || '°C');
         if (style) {
             cardNode.style.background = '';
             cardNode.style.borderColor = '';
             cardNode.style.color = '';
-            const valueNode = cardNode.querySelector('.value');
-            if (valueNode) {
-                valueNode.style.backgroundImage = style.textGradient;
-                valueNode.style.backgroundClip = 'text';
-                valueNode.style.webkitBackgroundClip = 'text';
-                valueNode.style.color = 'transparent';
-            }
             return;
         }
     }
     const ratio = (numeric - scale.min) / Math.max(0.00001, scale.max - scale.min);
     const [r, g, b] = colorForRatio(metricPalette(metricKey), ratio);
-    cardNode.style.background = `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.24), rgba(${r}, ${g}, ${b}, 0.12))`;
-    cardNode.style.borderColor = `rgba(${r}, ${g}, ${b}, 0.72)`;
+    cardNode.classList.add('metric-tone-card');
+    cardNode.style.setProperty('--metric-rgb', `${r},${g},${b}`);
 }
 
 function formatTimestamp(epochSeconds) {
@@ -831,14 +846,13 @@ function renderCurrentVisual(metrics) {
         tempNode.textContent = out !== undefined && out !== null ? `${Number(out).toFixed(1)} ${unit}` : '--';
         const tStyle = temperatureGradientStyle(out, unit);
         if (tStyle) {
-            tempNode.style.backgroundImage = tStyle.textGradient;
-            tempNode.style.backgroundClip = 'text';
-            tempNode.style.webkitBackgroundClip = 'text';
-            tempNode.style.color = 'transparent';
-            tempNode.style.border = '';
+            tempNode.classList.add('temp-gradient-text');
+            tempNode.style.setProperty('--temp-hi-rgb', `${tStyle.hi[0]},${tStyle.hi[1]},${tStyle.hi[2]}`);
+            tempNode.style.setProperty('--temp-base-rgb', `${tStyle.base[0]},${tStyle.base[1]},${tStyle.base[2]}`);
         } else {
-            tempNode.style.backgroundImage = '';
-            tempNode.style.border = '';
+            tempNode.classList.remove('temp-gradient-text');
+            tempNode.style.removeProperty('--temp-hi-rgb');
+            tempNode.style.removeProperty('--temp-base-rgb');
             tempNode.style.color = '';
         }
     }
@@ -904,11 +918,7 @@ function renderForecastData(payload) {
                 ? t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 : '--:--';
             const temp = row?.temperature !== null && row?.temperature !== undefined ? `${Number(row.temperature).toFixed(0)}°` : '--';
-            let tempHtml = temp;
-            if (row?.temperature !== null && row?.temperature !== undefined) {
-                const ts = temperatureGradientStyle(row.temperature, '°C');
-                if (ts) tempHtml = `<span class="temp-gradient-chip" style="background-image:${ts.textGradient};-webkit-background-clip:text;background-clip:text;color:transparent;">${temp}</span>`;
-            }
+            const tempHtml = row?.temperature !== null && row?.temperature !== undefined ? tempChipHtml(row.temperature, '°C', 0) : temp;
             const phrase = row?.phrase || 'n/a';
             const precip = row?.precip_chance !== null && row?.precip_chance !== undefined ? `${Number(row.precip_chance).toFixed(0)}%` : '-';
             return `<div><strong>${timeText}</strong> ${tempHtml}  ${phrase}  (rain ${precip})</div>`;
@@ -921,10 +931,8 @@ function renderForecastData(payload) {
         fiveDay.innerHTML = daily.map((row) => {
             const high = row.temp_max !== null && row.temp_max !== undefined ? `${Number(row.temp_max).toFixed(0)}°` : '--';
             const low = row.temp_min !== null && row.temp_min !== undefined ? `${Number(row.temp_min).toFixed(0)}°` : '--';
-            const hs = row.temp_max !== null && row.temp_max !== undefined ? temperatureGradientStyle(row.temp_max, '°C') : null;
-            const ls = row.temp_min !== null && row.temp_min !== undefined ? temperatureGradientStyle(row.temp_min, '°C') : null;
-            const highHtml = hs ? `<span class="temp-gradient-chip" style="background-image:${hs.textGradient};-webkit-background-clip:text;background-clip:text;color:transparent;">${high}</span>` : high;
-            const lowHtml = ls ? `<span class="temp-gradient-chip" style="background-image:${ls.textGradient};-webkit-background-clip:text;background-clip:text;color:transparent;">${low}</span>` : low;
+            const highHtml = row.temp_max !== null && row.temp_max !== undefined ? tempChipHtml(row.temp_max, '°C', 0) : high;
+            const lowHtml = row.temp_min !== null && row.temp_min !== undefined ? tempChipHtml(row.temp_min, '°C', 0) : low;
             const phrase = row.narrative || '';
             const day = row.day_of_week || 'Day';
             const icon = iconFromNarrative(phrase);
@@ -952,11 +960,25 @@ async function loadForecast() {
 function updateMetricValue(key, value, unit) {
     const node = document.getElementById(`metric-${key}`);
     if (!node) return;
-    node.style.backgroundImage = '';
-    node.style.backgroundClip = '';
-    node.style.webkitBackgroundClip = '';
+    node.classList.remove('temp-gradient-text');
+    node.style.removeProperty('--temp-hi-rgb');
+    node.style.removeProperty('--temp-base-rgb');
     node.style.color = '';
-    node.textContent = formatValue(value, unit);
+    if (isTemperatureMetric(key)) {
+        const n = Number(value);
+        const display = formatValue(value, unit);
+        const tStyle = temperatureGradientStyle(n, unit || '°C');
+        if (tStyle && display !== 'n/a') {
+            node.classList.add('temp-gradient-text');
+            node.style.setProperty('--temp-hi-rgb', `${tStyle.hi[0]},${tStyle.hi[1]},${tStyle.hi[2]}`);
+            node.style.setProperty('--temp-base-rgb', `${tStyle.base[0]},${tStyle.base[1]},${tStyle.base[2]}`);
+            node.textContent = display;
+        } else {
+            node.textContent = display;
+        }
+    } else {
+        node.textContent = formatValue(value, unit);
+    }
     const card = node.closest('.card');
     applyMetricCardColor(card, key, value, unit || '');
 }
