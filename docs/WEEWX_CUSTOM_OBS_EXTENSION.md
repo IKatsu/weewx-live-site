@@ -75,3 +75,49 @@ A helper SQL script is provided at:
 ## MQTT naming caveat
 
 Do not use MQTT-formatted field names (for example `solarAltitude_degree_angle`) as archive observation names. Register/use the canonical observation names listed above.
+
+## Adding your own custom values
+
+If you want to archive additional custom LOOP fields, follow this pattern:
+
+1. Add the observation name to `OBS_GROUP_MAP` in:
+   - `weewx/custom_obs/bin/user/custom_obs.py`
+2. Choose the correct WeeWX unit group for that field.
+3. Add matching accumulator settings (`extractor = last` is typical for live values).
+4. Add a matching column in the `archive` table.
+5. Restart WeeWX and verify data appears in new archive rows.
+
+Example (`soilTemp2` as temperature):
+
+```python
+OBS_GROUP_MAP = {
+    # existing entries ...
+    "soilTemp2": "group_temperature",
+}
+```
+
+Accumulator example:
+
+```ini
+[Accumulator]
+    [[soilTemp2]]
+        extractor = last
+```
+
+Archive schema example:
+
+```sql
+ALTER TABLE archive
+    ADD COLUMN IF NOT EXISTS soilTemp2 DOUBLE NULL;
+```
+
+### Common unit groups
+
+- `group_temperature` for temperature values
+- `group_pressure` for pressure values
+- `group_speed` for speed values
+- `group_rain` for rain amount values
+- `group_direction` for angular values (degrees/azimuth/altitude)
+- `group_count` for counters
+
+Pick the unit group that matches how WeeWX should treat and convert the value.
