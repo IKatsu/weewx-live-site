@@ -79,15 +79,61 @@ function row_min_max(array $values): array
     return [min($filtered), max($filtered)];
 }
 
-function cell_style(?float $value, ?float $min, ?float $max): string
+function lerp(float $a, float $b, float $t): float
+{
+    return $a + (($b - $a) * $t);
+}
+
+function color_stops(string $palette): array
+{
+    return match ($palette) {
+        // Cold-to-hot: blue -> cyan -> green -> yellow -> orange -> red
+        'temperature' => [[43, 92, 168], [54, 172, 214], [96, 187, 120], [240, 211, 82], [237, 149, 62], [201, 66, 56]],
+        // Rainfall: very light to deep blue
+        'rain' => [[236, 244, 252], [189, 220, 246], [120, 179, 231], [61, 131, 200], [30, 78, 156]],
+        // Standard wind severity gradient.
+        'wind' => [[52, 120, 204], [54, 172, 114], [235, 208, 78], [219, 111, 60], [138, 74, 171]],
+        // Neutral fallback palette.
+        default => [[226, 236, 247], [154, 188, 224], [84, 132, 186]],
+    };
+}
+
+function color_for_ratio(string $palette, float $ratio): array
+{
+    $stops = color_stops($palette);
+    if (count($stops) === 1) {
+        return $stops[0];
+    }
+
+    $ratio = max(0.0, min(1.0, $ratio));
+    $segments = count($stops) - 1;
+    $pos = $ratio * $segments;
+    $idx = (int) floor($pos);
+    if ($idx >= $segments) {
+        return $stops[$segments];
+    }
+    $t = $pos - $idx;
+    $a = $stops[$idx];
+    $b = $stops[$idx + 1];
+
+    return [
+        (int) round(lerp($a[0], $b[0], $t)),
+        (int) round(lerp($a[1], $b[1], $t)),
+        (int) round(lerp($a[2], $b[2], $t)),
+    ];
+}
+
+function cell_style(?float $value, ?float $min, ?float $max, string $palette = 'default'): string
 {
     if ($value === null || $min === null || $max === null || abs($max - $min) < 0.00001) {
         return '';
     }
     $ratio = ($value - $min) / ($max - $min);
     $ratio = max(0.0, min(1.0, $ratio));
-    $alpha = 0.10 + (0.35 * $ratio);
-    return sprintf(' style="background: rgba(15,110,207,%.3f);"', $alpha);
+    [$r, $g, $b] = color_for_ratio($palette, $ratio);
+    $luma = (0.2126 * $r) + (0.7152 * $g) + (0.0722 * $b);
+    $fg = $luma < 145 ? '#ffffff' : '#102137';
+    return sprintf(' style="background: rgb(%d,%d,%d); color: %s;"', $r, $g, $b, $fg);
 }
 
 function fmt_val(?float $value, int $decimals): string
@@ -103,27 +149,27 @@ $defaultTheme = (string) ($cssConfig['default_theme'] ?? 'bright');
 $cssCustom = (string) ($cssConfig['custom'] ?? '');
 
 $metricDefs = [
-    ['field' => 'outTemp', 'label' => 'Outside Temperature', 'unit_key' => 'temperature', 'decimals' => 1],
-    ['field' => 'inTemp', 'label' => 'Inside Temperature', 'unit_key' => 'temperature', 'decimals' => 1],
-    ['field' => 'dewpoint', 'label' => 'Outside Dew Point', 'unit_key' => 'temperature', 'decimals' => 1],
-    ['field' => 'inDewpoint', 'label' => 'Inside Dew Point', 'unit_key' => 'temperature', 'decimals' => 1],
-    ['field' => 'outHumidity', 'label' => 'Outside Humidity', 'unit' => '%', 'decimals' => 1],
-    ['field' => 'inHumidity', 'label' => 'Inside Humidity', 'unit' => '%', 'decimals' => 1],
-    ['field' => 'windSpeed', 'label' => 'Wind Speed', 'unit_key' => 'wind', 'decimals' => 1],
-    ['field' => 'windGust', 'label' => 'Wind Gust', 'unit_key' => 'wind', 'decimals' => 1],
-    ['field' => 'barometer', 'label' => 'Barometer', 'unit_key' => 'pressure', 'decimals' => 1],
-    ['field' => 'rainRate', 'label' => 'Rain Rate', 'unit_key' => 'rain_rate', 'decimals' => 2],
-    ['field' => 'rain', 'label' => 'Rain Total', 'unit_key' => 'rain', 'decimals' => 2],
-    ['field' => 'radiation', 'label' => 'Solar Radiation', 'unit' => 'W/m²', 'decimals' => 0],
-    ['field' => 'UV', 'label' => 'UV Index', 'unit' => 'index', 'decimals' => 1],
-    ['field' => 'ET', 'label' => 'Evapotranspiration', 'unit_key' => 'rain', 'decimals' => 2],
-    ['field' => 'pm2_5', 'label' => 'PM2.5', 'unit' => 'µg/m³', 'decimals' => 1],
-    ['field' => 'lightning_strike_count', 'label' => 'Lightning Count', 'unit' => 'count', 'decimals' => 0],
-    ['field' => 'windBatteryStatus', 'label' => 'Wind Battery', 'unit' => 'V', 'decimals' => 2],
-    ['field' => 'rainBatteryStatus', 'label' => 'Rain Battery', 'unit' => 'V', 'decimals' => 2],
-    ['field' => 'lightning_Batt', 'label' => 'Lightning Battery', 'unit' => 'V', 'decimals' => 2],
-    ['field' => 'pm25_Batt1', 'label' => 'PM2.5 Battery', 'unit' => 'V', 'decimals' => 2],
-    ['field' => 'inTempBatteryStatus', 'label' => 'Indoor Temp Battery', 'unit' => 'V', 'decimals' => 2],
+    ['field' => 'outTemp', 'label' => 'Outside Temperature', 'unit_key' => 'temperature', 'decimals' => 1, 'palette' => 'temperature'],
+    ['field' => 'inTemp', 'label' => 'Inside Temperature', 'unit_key' => 'temperature', 'decimals' => 1, 'palette' => 'temperature'],
+    ['field' => 'dewpoint', 'label' => 'Outside Dew Point', 'unit_key' => 'temperature', 'decimals' => 1, 'palette' => 'temperature'],
+    ['field' => 'inDewpoint', 'label' => 'Inside Dew Point', 'unit_key' => 'temperature', 'decimals' => 1, 'palette' => 'temperature'],
+    ['field' => 'outHumidity', 'label' => 'Outside Humidity', 'unit' => '%', 'decimals' => 1, 'palette' => 'default'],
+    ['field' => 'inHumidity', 'label' => 'Inside Humidity', 'unit' => '%', 'decimals' => 1, 'palette' => 'default'],
+    ['field' => 'windSpeed', 'label' => 'Wind Speed', 'unit_key' => 'wind', 'decimals' => 1, 'palette' => 'wind'],
+    ['field' => 'windGust', 'label' => 'Wind Gust', 'unit_key' => 'wind', 'decimals' => 1, 'palette' => 'wind'],
+    ['field' => 'barometer', 'label' => 'Barometer', 'unit_key' => 'pressure', 'decimals' => 1, 'palette' => 'default'],
+    ['field' => 'rainRate', 'label' => 'Rain Rate', 'unit_key' => 'rain_rate', 'decimals' => 2, 'palette' => 'rain'],
+    ['field' => 'rain', 'label' => 'Rain Total', 'unit_key' => 'rain', 'decimals' => 2, 'palette' => 'rain'],
+    ['field' => 'radiation', 'label' => 'Solar Radiation', 'unit' => 'W/m²', 'decimals' => 0, 'palette' => 'default'],
+    ['field' => 'UV', 'label' => 'UV Index', 'unit' => 'index', 'decimals' => 1, 'palette' => 'default'],
+    ['field' => 'ET', 'label' => 'Evapotranspiration', 'unit_key' => 'rain', 'decimals' => 2, 'palette' => 'rain'],
+    ['field' => 'pm2_5', 'label' => 'PM2.5', 'unit' => 'µg/m³', 'decimals' => 1, 'palette' => 'default'],
+    ['field' => 'lightning_strike_count', 'label' => 'Lightning Count', 'unit' => 'count', 'decimals' => 0, 'palette' => 'default'],
+    ['field' => 'windBatteryStatus', 'label' => 'Wind Battery', 'unit' => 'V', 'decimals' => 2, 'palette' => 'default'],
+    ['field' => 'rainBatteryStatus', 'label' => 'Rain Battery', 'unit' => 'V', 'decimals' => 2, 'palette' => 'default'],
+    ['field' => 'lightning_Batt', 'label' => 'Lightning Battery', 'unit' => 'V', 'decimals' => 2, 'palette' => 'default'],
+    ['field' => 'pm25_Batt1', 'label' => 'PM2.5 Battery', 'unit' => 'V', 'decimals' => 2, 'palette' => 'default'],
+    ['field' => 'inTempBatteryStatus', 'label' => 'Indoor Temp Battery', 'unit' => 'V', 'decimals' => 2, 'palette' => 'default'],
 ];
 
     $sections = [];
@@ -186,6 +232,7 @@ try {
             'label' => $def['label'],
             'unit' => (string) $unit,
             'decimals' => (int) $def['decimals'],
+            'palette' => (string) ($def['palette'] ?? 'default'),
             'years' => $years,
             'rows_by_year' => $rowsByYear,
         ];
@@ -275,19 +322,19 @@ try {
                             <tr>
                                 <td><?= (int) $year ?> High</td>
                                 <?php foreach ($bucket['high'] as $v): ?>
-                                    <td<?= cell_style($v, $highMin, $highMax) ?>><?= fmt_val($v, $section['decimals']) ?></td>
+                                    <td<?= cell_style($v, $highMin, $highMax, $section['palette']) ?>><?= fmt_val($v, $section['decimals']) ?></td>
                                 <?php endforeach; ?>
                             </tr>
                             <tr>
                                 <td><?= (int) $year ?> Average</td>
                                 <?php foreach ($bucket['avg'] as $v): ?>
-                                    <td<?= cell_style($v, $avgMin, $avgMax) ?>><?= fmt_val($v, $section['decimals']) ?></td>
+                                    <td<?= cell_style($v, $avgMin, $avgMax, $section['palette']) ?>><?= fmt_val($v, $section['decimals']) ?></td>
                                 <?php endforeach; ?>
                             </tr>
                             <tr>
                                 <td><?= (int) $year ?> Low</td>
                                 <?php foreach ($bucket['low'] as $v): ?>
-                                    <td<?= cell_style($v, $lowMin, $lowMax) ?>><?= fmt_val($v, $section['decimals']) ?></td>
+                                    <td<?= cell_style($v, $lowMin, $lowMax, $section['palette']) ?>><?= fmt_val($v, $section['decimals']) ?></td>
                                 <?php endforeach; ?>
                             </tr>
                         <?php endforeach; ?>
