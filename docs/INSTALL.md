@@ -16,20 +16,20 @@ Notes:
 
 Project path:
 
-- `/path/to/home/Documents/Dev/pws-live-site`
+- `/path/to/pws-live-site`
 
 Recommended Apache document root:
 
-- `/path/to/home/Documents/Dev/pws-live-site/public`
+- `/path/to/pws-live-site/public`
 
 Example VirtualHost:
 
 ```apache
 <VirtualHost *:80>
     ServerName weather.local
-    DocumentRoot /path/to/home/Documents/Dev/pws-live-site/public
+    DocumentRoot /path/to/pws-live-site/public
 
-    <Directory /path/to/home/Documents/Dev/pws-live-site/public>
+    <Directory /path/to/pws-live-site/public>
         AllowOverride None
         Require all granted
     </Directory>

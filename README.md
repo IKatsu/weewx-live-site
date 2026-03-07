@@ -26,6 +26,7 @@ Open `http://127.0.0.1:8080`.
 - Safe defaults: `src/config.defaults.php` (tracked in git)
 - Local secrets: `src/config.local.php` (gitignored)
 - Runtime override: environment variables
+- Security checklist: `docs/SECURITY_NOTES.md`
 
 Environment variables (optional overrides):
 
