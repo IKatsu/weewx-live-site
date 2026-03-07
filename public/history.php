@@ -307,8 +307,8 @@ const HISTORY_APP = {
 function setTheme(themeName) {
     const allowed = Array.isArray(HISTORY_APP.themes) ? HISTORY_APP.themes : [];
     const selected = allowed.includes(themeName) ? themeName : HISTORY_APP.defaultTheme;
-    document.body.dataset.theme = selected;
-    try { localStorage.setItem('pws-theme', selected); } catch {}
+    document.documentElement.setAttribute('data-theme', selected);
+    try { localStorage.setItem('pws_theme', selected); } catch {}
 }
 
 function initThemeSelector() {
@@ -319,13 +319,13 @@ function initThemeSelector() {
     for (const theme of themes) {
         const opt = document.createElement('option');
         opt.value = theme;
-        opt.textContent = theme;
+        opt.textContent = theme.charAt(0).toUpperCase() + theme.slice(1);
         select.appendChild(opt);
     }
 
     let initial = HISTORY_APP.defaultTheme;
     try {
-        const saved = localStorage.getItem('pws-theme');
+        const saved = localStorage.getItem('pws_theme');
         if (saved && themes.includes(saved)) initial = saved;
     } catch {}
 
