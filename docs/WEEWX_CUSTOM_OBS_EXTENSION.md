@@ -1,5 +1,7 @@
 # WeeWX Custom Obs Extension (`custom_obs`)
 
+> Command/path note: shell commands in this document were written in a development environment. Verify and adjust paths for your own host before running them.
+
 ## Why this extension exists
 
 When `weewx-skyfield-almanac` is configured with live data enabled, custom solar/lunar fields can appear in LOOP/MQTT output:
@@ -36,6 +38,12 @@ From your WeeWX host:
 ```bash
 cd /path/to/pws-live-site/weewx/custom_obs
 weectl extension install .
+```
+
+Or install from the packaged zip in this repository:
+
+```bash
+weectl extension install /path/to/pws-live-site/weewx/custom_obs/custom_obs-extension.zip
 ```
 
 Compatibility note:

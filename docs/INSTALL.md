@@ -1,5 +1,7 @@
 # Install Guide (Fedora 43 tested, Ubuntu notes included)
 
+> Command/path note: shell commands in this document were written in a development environment. Verify and adjust paths for your own host before running them.
+
 This deployment was tested on Fedora 43.
 It should also work on other Linux distributions; Ubuntu examples are included below.
 The WeeWX database integration has been tested with WeeWX 5.x archives.
@@ -249,6 +251,12 @@ cd /path/to/pws-live-site/weewx/custom_obs
 weectl extension install .
 ```
 
+Or install from the packaged zip in this repo:
+
+```bash
+weectl extension install /path/to/pws-live-site/weewx/custom_obs/custom_obs-extension.zip
+```
+
 Then ensure archive columns exist for these observations:
 
 - `solarAzimuth`, `solarAltitude`, `solarTime`
@@ -273,3 +281,6 @@ ALTER TABLE archive ADD INDEX idx_archive_dateTime (dateTime);
 ```
 
 For pre-aggregated chart periods, consider creating summary views/tables (hourly or daily) and querying those for long time ranges.
+
+---
+Author: Codex (GPT-5)

@@ -1,5 +1,7 @@
 # PWS Live Site (PHP)
 
+> Command/path note: shell commands in this document were written in a development environment. Verify and adjust paths for your own host before running them.
+
 Live weather dashboard for weewx data with:
 - latest conditions from MySQL (`weather.archive`)
 - responsive history charts (Chart.js)
@@ -145,3 +147,6 @@ See:
   - `GET /api/dump.php?type=csv` -> `text/csv`
   - `GET /api/dump.php?type=json` -> `application/json`
   - `GET /api/dump.php?type=xml` -> `application/xml`
+
+---
+Author: Codex (GPT-5)
