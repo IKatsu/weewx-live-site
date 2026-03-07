@@ -64,9 +64,15 @@ body {
 }
 
 .status-pill-button {
+    appearance: none;
     font: inherit;
-    color: inherit;
+    color: var(--muted);
     cursor: pointer;
+}
+
+.status-pill-button:hover,
+.status-pill-button:focus-visible {
+    color: var(--text);
 }
 
 .diag-panel {
