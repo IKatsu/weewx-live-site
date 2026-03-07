@@ -84,6 +84,8 @@ function app_config(): array
     $dbCfg = (array) ($local['db'] ?? []);
     $mqttCfg = (array) ($local['mqtt'] ?? []);
     $historyCfg = (array) ($local['history'] ?? []);
+    $locationCfg = (array) ($local['location'] ?? []);
+    $forecastCfg = (array) ($local['forecast'] ?? []);
 
     $baseDir = resolve_base_dir((string) ($pathsCfg['base_dir'] ?? '__DIR__'));
     $srcDir = resolve_relative_path((string) ($pathsCfg['src_dir'] ?? '../src'), $baseDir);
@@ -121,6 +123,17 @@ function app_config(): array
             'graphs' => (array) ($uiCfg['graphs'] ?? []),
         ],
         'field_map' => (array) ($local['field_map'] ?? []),
+        'location' => [
+            'latitude' => (float) ($locationCfg['latitude'] ?? 0.0),
+            'longitude' => (float) ($locationCfg['longitude'] ?? 0.0),
+            'timezone' => (string) ($locationCfg['timezone'] ?? 'UTC'),
+        ],
+        'forecast' => [
+            'provider' => (string) ($forecastCfg['provider'] ?? 'none'),
+            'cache_ttl_seconds' => (int) ($forecastCfg['cache_ttl_seconds'] ?? 900),
+            'refresh_interval_seconds' => (int) ($forecastCfg['refresh_interval_seconds'] ?? 900),
+            'wu_api_key' => env_value('PWS_WU_API_KEY', (string) ($forecastCfg['wu_api_key'] ?? '')),
+        ],
         'history_default_hours' => (int) env_value('PWS_HISTORY_DEFAULT_HOURS', (string) ($historyCfg['default_hours'] ?? '24')),
         'history_max_hours' => (int) env_value('PWS_HISTORY_MAX_HOURS', (string) ($historyCfg['max_hours'] ?? (24 * 366))),
     ];

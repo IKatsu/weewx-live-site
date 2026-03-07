@@ -40,6 +40,8 @@ $graphMaxColumns = (int) ($layoutConfig['graph_max_columns'] ?? 3);
 $graphMinWidthPx = (int) ($layoutConfig['graph_min_width_px'] ?? 320);
 $graphHeightPx = (int) ($layoutConfig['graph_height_px'] ?? 260);
 $windRoseHeightPx = (int) ($layoutConfig['wind_rose_height_px'] ?? 380);
+$locationConfig = $config['location'] ?? ['latitude' => 0.0, 'longitude' => 0.0, 'timezone' => 'UTC'];
+$forecastConfig = $config['forecast'] ?? ['provider' => 'none'];
 ?>
 <!doctype html>
 <html lang="en">
@@ -72,8 +74,37 @@ $windRoseHeightPx = (int) ($layoutConfig['wind_rose_height_px'] ?? 380);
         </div>
     </header>
 
-    <section class="sky-panel">
-        <canvas id="sky-canvas" height="170"></canvas>
+    <section class="hero-grid">
+        <article class="hero-card current-visual">
+            <div class="current-main">
+                <img id="current-icon" class="current-icon" src="assets/weathericons/unknown.svg" alt="Current weather icon">
+                <div class="current-copy">
+                    <h2 id="current-condition">Current Weather</h2>
+                    <div id="current-temp" class="current-temp">--</div>
+                    <div id="current-sub" class="current-sub">Forecast provider: pending</div>
+                </div>
+            </div>
+            <div class="forecast-strip">
+                <div class="forecast-col">
+                    <h3>Next 5 Hours</h3>
+                    <div id="forecast-5h" class="forecast-list"></div>
+                </div>
+                <div class="forecast-col">
+                    <h3>Tomorrow</h3>
+                    <div id="forecast-tomorrow" class="forecast-list"></div>
+                </div>
+            </div>
+        </article>
+
+        <div class="hero-right">
+            <section class="sky-panel">
+                <canvas id="sky-canvas" height="170"></canvas>
+            </section>
+            <section class="astro-info">
+                <h3>Sun & Moon</h3>
+                <div id="astro-times" class="astro-grid"></div>
+            </section>
+        </div>
     </section>
 
     <section class="cards" id="cards"></section>
@@ -197,6 +228,8 @@ $windRoseHeightPx = (int) ($layoutConfig['wind_rose_height_px'] ?? 380);
 <script src="https://cdn.jsdelivr.net/npm/date-fns@3.6.0/cdn.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.4/dist/mqtt.min.js"></script>
+<!-- SunCalc reference: https://github.com/mourner/suncalc -->
+<script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
 <?php if ($plotlyJs !== ''): ?>
 <script src="<?= htmlspecialchars($plotlyJs, ENT_QUOTES, 'UTF-8') ?>"></script>
 <?php endif; ?>
@@ -213,6 +246,8 @@ const APP = {
     defaultTheme: <?= json_encode($defaultTheme) ?>,
     themes: <?= json_encode(array_keys($cssThemes)) ?>,
     graphToggles: <?= json_encode($graphToggles) ?>,
+    location: <?= json_encode($locationConfig) ?>,
+    forecast: <?= json_encode($forecastConfig) ?>,
     layout: {
         maxColumns: <?= max(1, $graphMaxColumns) ?>,
         minWidthPx: <?= max(220, $graphMinWidthPx) ?>,
@@ -476,6 +511,109 @@ function renderCards() {
     }
 }
 
+function weatherIconForMetrics(metrics) {
+    const rainRate = Number(metrics.rainRate?.value ?? 0);
+    const solarAlt = Number(metrics.solarAltitude?.value ?? NaN);
+    const outHumidity = Number(metrics.outHumidity?.value ?? 0);
+    const windSpeed = Number(metrics.windSpeed?.value ?? 0);
+    const cloudy = outHumidity > 88;
+    const isDay = !Number.isNaN(solarAlt) && solarAlt > 0;
+
+    if (rainRate > 0.1) return 'rain.svg';
+    if (windSpeed > 25) return isDay ? 'clear-day-wind.svg' : 'clear-night-wind.svg';
+    if (cloudy) return isDay ? 'mostly-cloudy-day.svg' : 'mostly-cloudy-night.svg';
+    return isDay ? 'clear-day.svg' : 'clear-night.svg';
+}
+
+function formatClock(dateObj, timezone) {
+    if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return 'n/a';
+    return dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: timezone || 'UTC' });
+}
+
+function moonPhaseLabel(phase) {
+    const p = ((phase % 1) + 1) % 1;
+    if (p < 0.03 || p > 0.97) return 'New Moon';
+    if (p < 0.22) return 'Waxing Crescent';
+    if (p < 0.28) return 'First Quarter';
+    if (p < 0.47) return 'Waxing Gibbous';
+    if (p < 0.53) return 'Full Moon';
+    if (p < 0.72) return 'Waning Gibbous';
+    if (p < 0.78) return 'Last Quarter';
+    return 'Waning Crescent';
+}
+
+function moonPhaseIcon(phase) {
+    const p = ((phase % 1) + 1) % 1;
+    if (p < 0.03 || p > 0.97) return '🌑';
+    if (p < 0.22) return '🌒';
+    if (p < 0.28) return '🌓';
+    if (p < 0.47) return '🌔';
+    if (p < 0.53) return '🌕';
+    if (p < 0.72) return '🌖';
+    if (p < 0.78) return '🌗';
+    return '🌘';
+}
+
+function renderAstroInfo(metrics) {
+    const host = document.getElementById('astro-times');
+    if (!host || !window.SunCalc) return;
+    const lat = Number(APP.location?.latitude ?? 0);
+    const lon = Number(APP.location?.longitude ?? 0);
+    const tz = APP.location?.timezone || 'UTC';
+    const now = new Date();
+
+    const sunTimes = SunCalc.getTimes(now, lat, lon);
+    const moonTimes = SunCalc.getMoonTimes(now, lat, lon);
+    const moonIll = SunCalc.getMoonIllumination(now);
+    const phaseLabel = moonPhaseLabel(moonIll.phase);
+    const phaseIcon = moonPhaseIcon(moonIll.phase);
+
+    host.innerHTML = `
+        <div><strong>Sunrise</strong><br>${formatClock(sunTimes.sunrise, tz)}</div>
+        <div><strong>Sunset</strong><br>${formatClock(sunTimes.sunset, tz)}</div>
+        <div><strong>Moonrise</strong><br>${moonTimes.alwaysUp ? 'Always up' : (moonTimes.rise ? formatClock(moonTimes.rise, tz) : 'n/a')}</div>
+        <div><strong>Moonset</strong><br>${moonTimes.alwaysDown ? 'Always down' : (moonTimes.set ? formatClock(moonTimes.set, tz) : 'n/a')}</div>
+        <div><strong>Moon Phase</strong><br>${phaseIcon} ${phaseLabel}</div>
+        <div><strong>Location</strong><br>${lat.toFixed(3)}, ${lon.toFixed(3)}</div>
+    `;
+}
+
+function renderCurrentVisual(metrics) {
+    const icon = weatherIconForMetrics(metrics || {});
+    const iconNode = document.getElementById('current-icon');
+    const tempNode = document.getElementById('current-temp');
+    const subNode = document.getElementById('current-sub');
+    const condNode = document.getElementById('current-condition');
+
+    if (iconNode) {
+        iconNode.src = `assets/weathericons/${icon}`;
+    }
+    if (tempNode) {
+        const out = metrics?.outTemp?.value;
+        const unit = metrics?.outTemp?.unit || '';
+        tempNode.textContent = out !== undefined && out !== null ? `${Number(out).toFixed(1)} ${unit}` : '--';
+    }
+    if (condNode) {
+        condNode.textContent = `Current Weather (${APP.forecast?.provider || 'local'})`;
+    }
+    if (subNode) {
+        subNode.textContent = `Wind ${formatValue(metrics?.windSpeed?.value, metrics?.windSpeed?.unit)}  Humidity ${formatValue(metrics?.outHumidity?.value, metrics?.outHumidity?.unit)}`;
+    }
+}
+
+function renderForecastPlaceholders() {
+    // TODO: Replace placeholders with cached WU forecast once provider strategy is selected.
+    const five = document.getElementById('forecast-5h');
+    const tom = document.getElementById('forecast-tomorrow');
+    const provider = APP.forecast?.provider || 'none';
+    if (five) {
+        five.innerHTML = `<div>Provider: ${provider}</div><div>Pending strategy selection for cached WU fetch.</div>`;
+    }
+    if (tom) {
+        tom.innerHTML = `<div>Provider: ${provider}</div><div>Daily forecast pending WU integration.</div>`;
+    }
+}
+
 function updateMetricValue(key, value, unit) {
     const node = document.getElementById(`metric-${key}`);
     if (node) node.textContent = formatValue(value, unit);
@@ -538,6 +676,8 @@ function mergeMqttUpdate(payload) {
         document.getElementById('db-updated').textContent = formatTimestamp(ts);
     }
 
+    renderCurrentVisual(state.latest.metrics);
+    renderAstroInfo(state.latest.metrics);
     renderSkyWidget(state.latest.metrics);
 }
 
@@ -902,6 +1042,8 @@ async function loadLatest() {
     state.latest = await response.json();
     document.getElementById('db-updated').textContent = formatTimestamp(state.latest.timestamp);
     renderCards();
+    renderCurrentVisual(state.latest.metrics);
+    renderAstroInfo(state.latest.metrics);
     renderSkyWidget(state.latest.metrics);
 }
 
@@ -978,6 +1120,7 @@ function connectMqtt() {
 (async function init() {
     applyGraphVisibility();
     initThemeSelector();
+    renderForecastPlaceholders();
     applyLayoutConfig();
     try {
         await loadLatest();

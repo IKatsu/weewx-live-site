@@ -53,6 +53,19 @@ return [
             'battery_indoor' => true,
         ],
     ],
+    'location' => [
+        // Required for sunrise/sunset and moonrise/moonset calculations.
+        'latitude' => 0.0,
+        'longitude' => 0.0,
+        'timezone' => 'UTC',
+    ],
+    'forecast' => [
+        // Placeholder options; provider wiring added after strategy selection.
+        'provider' => 'none',
+        'cache_ttl_seconds' => 900,
+        'refresh_interval_seconds' => 900,
+        'wu_api_key' => 'CHANGE_ME',
+    ],
     'field_map' => [
         'dateTime' => 'dateTime',
         'usUnits' => 'usUnits',
