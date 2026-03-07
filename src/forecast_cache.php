@@ -47,7 +47,21 @@ function forecast_http_get_json(string $url, int $timeoutSeconds = 10): array
             throw new RuntimeException('WU request failed: ' . ($error !== '' ? $error : 'empty response'));
         }
         if ($code >= 400) {
-            throw new RuntimeException('WU request failed with HTTP ' . $code);
+            $decodedError = json_decode((string) $raw, true);
+            $errorSummary = '';
+            if (is_array($decodedError)) {
+                $parts = [];
+                if (isset($decodedError['error']['code'])) {
+                    $parts[] = 'code=' . (string) $decodedError['error']['code'];
+                }
+                if (isset($decodedError['error']['message'])) {
+                    $parts[] = 'message=' . (string) $decodedError['error']['message'];
+                }
+                if ($parts !== []) {
+                    $errorSummary = ' (' . implode(', ', $parts) . ')';
+                }
+            }
+            throw new RuntimeException('WU request failed with HTTP ' . $code . $errorSummary);
         }
 
         $decoded = json_decode($raw, true);
@@ -109,8 +123,11 @@ function wu_endpoint_url(array $config, string $path, array $extraParams = []): 
 function wu_fetch_hourly(array $config): array
 {
     $forecast = (array) ($config['forecast'] ?? []);
-    $duration = max(12, (int) ($forecast['wu_hourly_duration_hours'] ?? 24));
-    $path = '/v3/wx/forecast/hourly/' . $duration . 'hour';
+    $duration = trim((string) ($forecast['wu_hourly_duration'] ?? '2day'));
+    if ($duration === '') {
+        $duration = '2day';
+    }
+    $path = '/v3/wx/forecast/hourly/' . $duration;
     return forecast_http_get_json(wu_endpoint_url($config, $path));
 }
 

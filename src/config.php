@@ -148,7 +148,7 @@ function app_config(): array
             'wu_language' => (string) ($forecastCfg['wu_language'] ?? 'en-US'),
             'wu_latitude' => (float) ($forecastCfg['wu_latitude'] ?? 0.0),
             'wu_longitude' => (float) ($forecastCfg['wu_longitude'] ?? 0.0),
-            'wu_hourly_duration_hours' => (int) ($forecastCfg['wu_hourly_duration_hours'] ?? 24),
+            'wu_hourly_duration' => (string) ($forecastCfg['wu_hourly_duration'] ?? '2day'),
             'wu_daily_duration_days' => (int) ($forecastCfg['wu_daily_duration_days'] ?? 10),
         ],
         'history_default_hours' => (int) env_value('PWS_HISTORY_DEFAULT_HOURS', (string) ($historyCfg['default_hours'] ?? '24')),

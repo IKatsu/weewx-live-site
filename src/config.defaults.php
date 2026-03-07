@@ -73,7 +73,8 @@ return [
         // Leave at 0.0 to inherit from location.latitude/location.longitude.
         'wu_latitude' => 0.0,
         'wu_longitude' => 0.0,
-        'wu_hourly_duration_hours' => 24,
+        // Valid values are API-defined durations such as "2day" or "15day".
+        'wu_hourly_duration' => '2day',
         'wu_daily_duration_days' => 10,
     ],
     'field_map' => [
