@@ -788,6 +788,16 @@ function renderCards() {
     cards.innerHTML = '';
     const metrics = state.latest.metrics || {};
 
+    function applyInitialTempTextStyle(valueNode, metricKey, metricValue, metricUnit) {
+        if (!valueNode || !isTemperatureMetric(metricKey)) return;
+        const n = Number(metricValue);
+        const tStyle = temperatureGradientStyle(n, metricUnit || '°C');
+        if (!tStyle) return;
+        valueNode.classList.add('temp-gradient-text');
+        valueNode.style.setProperty('--temp-hi-rgb', `${tStyle.hi[0]},${tStyle.hi[1]},${tStyle.hi[2]}`);
+        valueNode.style.setProperty('--temp-base-rgb', `${tStyle.base[0]},${tStyle.base[1]},${tStyle.base[2]}`);
+    }
+
     const rendered = new Set();
     for (const key of metricOrder) {
         const metric = metrics[key];
@@ -797,6 +807,7 @@ function renderCards() {
         card.className = 'card';
         card.dataset.metric = key;
         card.innerHTML = `<div class="label">${metric.label || key}</div><div class="value" id="metric-${key}">${formatValue(metric.value, metric.unit)}</div>`;
+        applyInitialTempTextStyle(card.querySelector('.value'), key, metric.value, metric.unit || '');
         applyMetricCardColor(card, key, metric.value, metric.unit || '');
         cards.appendChild(card);
     }
@@ -807,6 +818,7 @@ function renderCards() {
         card.className = 'card';
         card.dataset.metric = key;
         card.innerHTML = `<div class="label">${metric.label || key}</div><div class="value" id="metric-${key}">${formatValue(metric.value, metric.unit)}</div>`;
+        applyInitialTempTextStyle(card.querySelector('.value'), key, metric.value, metric.unit || '');
         applyMetricCardColor(card, key, metric.value, metric.unit || '');
         cards.appendChild(card);
     }
