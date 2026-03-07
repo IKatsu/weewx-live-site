@@ -514,114 +514,187 @@ function renderSkyWidget(metrics) {
     if (!ctx) return;
 
     const solarAlt = Number(metrics.solarAltitude?.value ?? NaN);
+    const solarAz = Number(metrics.solarAzimuth?.value ?? NaN);
     const lunarAlt = Number(metrics.lunarAltitude?.value ?? NaN);
+    const lunarAz = Number(metrics.lunarAzimuth?.value ?? NaN);
     const lat = Number(APP.location?.latitude ?? 0);
     const lon = Number(APP.location?.longitude ?? 0);
     const tz = APP.location?.timezone || 'UTC';
     const now = new Date();
     const sunTimes = SunCalc.getTimes(now, lat, lon);
     const moonTimes = SunCalc.getMoonTimes(now, lat, lon);
+    const moonIll = SunCalc.getMoonIllumination(now);
 
-    // Blend sky tone by solar altitude to mimic day/night transition with stronger contrast.
-    const skyMix = Number.isNaN(solarAlt) ? 0.2 : clamp((solarAlt + 14) / 50, 0, 1);
+    // Blend sky tone by solar altitude, then overlay a chart area like the reference widget.
+    const skyMix = Number.isNaN(solarAlt) ? 0.2 : clamp((solarAlt + 10) / 55, 0, 1);
     const grad = ctx.createLinearGradient(0, 0, 0, height);
-    grad.addColorStop(0, `rgba(${Math.floor(10 + skyMix * 145)}, ${Math.floor(22 + skyMix * 165)}, ${Math.floor(44 + skyMix * 170)}, 1)`);
-    grad.addColorStop(1, `rgba(${Math.floor(8 + skyMix * 90)}, ${Math.floor(14 + skyMix * 110)}, ${Math.floor(24 + skyMix * 125)}, 1)`);
+    grad.addColorStop(0, `rgba(${Math.floor(12 + skyMix * 120)}, ${Math.floor(20 + skyMix * 130)}, ${Math.floor(36 + skyMix * 160)}, 1)`);
+    grad.addColorStop(1, `rgba(${Math.floor(8 + skyMix * 75)}, ${Math.floor(12 + skyMix * 90)}, ${Math.floor(22 + skyMix * 100)}, 1)`);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
 
-    const horizonY = Math.floor(height * 0.60);
-    const cx = width / 2;
-    const radius = Math.min(width * 0.44, height * 0.58);
+    const left = 8 * dpr;
+    const right = width - (8 * dpr);
+    const top = 10 * dpr;
+    const horizonY = Math.floor(height * 0.47);
+    const baseY = horizonY;
+    const peakY = Math.floor(height * 0.30);
+    const bottomY = height - (8 * dpr);
+    const chartWidth = right - left;
 
-    ctx.lineWidth = 2 * dpr;
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    // Horizon line.
+    ctx.lineWidth = 1.2 * dpr;
+    ctx.strokeStyle = 'rgba(162, 176, 206, 0.6)';
     ctx.beginPath();
-    ctx.moveTo(0, horizonY);
-    ctx.lineTo(width, horizonY);
+    ctx.moveTo(left, baseY);
+    ctx.lineTo(right, baseY);
     ctx.stroke();
 
-    function arcPointFromAltitude(altitudeDeg, scale = 1) {
-        const r = radius * scale;
-        const alt = clamp(altitudeDeg, 0, 90);
-        const x = cx - r + (2 * r * (alt / 90));
-        const yByAlt = horizonY - (alt / 90) * r;
-        const arcY = horizonY - Math.sqrt(Math.max(0, r * r - Math.pow(x - cx, 2)));
-        return { x, y: Math.max(arcY, yByAlt) };
+    function text(str, x, y, align = 'center', alpha = 0.86, size = 10) {
+        ctx.fillStyle = `rgba(220,232,255,${alpha})`;
+        ctx.font = `${size * dpr}px sans-serif`;
+        ctx.textAlign = align;
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(str, x, y);
     }
 
-    // Daylight dome fill.
-    const sunrise = sunTimes.sunrise;
-    const sunset = sunTimes.sunset;
-    if (sunrise instanceof Date && sunset instanceof Date && !Number.isNaN(sunrise.getTime()) && !Number.isNaN(sunset.getTime())) {
-        const dayStart = sunrise.getTime();
-        const dayEnd = sunset.getTime();
-        const dayProgress = clamp((now.getTime() - dayStart) / Math.max(1, dayEnd - dayStart), 0, 1);
-        const dayR = radius;
-        const leftX = cx - dayR;
-        const rightX = cx + dayR;
-
-        const dome = ctx.createLinearGradient(0, 0, 0, horizonY);
-        dome.addColorStop(0, 'rgba(150, 206, 255, 0.55)');
-        dome.addColorStop(1, 'rgba(91, 121, 214, 0.42)');
-        ctx.fillStyle = dome;
+    function drawDot(x, y, r, color) {
+        ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.moveTo(leftX, horizonY);
-        ctx.arc(cx, horizonY, dayR, Math.PI, 2 * Math.PI);
-        ctx.lineTo(rightX, horizonY);
-        ctx.closePath();
+        ctx.arc(x, y, r * dpr, 0, Math.PI * 2);
         ctx.fill();
-
-        // Current daylight progress marker on arc.
-        const angle = Math.PI + (Math.PI * dayProgress);
-        const sunX = cx + dayR * Math.cos(angle);
-        const sunY = horizonY + dayR * Math.sin(angle);
-        ctx.fillStyle = 'rgba(255, 190, 96, 0.92)';
-        ctx.beginPath();
-        ctx.arc(sunX, sunY, 7 * dpr, 0, 2 * Math.PI);
-        ctx.fill();
-
-        ctx.fillStyle = 'rgba(255,255,255,0.82)';
-        ctx.font = `${11 * dpr}px sans-serif`;
-        ctx.textAlign = 'left';
-        ctx.fillText(`Sunrise ${formatClock(sunrise, tz)}`, 8 * dpr, (18 * dpr));
-        ctx.textAlign = 'right';
-        ctx.fillText(`Sunset ${formatClock(sunset, tz)}`, width - (8 * dpr), (18 * dpr));
     }
 
-    // Moon path arc and marker.
-    ctx.setLineDash([4 * dpr, 4 * dpr]);
-    ctx.lineWidth = 1.3 * dpr;
-    ctx.strokeStyle = 'rgba(196, 212, 255, 0.58)';
+    function fmtAngle(v) {
+        return Number.isFinite(v) ? `${Number(v).toFixed(1)} deg` : 'n/a';
+    }
+
+    function xFromTime(dateObj) {
+        if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return null;
+        const ms = dateObj.getTime();
+        const start = new Date(now);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(start.getTime() + (24 * 3600 * 1000));
+        return left + (chartWidth * clamp((ms - start.getTime()) / (end.getTime() - start.getTime()), 0, 1));
+    }
+
+    function yFromArc(x, amplitude) {
+        const mid = (left + right) / 2;
+        const half = chartWidth / 2;
+        const nx = clamp((x - mid) / half, -1, 1);
+        return baseY - (Math.sqrt(Math.max(0, 1 - (nx * nx))) * amplitude);
+    }
+
+    function drawGuideLine(x, label, value, topLabel = true) {
+        if (!Number.isFinite(x)) return;
+        ctx.strokeStyle = 'rgba(180,190,216,0.16)';
+        ctx.lineWidth = 1 * dpr;
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottomY);
+        ctx.stroke();
+        if (topLabel) {
+            text(label, x, 20 * dpr, 'center', 0.8, 9);
+            text(value, x, 34 * dpr, 'center', 0.95, 11);
+        } else {
+            text(label, x, baseY + (24 * dpr), 'center', 0.8, 9);
+            text(value, x, baseY + (38 * dpr), 'center', 0.95, 11);
+        }
+    }
+
+    // Daytime dome under the main sun trajectory.
+    const dome = ctx.createLinearGradient(0, peakY, 0, baseY);
+    dome.addColorStop(0, 'rgba(148, 206, 255, 0.9)');
+    dome.addColorStop(1, 'rgba(92, 118, 210, 0.62)');
+    ctx.fillStyle = dome;
     ctx.beginPath();
-    ctx.arc(cx, horizonY + (6 * dpr), radius * 0.88, Math.PI, 2 * Math.PI);
+    ctx.moveTo(left, baseY);
+    for (let x = left; x <= right; x += (2 * dpr)) {
+        ctx.lineTo(x, yFromArc(x, baseY - peakY));
+    }
+    ctx.lineTo(right, baseY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Main sun trajectory line.
+    ctx.strokeStyle = 'rgba(168,214,255,0.92)';
+    ctx.lineWidth = 2.2 * dpr;
+    ctx.beginPath();
+    for (let x = left; x <= right; x += (2 * dpr)) {
+        const y = yFromArc(x, baseY - peakY);
+        if (x === left) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Moon trajectory is a lower, dashed arc.
+    ctx.strokeStyle = 'rgba(150, 164, 202, 0.58)';
+    ctx.setLineDash([4 * dpr, 5 * dpr]);
+    ctx.lineWidth = 1.2 * dpr;
+    ctx.beginPath();
+    const moonAmp = (baseY - peakY) * 0.72;
+    for (let x = left; x <= right; x += (2 * dpr)) {
+        const y = baseY + (14 * dpr) - (Math.sqrt(Math.max(0, 1 - Math.pow((x - ((left + right) / 2)) / (chartWidth / 2), 2))) * moonAmp);
+        if (x === left) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
     ctx.stroke();
     ctx.setLineDash([]);
 
-    if (!Number.isNaN(solarAlt) && solarAlt > 0) {
-        const p = arcPointFromAltitude(solarAlt, 1);
-        ctx.fillStyle = '#ffd84d';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 8 * dpr, 0, 2 * Math.PI);
-        ctx.fill();
+    const sunrise = sunTimes.sunrise;
+    const sunset = sunTimes.sunset;
+    const dawn = sunTimes.dawn;
+    const dusk = sunTimes.dusk;
+    const solarNoon = sunTimes.solarNoon;
+
+    const xSunrise = xFromTime(sunrise);
+    const xSunset = xFromTime(sunset);
+    const xNoon = xFromTime(solarNoon);
+    const xDawn = xFromTime(dawn);
+    const xDusk = xFromTime(dusk);
+
+    drawGuideLine(xSunrise, 'Sunrise', formatClock(sunrise, tz), true);
+    drawGuideLine(xSunset, 'Sunset', formatClock(sunset, tz), true);
+    drawGuideLine(xNoon, 'Solar noon', formatClock(solarNoon, tz), false);
+    drawGuideLine(xDawn, 'Dawn', formatClock(dawn, tz), false);
+    drawGuideLine(xDusk, 'Dusk', formatClock(dusk, tz), false);
+
+    // Current sun marker follows real solar altitude if available, else time-based progression.
+    if (!Number.isNaN(solarAlt) && solarAlt > -12) {
+        let sunX = xFromTime(now) ?? ((left + right) / 2);
+        if (!Number.isNaN(solarAz)) {
+            sunX = left + (chartWidth * clamp(solarAz / 360, 0, 1));
+        }
+        const sunY = solarAlt > 0
+            ? yFromArc(sunX, baseY - peakY)
+            : Math.min(bottomY - (4 * dpr), baseY + (8 * dpr) + Math.abs(solarAlt * 0.7 * dpr));
+        drawDot(sunX, sunY, 4.2, 'rgba(255,173,88,0.95)');
+        drawDot(sunX, sunY, 2.3, 'rgba(255,228,188,0.92)');
     }
 
-    if (!Number.isNaN(lunarAlt) && lunarAlt > 0) {
-        const p = arcPointFromAltitude(lunarAlt, 0.88);
-        ctx.fillStyle = '#dfe8ff';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 6 * dpr, 0, 2 * Math.PI);
-        ctx.fill();
+    if (!Number.isNaN(lunarAlt) && lunarAlt > -12) {
+        let moonX = xFromTime(now) ?? ((left + right) / 2);
+        if (!Number.isNaN(lunarAz)) {
+            moonX = left + (chartWidth * clamp(lunarAz / 360, 0, 1));
+        }
+        const moonY = lunarAlt > 0
+            ? baseY + (14 * dpr) - (Math.sqrt(Math.max(0, 1 - Math.pow((moonX - ((left + right) / 2)) / (chartWidth / 2), 2))) * moonAmp)
+            : Math.min(bottomY - (3 * dpr), baseY + (14 * dpr) + Math.abs(lunarAlt * 0.55 * dpr));
+        drawDot(moonX, moonY, 3.8, 'rgba(191,214,255,0.9)');
+        drawDot(moonX, moonY, 2.1, 'rgba(232,242,255,0.95)');
     }
 
-    if (moonTimes.rise instanceof Date || moonTimes.set instanceof Date) {
-        ctx.fillStyle = 'rgba(223,232,255,0.84)';
-        ctx.font = `${10 * dpr}px sans-serif`;
-        ctx.textAlign = 'left';
-        ctx.fillText(`Moonrise ${moonTimes.rise ? formatClock(moonTimes.rise, tz) : 'n/a'}`, 8 * dpr, height - (20 * dpr));
-        ctx.textAlign = 'right';
-        ctx.fillText(`Moonset ${moonTimes.set ? formatClock(moonTimes.set, tz) : 'n/a'}`, width - (8 * dpr), height - (20 * dpr));
-    }
+    // Bottom annotation row mirrors the reference widget details.
+    text(`Azimuth ${fmtAngle(solarAz)}`, left, bottomY - (30 * dpr), 'left', 0.92, 10);
+    text(`Elevation ${fmtAngle(solarAlt)}`, right, bottomY - (30 * dpr), 'right', 0.92, 10);
+    text(`Moonrise ${moonTimes.rise ? formatClock(moonTimes.rise, tz) : 'n/a'}`, left, bottomY - (12 * dpr), 'left', 0.84, 10);
+    text(`Moonset ${moonTimes.set ? formatClock(moonTimes.set, tz) : 'n/a'}`, right, bottomY - (12 * dpr), 'right', 0.84, 10);
+    text(`${moonPhaseIcon(moonIll.phase)} ${moonPhaseLabel(moonIll.phase)}`, (left + right) / 2, bottomY - (12 * dpr), 'center', 0.9, 10);
+
+    // Border frame to match the widget look.
+    ctx.strokeStyle = 'rgba(180,195,225,0.22)';
+    ctx.lineWidth = 1 * dpr;
+    ctx.strokeRect(0.5 * dpr, 0.5 * dpr, width - dpr, height - dpr);
 }
 
 function setMqttStatus(text, mode) {
