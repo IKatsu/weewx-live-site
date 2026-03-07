@@ -50,6 +50,7 @@ body {
     align-items: center;
     color: var(--muted);
     font-size: 0.95rem;
+    position: relative;
 }
 
 .status-pill {
@@ -62,11 +63,29 @@ body {
     padding: 0.3rem 0.7rem;
 }
 
+.status-pill-button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+
 .diag-panel {
+    position: fixed;
+    z-index: 40;
+    width: min(560px, calc(100vw - 24px));
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
     gap: 0.55rem;
-    margin: 0 0 0.9rem;
+    margin: 0;
+    padding: 0.65rem;
+    background: color-mix(in srgb, var(--card) 92%, var(--accent-soft) 8%);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    box-shadow: 0 14px 30px rgba(15, 28, 45, 0.2);
+}
+
+.diag-panel[hidden] {
+    display: none;
 }
 
 .diag-item {
@@ -86,6 +105,12 @@ body {
     color: var(--text);
     font-family: "DM Mono", "Consolas", "Courier New", monospace;
     font-weight: 600;
+}
+
+@media (max-width: 760px) {
+    .diag-panel {
+        grid-template-columns: 1fr;
+    }
 }
 
 .dot {

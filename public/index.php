@@ -75,10 +75,12 @@ $forecastConfig = $config['forecast'] ?? ['provider' => 'none'];
             </label>
             <div class="status-pill"><span>Last update:</span> <strong id="db-updated">-</strong></div>
             <div class="status-pill"><span>Range:</span> <strong id="range-label">Today</strong></div>
-            <div class="status-pill"><span class="dot" id="mqtt-dot"></span><span id="mqtt-status">MQTT: idle</span></div>
+            <button type="button" class="status-pill status-pill-button" id="mqtt-pill" aria-expanded="false" aria-controls="diag-popup">
+                <span class="dot" id="mqtt-dot"></span><span id="mqtt-status">MQTT: idle</span>
+            </button>
         </div>
     </header>
-    <section class="diag-panel" aria-label="Connection diagnostics">
+    <section class="diag-panel" id="diag-popup" aria-label="Connection diagnostics" hidden>
         <div class="diag-item"><span>API poll:</span> <strong id="diag-api-state">idle</strong></div>
         <div class="diag-item"><span>Last API attempt:</span> <strong id="diag-api-attempt">never</strong></div>
         <div class="diag-item"><span>Last API success:</span> <strong id="diag-api-success">never</strong></div>
@@ -806,6 +808,66 @@ function renderDiagnostics() {
     apiError.textContent = d.apiLastError || 'none';
     mqttState.textContent = d.mqttState;
     mqttLast.textContent = formatDiagTime(d.mqttLastMessageAt);
+}
+
+function initDiagnosticsPopup() {
+    const trigger = document.getElementById('mqtt-pill');
+    const popup = document.getElementById('diag-popup');
+    if (!trigger || !popup) return;
+    let pinOpen = false;
+
+    function positionPopup() {
+        const rect = trigger.getBoundingClientRect();
+        popup.style.left = `${Math.max(12, Math.min(window.innerWidth - popup.offsetWidth - 12, rect.right - popup.offsetWidth))}px`;
+        popup.style.top = `${Math.min(window.innerHeight - popup.offsetHeight - 12, rect.bottom + 8)}px`;
+    }
+
+    function setOpen(isOpen) {
+        popup.hidden = !isOpen;
+        trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        if (isOpen) positionPopup();
+    }
+
+    function openHover() {
+        if (!pinOpen) setOpen(true);
+    }
+
+    function closeHover() {
+        if (!pinOpen) setOpen(false);
+    }
+
+    trigger.addEventListener('mouseenter', openHover);
+    trigger.addEventListener('mouseleave', closeHover);
+    popup.addEventListener('mouseenter', openHover);
+    popup.addEventListener('mouseleave', closeHover);
+    trigger.addEventListener('focus', openHover);
+    trigger.addEventListener('blur', closeHover);
+
+    // Click acts as touch-friendly fallback and pin toggle.
+    trigger.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        pinOpen = !pinOpen;
+        setOpen(pinOpen);
+    });
+
+    document.addEventListener('click', (ev) => {
+        const target = ev.target;
+        if (!(target instanceof Node)) return;
+        if (trigger.contains(target) || popup.contains(target)) return;
+        pinOpen = false;
+        setOpen(false);
+    });
+
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape') {
+            pinOpen = false;
+            setOpen(false);
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        if (!popup.hidden) positionPopup();
+    });
 }
 
 function applyGraphVisibility() {
@@ -1734,6 +1796,7 @@ function connectMqtt() {
 (async function init() {
     applyGraphVisibility();
     initThemeSelector();
+    initDiagnosticsPopup();
     renderDiagnostics();
     renderForecastPlaceholders('Loading cached forecast...');
     applyLayoutConfig();
