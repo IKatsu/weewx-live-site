@@ -2,6 +2,21 @@
 
 > Command/path note: shell commands in this document were written in a development environment. Verify and adjust paths for your own host before running them.
 
+# Promptwriter's note
+
+This was made for weewx 5.2+ that is using Mysql and the ecowittcustom driver.
+I was struggling to get all the data correctly displayed with existing skins and the tiny fan of my Intel NuC that is hosting my LAN only weewx installation was REALLY driving me nuts every 5 minutes as weewx started to do it's html/image generation cycle. Being a sysadmin means that, unlike most developers, you know that just because you HAVE free cpu cycles, doesn't mean you HAVE to use them :P
+Knowing SOME php / mysql I was kinda surprised there weren't any weewx sites that just pulled the data directly from the database and generate most things client side.
+So I decided to try and make my own little PWS site, but I was lazy as well as curious so I had Codex make it.
+I tried to have it write code in a way to keep the site customizable to other peoples possible needs.
+
+None of the used accounts have write access other than the one for the cli program so it should be (relatively) safe code. 
+That said, I have no idea how safe mqtt is to have open to the internet, use at your own risk, but it reduces the load on the server greatly. Just 1 sql query and live updats through mqtt.
+
+So this whole project took about 4 days of 2-3 hours a day of telling codex what to do, figuring out issues with missing weewx values, basic troubleshooting and on the fly design changes because I am indecisive and come up with new things on the go.
+Overall it turned out pretty nice, better than I had expected for sure.
+
+
 Live weather dashboard for weewx data with:
 - latest conditions from MySQL (`weather.archive`)
 - responsive history charts (Chart.js)
