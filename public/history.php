@@ -93,6 +93,9 @@ foreach ($rows as $row) {
 </head>
 <body>
 <div class="history-wrap">
+    <div class="status-row" style="margin-bottom: .6rem;">
+        <a class="status-pill" href="./">Dashboard</a>
+    </div>
     <h1 class="title">Monthly Outside Temperature Min/Avg/Max</h1>
     <div class="chart-card">
         <h3 class="chart-title">Last 24 Months</h3>

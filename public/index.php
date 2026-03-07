@@ -64,6 +64,7 @@ $forecastConfig = $config['forecast'] ?? ['provider' => 'none'];
     <header class="header">
         <h1 class="title">PWS Live Dashboard</h1>
         <div class="status-row">
+            <a class="status-pill" href="history.php">History</a>
             <label class="status-pill" for="theme-select">
                 <span>Theme:</span>
                 <select id="theme-select"></select>
