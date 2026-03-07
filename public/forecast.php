@@ -112,6 +112,49 @@ function cacheLabel(cacheRow) {
     return `${cacheRow.fetched_at} UTC`;
 }
 
+function tempToCelsius(value, unit) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return NaN;
+    if (String(unit || '').includes('°F')) return (n - 32) * (5 / 9);
+    return n;
+}
+
+function tempScaleColor(tempC) {
+    const stops = [
+        { t: -15, rgb: [82, 162, 255] },
+        { t: 0, rgb: [54, 120, 232] },
+        { t: 10, rgb: [244, 206, 72] },
+        { t: 20, rgb: [84, 220, 90] },
+        { t: 25, rgb: [222, 76, 68] },
+    ];
+    const x = Math.max(stops[0].t, Math.min(stops[stops.length - 1].t, tempC));
+    for (let i = 0; i < stops.length - 1; i++) {
+        const a = stops[i];
+        const b = stops[i + 1];
+        if (x >= a.t && x <= b.t) {
+            const p = (x - a.t) / Math.max(0.0001, (b.t - a.t));
+            return [
+                Math.round(a.rgb[0] + (b.rgb[0] - a.rgb[0]) * p),
+                Math.round(a.rgb[1] + (b.rgb[1] - a.rgb[1]) * p),
+                Math.round(a.rgb[2] + (b.rgb[2] - a.rgb[2]) * p),
+            ];
+        }
+    }
+    return stops[stops.length - 1].rgb;
+}
+
+function tempChip(value, unit = '°C', decimals = 0) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '--';
+    const tempC = tempToCelsius(n, unit);
+    if (!Number.isFinite(tempC)) return `${n.toFixed(decimals)}°`;
+    const [r, g, b] = tempScaleColor(tempC);
+    const luma = (0.2126 * r) + (0.7152 * g) + (0.0722 * b);
+    const fg = luma < 145 ? '#ffffff' : '#102137';
+    const label = `${n.toFixed(decimals)}°`;
+    return `<span class=\"temp-gradient-chip\" style=\"background:linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.36), rgba(${r}, ${g}, ${b}, 0.18)); border:1px solid rgba(${r}, ${g}, ${b}, 0.78); color:${fg};\">${label}</span>`;
+}
+
 function renderHourly(rows) {
     const host = document.getElementById('next-hours');
     if (!host) return;
@@ -125,7 +168,7 @@ function renderHourly(rows) {
         const timeText = t && !Number.isNaN(t.getTime())
             ? t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             : '--:--';
-        const temp = r.temperature !== null && r.temperature !== undefined ? `${Number(r.temperature).toFixed(0)}°` : '--';
+        const temp = r.temperature !== null && r.temperature !== undefined ? tempChip(r.temperature, '°C', 0) : '--';
         const precip = r.precip_chance !== null && r.precip_chance !== undefined ? `${Number(r.precip_chance).toFixed(0)}%` : '-';
         return `<article class="card"><div class="row"><strong>${timeText}</strong></div><div class="row">${temp} ${r.phrase || ''}</div><div class="row muted">Rain chance ${precip}</div></article>`;
     }).join('');
@@ -140,8 +183,8 @@ function renderDaily(rows) {
     }
 
     host.innerHTML = rows.map((r) => {
-        const high = r.temp_max !== null && r.temp_max !== undefined ? `${Number(r.temp_max).toFixed(0)}°` : '--';
-        const low = r.temp_min !== null && r.temp_min !== undefined ? `${Number(r.temp_min).toFixed(0)}°` : '--';
+        const high = r.temp_max !== null && r.temp_max !== undefined ? tempChip(r.temp_max, '°C', 0) : '--';
+        const low = r.temp_min !== null && r.temp_min !== undefined ? tempChip(r.temp_min, '°C', 0) : '--';
         return `<article class="card"><div class="row"><strong>${r.day_of_week || 'Day'}</strong></div><div class="row">High ${high} / Low ${low}</div><div class="row muted">${r.narrative || ''}</div></article>`;
     }).join('');
 }

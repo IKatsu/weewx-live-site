@@ -343,6 +343,51 @@ function formatValue(value, unit) {
     return `${n.toFixed(fixed)} ${unit || ''}`.trim();
 }
 
+function tempToCelsius(value, unit) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return NaN;
+    const u = String(unit || '');
+    if (u.includes('°F')) return (n - 32) * (5 / 9);
+    return n;
+}
+
+function tempScaleColor(tempC) {
+    const stops = [
+        { t: -15, rgb: [82, 162, 255] },  // frosty blue
+        { t: 0, rgb: [54, 120, 232] },    // regular blue
+        { t: 10, rgb: [244, 206, 72] },   // yellow
+        { t: 20, rgb: [84, 220, 90] },    // bright green
+        { t: 25, rgb: [222, 76, 68] },    // red
+    ];
+    const x = Math.max(stops[0].t, Math.min(stops[stops.length - 1].t, tempC));
+    for (let i = 0; i < stops.length - 1; i++) {
+        const a = stops[i];
+        const b = stops[i + 1];
+        if (x >= a.t && x <= b.t) {
+            const p = (x - a.t) / Math.max(0.0001, (b.t - a.t));
+            return [
+                Math.round(a.rgb[0] + (b.rgb[0] - a.rgb[0]) * p),
+                Math.round(a.rgb[1] + (b.rgb[1] - a.rgb[1]) * p),
+                Math.round(a.rgb[2] + (b.rgb[2] - a.rgb[2]) * p),
+            ];
+        }
+    }
+    return stops[stops.length - 1].rgb;
+}
+
+function temperatureGradientStyle(value, unit = '°C') {
+    const tempC = tempToCelsius(value, unit);
+    if (!Number.isFinite(tempC)) return null;
+    const [r, g, b] = tempScaleColor(tempC);
+    const luma = (0.2126 * r) + (0.7152 * g) + (0.0722 * b);
+    const fg = luma < 145 ? '#ffffff' : '#102137';
+    return {
+        background: `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.36), rgba(${r}, ${g}, ${b}, 0.18))`,
+        borderColor: `rgba(${r}, ${g}, ${b}, 0.78)`,
+        color: fg,
+    };
+}
+
 function metricPalette(metricKey) {
     if (['outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'heatindex', 'windchill', 'appTemp', 'humidex'].includes(metricKey)) return 'temperature';
     if (['rain', 'rainRate', 'ET', 'rainDur'].includes(metricKey)) return 'rain';
@@ -395,6 +440,17 @@ function applyMetricCardColor(cardNode, metricKey, value) {
         cardNode.style.background = '';
         cardNode.style.borderColor = '';
         return;
+    }
+    if (['outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'heatindex', 'windchill', 'appTemp', 'humidex'].includes(metricKey)) {
+        const valueNode = cardNode.querySelector('.value');
+        const unitMatch = valueNode?.textContent?.match(/(°C|°F)/);
+        const style = temperatureGradientStyle(numeric, unitMatch ? unitMatch[1] : '°C');
+        if (style) {
+            cardNode.style.background = style.background;
+            cardNode.style.borderColor = style.borderColor;
+            cardNode.style.color = style.color;
+            return;
+        }
     }
     const ratio = (numeric - scale.min) / Math.max(0.00001, scale.max - scale.min);
     const [r, g, b] = colorForRatio(metricPalette(metricKey), ratio);
@@ -756,6 +812,16 @@ function renderCurrentVisual(metrics) {
         const out = metrics?.outTemp?.value;
         const unit = metrics?.outTemp?.unit || '';
         tempNode.textContent = out !== undefined && out !== null ? `${Number(out).toFixed(1)} ${unit}` : '--';
+        const tStyle = temperatureGradientStyle(out, unit);
+        if (tStyle) {
+            tempNode.style.background = tStyle.background;
+            tempNode.style.border = `1px solid ${tStyle.borderColor}`;
+            tempNode.style.color = tStyle.color;
+        } else {
+            tempNode.style.background = '';
+            tempNode.style.border = '';
+            tempNode.style.color = '';
+        }
     }
     if (condNode) {
         condNode.textContent = `Current Weather (${APP.forecast?.provider || 'local'})`;
@@ -819,9 +885,14 @@ function renderForecastData(payload) {
                 ? t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 : '--:--';
             const temp = row?.temperature !== null && row?.temperature !== undefined ? `${Number(row.temperature).toFixed(0)}°` : '--';
+            let tempHtml = temp;
+            if (row?.temperature !== null && row?.temperature !== undefined) {
+                const ts = temperatureGradientStyle(row.temperature, '°C');
+                if (ts) tempHtml = `<span class="temp-gradient-chip" style="background:${ts.background};border:1px solid ${ts.borderColor};color:${ts.color};">${temp}</span>`;
+            }
             const phrase = row?.phrase || 'n/a';
             const precip = row?.precip_chance !== null && row?.precip_chance !== undefined ? `${Number(row.precip_chance).toFixed(0)}%` : '-';
-            return `<div><strong>${timeText}</strong> ${temp}  ${phrase}  (rain ${precip})</div>`;
+            return `<div><strong>${timeText}</strong> ${tempHtml}  ${phrase}  (rain ${precip})</div>`;
         }).join('');
     }
 
@@ -831,6 +902,10 @@ function renderForecastData(payload) {
         fiveDay.innerHTML = daily.map((row) => {
             const high = row.temp_max !== null && row.temp_max !== undefined ? `${Number(row.temp_max).toFixed(0)}°` : '--';
             const low = row.temp_min !== null && row.temp_min !== undefined ? `${Number(row.temp_min).toFixed(0)}°` : '--';
+            const hs = row.temp_max !== null && row.temp_max !== undefined ? temperatureGradientStyle(row.temp_max, '°C') : null;
+            const ls = row.temp_min !== null && row.temp_min !== undefined ? temperatureGradientStyle(row.temp_min, '°C') : null;
+            const highHtml = hs ? `<span class="temp-gradient-chip" style="background:${hs.background};border:1px solid ${hs.borderColor};color:${hs.color};">${high}</span>` : high;
+            const lowHtml = ls ? `<span class="temp-gradient-chip" style="background:${ls.background};border:1px solid ${ls.borderColor};color:${ls.color};">${low}</span>` : low;
             const phrase = row.narrative || '';
             const day = row.day_of_week || 'Day';
             const icon = iconFromNarrative(phrase);
@@ -838,7 +913,7 @@ function renderForecastData(payload) {
                 <article class="forecast-day">
                     <div class="forecast-day-head">${day}</div>
                     <img class="forecast-day-icon" src="assets/weathericons/${icon}" alt="${day} icon">
-                    <div class="forecast-day-temps">${high} / ${low}</div>
+                    <div class="forecast-day-temps">${highHtml} / ${lowHtml}</div>
                     <div class="forecast-day-text">${phrase}</div>
                 </article>
             `;

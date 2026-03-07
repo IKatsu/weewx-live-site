@@ -87,8 +87,9 @@ function lerp(float $a, float $b, float $t): float
 function color_stops(string $palette): array
 {
     return match ($palette) {
-        // Cold-to-hot: blue -> cyan -> green -> yellow -> orange -> red
-        'temperature' => [[43, 92, 168], [54, 172, 214], [96, 187, 120], [240, 211, 82], [237, 149, 62], [201, 66, 56]],
+        // Unified temperature scale requested for all pages.
+        // -15C and below frosty blue, 0 blue, 10 yellow, 20 green, 25+ red.
+        'temperature' => [[82, 162, 255], [54, 120, 232], [244, 206, 72], [84, 220, 90], [222, 76, 68]],
         // Rainfall: very light to deep blue
         'rain' => [[236, 244, 252], [189, 220, 246], [120, 179, 231], [61, 131, 200], [30, 78, 156]],
         // Standard wind severity gradient.
@@ -123,17 +124,61 @@ function color_for_ratio(string $palette, float $ratio): array
     ];
 }
 
-function cell_style(?float $value, ?float $min, ?float $max, string $palette = 'default'): string
+function temp_to_celsius(?float $value, string $unit): ?float
 {
-    if ($value === null || $min === null || $max === null || abs($max - $min) < 0.00001) {
+    if ($value === null) {
+        return null;
+    }
+    if (str_contains($unit, '°F')) {
+        return (($value - 32.0) * 5.0) / 9.0;
+    }
+    return $value;
+}
+
+function temperature_ratio_from_value(?float $value, string $unit): ?float
+{
+    $tempC = temp_to_celsius($value, $unit);
+    if ($tempC === null) {
+        return null;
+    }
+    $stops = [-15.0, 0.0, 10.0, 20.0, 25.0];
+    $x = max($stops[0], min($stops[count($stops) - 1], $tempC));
+    return ($x - $stops[0]) / ($stops[count($stops) - 1] - $stops[0]);
+}
+
+function cell_style(
+    ?float $value,
+    ?float $min,
+    ?float $max,
+    string $palette = 'default',
+    string $unit = ''
+): string
+{
+    if ($value === null) {
         return '';
     }
-    $ratio = ($value - $min) / ($max - $min);
-    $ratio = max(0.0, min(1.0, $ratio));
+    if ($palette === 'temperature') {
+        $ratio = temperature_ratio_from_value($value, $unit);
+        if ($ratio === null) {
+            return '';
+        }
+    } else {
+        if ($min === null || $max === null || abs($max - $min) < 0.00001) {
+            return '';
+        }
+        $ratio = ($value - $min) / ($max - $min);
+        $ratio = max(0.0, min(1.0, $ratio));
+    }
     [$r, $g, $b] = color_for_ratio($palette, $ratio);
     $luma = (0.2126 * $r) + (0.7152 * $g) + (0.0722 * $b);
     $fg = $luma < 145 ? '#ffffff' : '#102137';
-    return sprintf(' style="background: rgb(%d,%d,%d); color: %s;"', $r, $g, $b, $fg);
+    return sprintf(
+        ' style="background: linear-gradient(180deg, rgba(%1$d,%2$d,%3$d,0.42), rgba(%1$d,%2$d,%3$d,0.20)); color: %4$s; border-color: rgba(%1$d,%2$d,%3$d,0.78);"',
+        $r,
+        $g,
+        $b,
+        $fg
+    );
 }
 
 function fmt_val(?float $value, int $decimals): string
@@ -322,19 +367,19 @@ try {
                             <tr>
                                 <td><?= (int) $year ?> High</td>
                                 <?php foreach ($bucket['high'] as $v): ?>
-                                    <td<?= cell_style($v, $highMin, $highMax, $section['palette']) ?>><?= fmt_val($v, $section['decimals']) ?></td>
+                                    <td<?= cell_style($v, $highMin, $highMax, $section['palette'], $section['unit']) ?>><?= fmt_val($v, $section['decimals']) ?></td>
                                 <?php endforeach; ?>
                             </tr>
                             <tr>
                                 <td><?= (int) $year ?> Average</td>
                                 <?php foreach ($bucket['avg'] as $v): ?>
-                                    <td<?= cell_style($v, $avgMin, $avgMax, $section['palette']) ?>><?= fmt_val($v, $section['decimals']) ?></td>
+                                    <td<?= cell_style($v, $avgMin, $avgMax, $section['palette'], $section['unit']) ?>><?= fmt_val($v, $section['decimals']) ?></td>
                                 <?php endforeach; ?>
                             </tr>
                             <tr>
                                 <td><?= (int) $year ?> Low</td>
                                 <?php foreach ($bucket['low'] as $v): ?>
-                                    <td<?= cell_style($v, $lowMin, $lowMax, $section['palette']) ?>><?= fmt_val($v, $section['decimals']) ?></td>
+                                    <td<?= cell_style($v, $lowMin, $lowMax, $section['palette'], $section['unit']) ?>><?= fmt_val($v, $section['decimals']) ?></td>
                                 <?php endforeach; ?>
                             </tr>
                         <?php endforeach; ?>
