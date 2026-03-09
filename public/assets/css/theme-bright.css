@@ -9,6 +9,9 @@
     --accent: #0665c1;
     --accent-soft: #d7e9ff;
     --border: #d4e0ed;
+    --confidence-low: #da4f44;
+    --confidence-mid: #d5b037;
+    --confidence-high: #2f9a4a;
     --temp-text-shadow: none;
     --font-family: "Source Sans 3", "Segoe UI", sans-serif;
 }

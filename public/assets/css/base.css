@@ -10,6 +10,9 @@
     --accent: #0f6ecf;
     --accent-soft: #d9ebff;
     --border: #d7e1ec;
+    --confidence-low: #da4f44;
+    --confidence-mid: #d5b037;
+    --confidence-high: #2f9a4a;
     --font-family: "Source Sans 3", "Segoe UI", sans-serif;
 }
 
@@ -21,6 +24,11 @@ body {
         radial-gradient(circle at 10% -10%, var(--bg-accent-a) 0%, transparent 45%),
         radial-gradient(circle at 85% 10%, var(--bg-accent-b) 0%, transparent 40%),
         var(--bg);
+}
+
+a,
+a:visited {
+    color: inherit;
 }
 
 .container {
@@ -552,6 +560,72 @@ body {
     font-size: 1.25rem;
     font-weight: 700;
     letter-spacing: -0.02em;
+}
+
+.prediction-hours {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.8rem;
+}
+
+.prediction-hour-card {
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: color-mix(in srgb, var(--card) 90%, var(--accent-soft) 10%);
+    padding: 0.7rem;
+}
+
+.prediction-hour-title {
+    margin: 0 0 0.55rem;
+    font-size: 0.95rem;
+    color: var(--muted);
+}
+
+.prediction-metric-grid {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.prediction-mini {
+    border-radius: 0.65rem;
+    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent 30%);
+    padding: 0.55rem 0.6rem;
+}
+
+.prediction-mini.confidence-low {
+    background: linear-gradient(135deg,
+        color-mix(in srgb, var(--confidence-low) 55%, var(--card) 45%),
+        color-mix(in srgb, var(--confidence-low) 70%, var(--accent-soft) 30%));
+}
+
+.prediction-mini.confidence-mid {
+    background: linear-gradient(135deg,
+        color-mix(in srgb, var(--confidence-mid) 55%, var(--card) 45%),
+        color-mix(in srgb, var(--confidence-mid) 70%, var(--accent-soft) 30%));
+}
+
+.prediction-mini.confidence-high {
+    background: linear-gradient(135deg,
+        color-mix(in srgb, var(--confidence-high) 55%, var(--card) 45%),
+        color-mix(in srgb, var(--confidence-high) 70%, var(--accent-soft) 30%));
+}
+
+.prediction-mini-label {
+    font-size: 0.82rem;
+    color: color-mix(in srgb, var(--text) 80%, #000 20%);
+}
+
+.prediction-mini-value {
+    margin-top: 0.1rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.prediction-mini-meta,
+.prediction-mini-confidence {
+    font-size: 0.78rem;
+    margin-top: 0.15rem;
+    color: color-mix(in srgb, var(--text) 76%, #000 24%);
 }
 
 .range-toolbar {

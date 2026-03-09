@@ -69,22 +69,8 @@ $cssCustom = (string) ($cssConfig['custom'] ?? '');
     </header>
 
     <article class="card">
-        <h2 class="chart-title">Next 24h Prediction Grid</h2>
-        <div class="history-table-wrap">
-            <table class="history-table" id="prediction-table">
-                <thead>
-                <tr>
-                    <th>Target Time</th>
-                    <th>Metric</th>
-                    <th>Prediction</th>
-                    <th>Confidence</th>
-                    <th>Method</th>
-                    <th>Notes</th>
-                </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
+        <h2 class="chart-title">Prediction By Hour</h2>
+        <section id="prediction-hours" class="prediction-hours"></section>
     </article>
 </div>
 
@@ -141,32 +127,85 @@ function fmtTs(value) {
     });
 }
 
-function renderTable(items) {
-    const body = document.querySelector('#prediction-table tbody');
-    if (!body) return;
-    body.innerHTML = '';
+function fmtHour(value) {
+    const dt = new Date(`${String(value || '')}Z`);
+    if (Number.isNaN(dt.getTime())) return String(value || '-');
+    return dt.toLocaleString([], {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: PRED_APP.timeFormat !== '24h',
+    });
+}
 
+function arrowForSlope(slope) {
+    const n = Number(slope);
+    if (!Number.isFinite(n)) return '→';
+    if (n > 0.01) return '↑';
+    if (n < -0.01) return '↓';
+    return '→';
+}
+
+function confidenceBand(conf) {
+    const pct = Math.max(0, Math.min(100, Math.round((Number(conf) || 0) * 100)));
+    if (pct < 25) return 'confidence-low';
+    if (pct >= 90) return 'confidence-high';
+    return 'confidence-mid';
+}
+
+function groupByHour(items) {
+    const map = new Map();
+    for (const item of items) {
+        const key = String(item?.target_time || '');
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(item);
+    }
+    return [...map.entries()].sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+}
+
+function renderHourWidgets(items) {
+    const host = document.getElementById('prediction-hours');
+    if (!host) return;
+    host.innerHTML = '';
     if (!Array.isArray(items) || items.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = '<td colspan="6">No prediction rows available.</td>';
-        body.appendChild(row);
+        host.innerHTML = '<div class="muted">No prediction rows available.</div>';
         return;
     }
 
-    for (const item of items) {
-        const notes = [];
-        if (item?.details?.horizon_hours !== undefined) notes.push(`${item.details.horizon_hours}h horizon`);
-        if (item?.details?.slope_per_hour !== undefined) notes.push(`slope ${fmtNumber(item.details.slope_per_hour, 3)}`);
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${fmtTs(item.target_time)}</td>
-            <td>${item.metric}</td>
-            <td>${fmtNumber(item.value_num, 2)} ${item.unit || ''}</td>
-            <td>${fmtNumber((Number(item.confidence) || 0) * 100, 0)}%</td>
-            <td>${item.method || '-'}</td>
-            <td>${notes.join(', ') || '-'}</td>
-        `;
-        body.appendChild(tr);
+    const groups = groupByHour(items);
+    for (const [hourKey, rows] of groups) {
+        const card = document.createElement('article');
+        card.className = 'prediction-hour-card';
+
+        const title = document.createElement('h3');
+        title.className = 'prediction-hour-title';
+        title.textContent = fmtHour(hourKey);
+        card.appendChild(title);
+
+        const grid = document.createElement('div');
+        grid.className = 'prediction-metric-grid';
+
+        for (const item of rows) {
+            const band = confidenceBand(item?.confidence);
+            const metric = document.createElement('article');
+            metric.className = `prediction-mini ${band}`;
+            const metricLabel = String(item?.details?.label || item?.metric || 'metric');
+            const horizon = Number(item?.details?.horizon_hours);
+            const slope = Number(item?.details?.slope_per_hour);
+            const arrow = arrowForSlope(slope);
+            const trendLine = Number.isFinite(horizon) ? `${horizon}h, ${arrow} ${fmtNumber(Math.abs(slope), 2)}` : `${arrow} ${fmtNumber(Math.abs(slope), 2)}`;
+            metric.innerHTML = `
+                <div class="prediction-mini-label">${metricLabel}</div>
+                <div class="prediction-mini-value">${fmtNumber(item?.value_num, 2)} ${item?.unit || ''}</div>
+                <div class="prediction-mini-meta">${trendLine}</div>
+                <div class="prediction-mini-confidence">${fmtNumber((Number(item?.confidence) || 0) * 100, 0)}% confidence</div>
+            `;
+            grid.appendChild(metric);
+        }
+
+        card.appendChild(grid);
+        host.appendChild(card);
     }
 }
 
@@ -179,7 +218,7 @@ async function loadPrediction() {
     const payload = await response.json();
     document.getElementById('pred-run').textContent = payload.run_id || '-';
     document.getElementById('pred-generated').textContent = fmtTs(payload.generated_at);
-    renderTable(payload.items || []);
+    renderHourWidgets(payload.items || []);
 }
 
 (async function init() {
@@ -187,9 +226,9 @@ async function loadPrediction() {
     try {
         await loadPrediction();
     } catch (err) {
-        const body = document.querySelector('#prediction-table tbody');
-        if (body) {
-            body.innerHTML = `<tr><td colspan="6">${String(err.message || err)}</td></tr>`;
+        const host = document.getElementById('prediction-hours');
+        if (host) {
+            host.innerHTML = `<div class="muted">${String(err.message || err)}</div>`;
         }
     }
 })();

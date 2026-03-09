@@ -251,7 +251,8 @@ try {
                 continue;
             }
 
-            $targetTs = $nowTs + ($h * 3600);
+            // Normalize all prediction targets to full-hour timestamps.
+            $targetTs = (int) (ceil(($nowTs + ($h * 3600)) / 3600) * 3600);
             $targetHour = (int) gmdate('G', $targetTs);
             $seasonal = seasonal_mean_for_hour($seasonalHistory, $targetHour);
 
