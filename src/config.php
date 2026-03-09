@@ -133,6 +133,7 @@ function app_config(): array
     $apiCfg = (array) ($local['api'] ?? []);
     $locationCfg = (array) ($local['location'] ?? []);
     $forecastCfg = (array) ($local['forecast'] ?? []);
+    $predictionCfg = (array) ($local['prediction'] ?? []);
     $forecastWriterDbCfg = (array) ($local['forecast_writer_db'] ?? []);
 
     $baseDir = resolve_base_dir((string) ($pathsCfg['base_dir'] ?? '__DIR__'));
@@ -213,6 +214,14 @@ function app_config(): array
             'wu_longitude' => (float) ($forecastCfg['wu_longitude'] ?? 0.0),
             'wu_hourly_duration' => (string) ($forecastCfg['wu_hourly_duration'] ?? '2day'),
             'wu_daily_duration_days' => (int) ($forecastCfg['wu_daily_duration_days'] ?? 10),
+        ],
+        'prediction' => [
+            'cache_table' => (string) ($predictionCfg['cache_table'] ?? 'pws_prediction_cache'),
+            'refresh_interval_seconds' => max(300, (int) ($predictionCfg['refresh_interval_seconds'] ?? 1800)),
+            'horizons_hours' => array_values(array_filter(array_map(
+                static fn($h) => (int) $h,
+                (array) ($predictionCfg['horizons_hours'] ?? [1, 3, 6, 12, 24])
+            ), static fn($h) => $h > 0 && $h <= 72)),
         ],
         'history_default_hours' => (int) env_value('PWS_HISTORY_DEFAULT_HOURS', (string) ($historyCfg['default_hours'] ?? '24')),
         'history_max_hours' => (int) env_value('PWS_HISTORY_MAX_HOURS', (string) ($historyCfg['max_hours'] ?? (24 * 366))),

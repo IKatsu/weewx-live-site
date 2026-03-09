@@ -58,6 +58,7 @@ $cssCustom = (string) ($cssConfig['custom'] ?? '');
         <div class="status-row">
             <a class="status-pill" href="index.php">Dashboard</a>
             <a class="status-pill" href="history.php">History</a>
+            <a class="status-pill" href="prediction.php">Prediction</a>
             <label class="status-pill" for="theme-select">
                 <span>Theme:</span>
                 <select id="theme-select"></select>
