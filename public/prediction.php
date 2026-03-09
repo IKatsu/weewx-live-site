@@ -155,8 +155,8 @@ function escapeHtml(value) {
 function iconForMetric(metric) {
     const key = String(metric || '').toLowerCase();
     const base = 'assets/weathericons/';
-    if (key === 'outtemp') return `${base}sun-icon-15px.svg`;
-    if (key === 'outhumidity') return `${base}raindrop-icon-15px.svg`;
+    if (key === 'outtemp') return `${base}clear-day.svg`;
+    if (key === 'outhumidity') return `${base}raindrop.svg`;
     if (key === 'barometer') return `${base}cloudy.svg`;
     if (key === 'windspeed') return `${base}wind.svg`;
     if (key === 'rainrate') return `${base}rain.svg`;

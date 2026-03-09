@@ -619,8 +619,8 @@ a:visited {
 }
 
 .prediction-mini-icon {
-    width: 15px;
-    height: 15px;
+    width: 22px;
+    height: 22px;
     display: inline-block;
     vertical-align: middle;
     filter: drop-shadow(0 0 0.2rem rgba(0, 0, 0, 0.35));
