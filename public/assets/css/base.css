@@ -619,10 +619,10 @@ a:visited {
 }
 
 .prediction-mini-icon {
-    width: 22px;
-    height: 22px;
+    width: 100px;
+    height: 100px;
     display: inline-block;
-    vertical-align: middle;
+    vertical-align: top;
     filter: drop-shadow(0 0 0.2rem rgba(0, 0, 0, 0.35));
 }
 
