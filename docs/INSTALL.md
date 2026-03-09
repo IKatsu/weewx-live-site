@@ -266,10 +266,51 @@ Then ensure archive columns exist for these observations:
 - `solarAzimuth`, `solarAltitude`, `solarTime`
 - `lunarAzimuth`, `lunarAltitude`, `lunarTime`
 
-Helper SQL:
+Add them with `weectl` on the WeeWX host:
 
 ```bash
-mysql -u DB_USER -p DB_NAME < /path/to/pws-live-site/docs/sql/add_weewx_custom_obs_columns.sql
+weectl database add-column solarAzimuth=REAL
+weectl database add-column solarAltitude=REAL
+weectl database add-column solarTime=REAL
+weectl database add-column lunarAzimuth=REAL
+weectl database add-column lunarAltitude=REAL
+weectl database add-column lunarTime=REAL
+```
+
+Restart WeeWX after database column changes so services and accumulators pick up the updated schema.
+
+## 11. Prediction cache (hybrid local + WU)
+
+Apply the SQL schema (run with a user that has CREATE TABLE rights):
+
+```bash
+mysql -u DB_USER -p DB_NAME < docs/sql/create_pws_prediction_cache.sql
+```
+
+Required archive fields:
+
+- `dateTime`
+- `usUnits`
+- `outTemp`
+- `outHumidity`
+- `barometer`
+- `windSpeed`
+- `rainRate`
+
+Prediction builder command:
+
+```bash
+php src/cli/build_predictions.php --force
+```
+
+Expected success output:
+
+- `Prediction cache refresh completed: run_id=... rows=25`
+
+Cron example (30 min):
+
+```cron
+*/30 * * * * cd /path/to/pws-live-site && php src/cli/build_predictions.php >> /var/log/pws-prediction-cron.log 2>&1
 ```
 
 Full details:

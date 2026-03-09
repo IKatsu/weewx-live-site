@@ -80,9 +80,18 @@ Your `archive` table should include matching columns:
 - `lunarAltitude`
 - `lunarTime`
 
-A helper SQL script is provided at:
+Add them with `weectl database add-column` on the WeeWX host (WeeWX 5+):
 
-- `docs/sql/add_weewx_custom_obs_columns.sql`
+```bash
+weectl database add-column solarAzimuth=REAL
+weectl database add-column solarAltitude=REAL
+weectl database add-column solarTime=REAL
+weectl database add-column lunarAzimuth=REAL
+weectl database add-column lunarAltitude=REAL
+weectl database add-column lunarTime=REAL
+```
+
+Restart WeeWX after adding/changing archive columns.
 
 ## MQTT naming caveat
 
@@ -96,7 +105,7 @@ If you want to archive additional custom LOOP fields, follow this pattern:
    - `weewx/custom_obs/bin/user/custom_obs.py`
 2. Choose the correct WeeWX unit group for that field.
 3. Add matching accumulator settings (`extractor = last` is typical for live values).
-4. Add a matching column in the `archive` table.
+4. Add a matching column in the `archive` table with `weectl database add-column`.
 5. Restart WeeWX and verify data appears in new archive rows.
 
 Example (`soilTemp2` as temperature):
@@ -118,9 +127,8 @@ Accumulator example:
 
 Archive schema example:
 
-```sql
-ALTER TABLE archive
-    ADD COLUMN IF NOT EXISTS soilTemp2 DOUBLE NULL;
+```bash
+weectl database add-column soilTemp2=REAL
 ```
 
 ### Common unit groups

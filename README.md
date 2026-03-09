@@ -27,6 +27,8 @@ Live weather dashboard for weewx data with:
 - separate rain chart with rain rate and hourly rain totals
 - dedicated battery charts (`windBatteryStatus`, `rainBatteryStatus`, `lightning_Batt`, `pm25_Batt1`)
 - cached WU/TWC forecast integration (dashboard + dedicated forecast page)
+- archive-based trend page (`trends.php`)
+- hybrid prediction cache and page (`prediction.php`)
 - optional WeeWX `custom_obs` extension package for solar/lunar custom field registration
 
 Compatibility note:
@@ -108,6 +110,43 @@ php src/cli/fetch_wu_forecast.php --force
 */15 * * * * cd /path/to/pws-live-site && php src/cli/fetch_wu_forecast.php >> /var/log/pws-forecast-cron.log 2>&1
 ```
 
+## Prediction setup (hybrid local + WU guardrails)
+
+1. Apply SQL schema:
+
+```bash
+mysql -u DB_USER -p DB_NAME < docs/sql/create_pws_prediction_cache.sql
+```
+
+2. Ensure `forecast_writer_db.*` in `src/config.local.php` can write to `pws_prediction_cache`.
+
+3. Build predictions manually:
+
+```bash
+php src/cli/build_predictions.php --force
+```
+
+Expected success output:
+- `Prediction cache refresh completed: run_id=... rows=25`
+
+4. Add cron (example every 30 minutes):
+
+```cron
+*/30 * * * * cd /path/to/pws-live-site && php src/cli/build_predictions.php >> /var/log/pws-prediction-cron.log 2>&1
+```
+
+Required archive fields for prediction:
+- `dateTime`
+- `usUnits`
+- `outTemp`
+- `outHumidity`
+- `barometer`
+- `windSpeed`
+- `rainRate`
+
+Optional for better hybrid behavior:
+- WU daily forecast cache table (`pws_wu_forecast_cache`) populated by `fetch_wu_forecast.php`
+
 ## Path and theme configuration
 
 Edit `src/config.local.php` to control filesystem/UI settings and field mappings:
@@ -166,6 +205,8 @@ See:
 - `GET /api/latest.php`
 - `GET /api/history.php?hours=24&endOffsetHours=0&bucketMinutes=5&fields=outTemp,dewpoint,outHumidity,windSpeed,windGust,windDir,barometer,pressure,rainRate,rainHourly`
 - `GET /api/forecast.php` (reads cached WU forecast from DB)
+- `GET /api/trends.php` (archive-based local trend nowcast)
+- `GET /api/prediction.php` (latest prediction cache run)
 - `GET /api/dump.php` (default output: CSV, row-limited)
   - `GET /api/dump.php?type=csv` -> `text/csv`
   - `GET /api/dump.php?type=json` -> `application/json`
