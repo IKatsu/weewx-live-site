@@ -239,45 +239,6 @@ function groupByHour(items) {
     return [...map.entries()].sort((a, b) => String(a[0]).localeCompare(String(b[0])));
 }
 
-function dayKeyFromTarget(value) {
-    const dt = new Date(`${String(value || '')}Z`);
-    if (Number.isNaN(dt.getTime())) return '';
-    const y = dt.getUTCFullYear();
-    const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
-    const d = String(dt.getUTCDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-}
-
-function dayLabelFromKey(dayKey) {
-    const dt = new Date(`${dayKey}T00:00:00Z`);
-    if (Number.isNaN(dt.getTime())) return dayKey;
-    return dt.toLocaleDateString([], {
-        weekday: 'short',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-    });
-}
-
-function groupByDayAndHour(items) {
-    const dayMap = new Map();
-    for (const item of items) {
-        const target = String(item?.target_time || '');
-        const dayKey = dayKeyFromTarget(target);
-        if (dayKey === '') continue;
-        if (!dayMap.has(dayKey)) dayMap.set(dayKey, new Map());
-        const hourMap = dayMap.get(dayKey);
-        if (!hourMap.has(target)) hourMap.set(target, []);
-        hourMap.get(target).push(item);
-    }
-    return [...dayMap.entries()]
-        .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
-        .map(([dayKey, hourMap]) => [
-            dayKey,
-            [...hourMap.entries()].sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
-        ]);
-}
-
 function renderHourWidgets(items) {
     const host = document.getElementById('prediction-hours');
     if (!host) return;
@@ -287,59 +248,43 @@ function renderHourWidgets(items) {
         return;
     }
 
-    const dayGroups = groupByDayAndHour(items);
-    for (const [dayKey, hourGroups] of dayGroups) {
-        const dayRow = document.createElement('section');
-        dayRow.className = 'prediction-day-row';
+    const groups = groupByHour(items);
+    for (const [hourKey, rows] of groups) {
+        const card = document.createElement('article');
+        card.className = 'prediction-hour-card';
 
-        const dayTitle = document.createElement('h3');
-        dayTitle.className = 'prediction-day-title';
-        dayTitle.textContent = dayLabelFromKey(dayKey);
-        dayRow.appendChild(dayTitle);
+        const title = document.createElement('h4');
+        title.className = 'prediction-hour-title';
+        title.textContent = fmtHour(hourKey);
+        card.appendChild(title);
 
-        const hourStrip = document.createElement('div');
-        hourStrip.className = 'prediction-day-hours';
+        const grid = document.createElement('div');
+        grid.className = 'prediction-metric-grid';
 
-        for (const [hourKey, rows] of hourGroups) {
-            const card = document.createElement('article');
-            card.className = 'prediction-hour-card';
-
-            const title = document.createElement('h4');
-            title.className = 'prediction-hour-title';
-            title.textContent = fmtHour(hourKey);
-            card.appendChild(title);
-
-            const grid = document.createElement('div');
-            grid.className = 'prediction-metric-grid';
-
-            for (const item of rows) {
-                const band = confidenceBand(item?.confidence);
-                const metric = document.createElement('article');
-                metric.className = `prediction-mini ${band}`;
-                metric.style.setProperty('--prediction-svg', confidenceSvgDataUrl(item?.confidence));
-                const metricLabel = String(item?.details?.label || item?.metric || 'metric');
-                const horizon = Number(item?.details?.horizon_hours);
-                const slope = Number(item?.details?.slope_per_hour);
-                const arrow = arrowForSlope(slope);
-                const trendLine = Number.isFinite(horizon) ? `${horizon}h, ${arrow} ${fmtNumber(Math.abs(slope), 2)}` : `${arrow} ${fmtNumber(Math.abs(slope), 2)}`;
-                metric.innerHTML = `
-                    <div class="prediction-mini-bg" aria-hidden="true"></div>
-                    <div class="prediction-mini-content">
-                        <div class="prediction-mini-label">${escapeHtml(metricLabel)}</div>
-                        <div class="prediction-mini-value">${fmtNumber(item?.value_num, 2)} ${escapeHtml(item?.unit || '')}</div>
-                        <div class="prediction-mini-meta">${escapeHtml(trendLine)}</div>
-                        <div class="prediction-mini-confidence">${fmtNumber((Number(item?.confidence) || 0) * 100, 0)}% confidence</div>
-                    </div>
-                `;
-                grid.appendChild(metric);
-            }
-
-            card.appendChild(grid);
-            hourStrip.appendChild(card);
+        for (const item of rows) {
+            const band = confidenceBand(item?.confidence);
+            const metric = document.createElement('article');
+            metric.className = `prediction-mini ${band}`;
+            metric.style.setProperty('--prediction-svg', confidenceSvgDataUrl(item?.confidence));
+            const metricLabel = String(item?.details?.label || item?.metric || 'metric');
+            const horizon = Number(item?.details?.horizon_hours);
+            const slope = Number(item?.details?.slope_per_hour);
+            const arrow = arrowForSlope(slope);
+            const trendLine = Number.isFinite(horizon) ? `${horizon}h, ${arrow} ${fmtNumber(Math.abs(slope), 2)}` : `${arrow} ${fmtNumber(Math.abs(slope), 2)}`;
+            metric.innerHTML = `
+                <div class="prediction-mini-bg" aria-hidden="true"></div>
+                <div class="prediction-mini-content">
+                    <div class="prediction-mini-label">${escapeHtml(metricLabel)}</div>
+                    <div class="prediction-mini-value">${fmtNumber(item?.value_num, 2)} ${escapeHtml(item?.unit || '')}</div>
+                    <div class="prediction-mini-meta">${escapeHtml(trendLine)}</div>
+                    <div class="prediction-mini-confidence">${fmtNumber((Number(item?.confidence) || 0) * 100, 0)}% confidence</div>
+                </div>
+            `;
+            grid.appendChild(metric);
         }
 
-        dayRow.appendChild(hourStrip);
-        host.appendChild(dayRow);
+        card.appendChild(grid);
+        host.appendChild(card);
     }
 }
 

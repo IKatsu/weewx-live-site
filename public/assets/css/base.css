@@ -564,34 +564,13 @@ a:visited {
 
 .prediction-hours {
     display: grid;
-    gap: 0.9rem;
-}
-
-.prediction-day-row {
-    border: 1px solid var(--border);
-    border-radius: 0.75rem;
-    background: color-mix(in srgb, var(--card) 92%, var(--accent-soft) 8%);
-    padding: 0.7rem;
-}
-
-.prediction-day-title {
-    margin: 0 0 0.55rem;
-    font-size: 0.95rem;
-    color: var(--muted);
-}
-
-.prediction-day-hours {
-    display: flex;
     gap: 0.7rem;
-    overflow-x: auto;
-    padding-bottom: 0.2rem;
 }
 
 .prediction-hour-card {
-    flex: 0 0 300px;
     border: 1px solid var(--border);
     border-radius: 0.75rem;
-    background: color-mix(in srgb, var(--card) 90%, var(--accent-soft) 10%);
+    background: color-mix(in srgb, var(--card) 92%, var(--accent-soft) 8%);
     padding: 0.7rem;
 }
 
