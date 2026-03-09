@@ -80,11 +80,15 @@ const PRED_APP = {
     themes: <?= json_encode(array_keys($cssThemes)) ?>,
     timeFormat: <?= json_encode($timeFormat) ?>,
 };
+const PRED_STATE = { items: [] };
 
 function setTheme(theme) {
     if (!PRED_APP.themes.includes(theme)) return;
     document.documentElement.setAttribute('data-theme', theme);
     try { localStorage.setItem('pws_theme', theme); } catch {}
+    if (PRED_STATE.items.length > 0) {
+        renderHourWidgets(PRED_STATE.items);
+    }
 }
 
 function initThemeSelector() {
@@ -139,6 +143,15 @@ function fmtHour(value) {
     });
 }
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function arrowForSlope(slope) {
     const n = Number(slope);
     if (!Number.isFinite(n)) return '→';
@@ -152,6 +165,68 @@ function confidenceBand(conf) {
     if (pct < 25) return 'confidence-low';
     if (pct >= 90) return 'confidence-high';
     return 'confidence-mid';
+}
+
+function parseHexColor(raw) {
+    const c = String(raw || '').trim();
+    if (!/^#([0-9a-fA-F]{6})$/.test(c)) {
+        return [160, 160, 160];
+    }
+    return [
+        parseInt(c.slice(1, 3), 16),
+        parseInt(c.slice(3, 5), 16),
+        parseInt(c.slice(5, 7), 16),
+    ];
+}
+
+function rgbToHex(rgb) {
+    const toHex = (x) => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0');
+    return `#${toHex(rgb[0])}${toHex(rgb[1])}${toHex(rgb[2])}`;
+}
+
+function mixColor(a, b, t) {
+    return [
+        a[0] + ((b[0] - a[0]) * t),
+        a[1] + ((b[1] - a[1]) * t),
+        a[2] + ((b[2] - a[2]) * t),
+    ];
+}
+
+function confidenceBaseColor(conf) {
+    const cs = getComputedStyle(document.documentElement);
+    const low = parseHexColor(cs.getPropertyValue('--confidence-low'));
+    const mid = parseHexColor(cs.getPropertyValue('--confidence-mid'));
+    const high = parseHexColor(cs.getPropertyValue('--confidence-high'));
+    const c = Math.max(0, Math.min(1, Number(conf) || 0));
+    if (c <= 0.5) {
+        return mixColor(low, mid, c / 0.5);
+    }
+    return mixColor(mid, high, (c - 0.5) / 0.5);
+}
+
+function confidenceSvgDataUrl(conf) {
+    const base = confidenceBaseColor(conf);
+    const hi = mixColor(base, [255, 255, 255], 0.28);
+    const lo = mixColor(base, [0, 0, 0], 0.18);
+    const accent = mixColor(base, [255, 255, 255], 0.45);
+    const svg = `
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 60' preserveAspectRatio='none'>
+  <defs>
+    <linearGradient id='bg' x1='0' y1='0' x2='1' y2='1'>
+      <stop offset='0%' stop-color='${rgbToHex(hi)}'/>
+      <stop offset='58%' stop-color='${rgbToHex(base)}'/>
+      <stop offset='100%' stop-color='${rgbToHex(lo)}'/>
+    </linearGradient>
+    <radialGradient id='glow' cx='0.85' cy='0.15' r='0.6'>
+      <stop offset='0%' stop-color='${rgbToHex(accent)}' stop-opacity='0.85'/>
+      <stop offset='100%' stop-color='${rgbToHex(accent)}' stop-opacity='0'/>
+    </radialGradient>
+  </defs>
+  <rect width='100' height='60' fill='url(#bg)'/>
+  <circle cx='86' cy='8' r='26' fill='url(#glow)'/>
+  <path d='M0,58 C20,40 40,64 60,46 C76,34 88,54 100,45 L100,60 L0,60 Z' fill='rgba(255,255,255,0.16)'/>
+</svg>`;
+    return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
 
 function groupByHour(items) {
@@ -190,16 +265,20 @@ function renderHourWidgets(items) {
             const band = confidenceBand(item?.confidence);
             const metric = document.createElement('article');
             metric.className = `prediction-mini ${band}`;
+            metric.style.setProperty('--prediction-svg', confidenceSvgDataUrl(item?.confidence));
             const metricLabel = String(item?.details?.label || item?.metric || 'metric');
             const horizon = Number(item?.details?.horizon_hours);
             const slope = Number(item?.details?.slope_per_hour);
             const arrow = arrowForSlope(slope);
             const trendLine = Number.isFinite(horizon) ? `${horizon}h, ${arrow} ${fmtNumber(Math.abs(slope), 2)}` : `${arrow} ${fmtNumber(Math.abs(slope), 2)}`;
             metric.innerHTML = `
-                <div class="prediction-mini-label">${metricLabel}</div>
-                <div class="prediction-mini-value">${fmtNumber(item?.value_num, 2)} ${item?.unit || ''}</div>
-                <div class="prediction-mini-meta">${trendLine}</div>
-                <div class="prediction-mini-confidence">${fmtNumber((Number(item?.confidence) || 0) * 100, 0)}% confidence</div>
+                <div class="prediction-mini-bg" aria-hidden="true"></div>
+                <div class="prediction-mini-content">
+                    <div class="prediction-mini-label">${escapeHtml(metricLabel)}</div>
+                    <div class="prediction-mini-value">${fmtNumber(item?.value_num, 2)} ${escapeHtml(item?.unit || '')}</div>
+                    <div class="prediction-mini-meta">${escapeHtml(trendLine)}</div>
+                    <div class="prediction-mini-confidence">${fmtNumber((Number(item?.confidence) || 0) * 100, 0)}% confidence</div>
+                </div>
             `;
             grid.appendChild(metric);
         }
@@ -218,7 +297,8 @@ async function loadPrediction() {
     const payload = await response.json();
     document.getElementById('pred-run').textContent = payload.run_id || '-';
     document.getElementById('pred-generated').textContent = fmtTs(payload.generated_at);
-    renderHourWidgets(payload.items || []);
+    PRED_STATE.items = Array.isArray(payload.items) ? payload.items : [];
+    renderHourWidgets(PRED_STATE.items);
 }
 
 (async function init() {

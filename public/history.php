@@ -352,7 +352,9 @@ try {
 <body>
 <div class="history-wrap">
     <div class="status-row status-row-spaced">
-        <a class="status-pill" href="./">Dashboard</a>
+        <a class="status-pill" href="index.php">Dashboard</a>
+        <a class="status-pill" href="trends.php">Trends</a>
+        <a class="status-pill" href="history.php">History</a>
         <label class="status-pill" for="theme-select">
             <span>Theme:</span>
             <select id="theme-select"></select>

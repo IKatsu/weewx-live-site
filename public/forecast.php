@@ -53,6 +53,9 @@ $timeFormat = (string) ($timeConfig['format'] ?? '24h');
     <header class="header">
         <h1 class="title">Forecast</h1>
         <div class="status-row">
+            <a class="status-pill" href="index.php">Dashboard</a>
+            <a class="status-pill" href="trends.php">Trends</a>
+            <a class="status-pill" href="history.php">History</a>
             <label class="status-pill" for="theme-select">
                 <span>Theme:</span>
                 <select id="theme-select"></select>

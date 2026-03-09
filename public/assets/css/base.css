@@ -587,27 +587,26 @@ a:visited {
 }
 
 .prediction-mini {
+    position: relative;
+    overflow: hidden;
     border-radius: 0.65rem;
     border: 1px solid color-mix(in srgb, var(--border) 70%, transparent 30%);
     padding: 0.55rem 0.6rem;
+    background: color-mix(in srgb, var(--card) 86%, var(--accent-soft) 14%);
 }
 
-.prediction-mini.confidence-low {
-    background: linear-gradient(135deg,
-        color-mix(in srgb, var(--confidence-low) 55%, var(--card) 45%),
-        color-mix(in srgb, var(--confidence-low) 70%, var(--accent-soft) 30%));
+.prediction-mini-bg {
+    position: absolute;
+    inset: 0;
+    background-image: var(--prediction-svg);
+    background-size: cover;
+    background-position: center;
+    opacity: 0.9;
 }
 
-.prediction-mini.confidence-mid {
-    background: linear-gradient(135deg,
-        color-mix(in srgb, var(--confidence-mid) 55%, var(--card) 45%),
-        color-mix(in srgb, var(--confidence-mid) 70%, var(--accent-soft) 30%));
-}
-
-.prediction-mini.confidence-high {
-    background: linear-gradient(135deg,
-        color-mix(in srgb, var(--confidence-high) 55%, var(--card) 45%),
-        color-mix(in srgb, var(--confidence-high) 70%, var(--accent-soft) 30%));
+.prediction-mini-content {
+    position: relative;
+    z-index: 1;
 }
 
 .prediction-mini-label {
