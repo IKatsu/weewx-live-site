@@ -609,11 +609,21 @@ a:visited {
 .prediction-mini-content {
     position: relative;
     z-index: 1;
+    color: #ffffff;
 }
 
 .prediction-mini-label {
     font-size: 0.82rem;
-    color: color-mix(in srgb, var(--text) 80%, #000 20%);
+    color: rgba(255, 255, 255, 0.94);
+    font-weight: 400;
+}
+
+.prediction-mini-icon {
+    width: 15px;
+    height: 15px;
+    display: inline-block;
+    vertical-align: middle;
+    filter: drop-shadow(0 0 0.2rem rgba(0, 0, 0, 0.35));
 }
 
 .prediction-mini-value {
@@ -626,7 +636,8 @@ a:visited {
 .prediction-mini-confidence {
     font-size: 0.78rem;
     margin-top: 0.15rem;
-    color: color-mix(in srgb, var(--text) 76%, #000 24%);
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 400;
 }
 
 .range-toolbar {

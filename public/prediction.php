@@ -152,6 +152,17 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
+function iconForMetric(metric) {
+    const key = String(metric || '').toLowerCase();
+    const base = 'assets/weathericons/';
+    if (key === 'outtemp') return `${base}sun-icon-15px.svg`;
+    if (key === 'outhumidity') return `${base}raindrop-icon-15px.svg`;
+    if (key === 'barometer') return `${base}cloudy.svg`;
+    if (key === 'windspeed') return `${base}wind.svg`;
+    if (key === 'rainrate') return `${base}rain.svg`;
+    return `${base}unknown.svg`;
+}
+
 function arrowForSlope(slope) {
     const n = Number(slope);
     if (!Number.isFinite(n)) return '→';
@@ -267,6 +278,7 @@ function renderHourWidgets(items) {
             metric.className = `prediction-mini ${band}`;
             metric.style.setProperty('--prediction-svg', confidenceSvgDataUrl(item?.confidence));
             const metricLabel = String(item?.details?.label || item?.metric || 'metric');
+            const metricIcon = iconForMetric(item?.metric);
             const horizon = Number(item?.details?.horizon_hours);
             const slope = Number(item?.details?.slope_per_hour);
             const arrow = arrowForSlope(slope);
@@ -274,7 +286,7 @@ function renderHourWidgets(items) {
             metric.innerHTML = `
                 <div class="prediction-mini-bg" aria-hidden="true"></div>
                 <div class="prediction-mini-content">
-                    <div class="prediction-mini-label">${escapeHtml(metricLabel)}</div>
+                    <div class="prediction-mini-label"><img class="prediction-mini-icon" src="${escapeHtml(metricIcon)}" alt="${escapeHtml(metricLabel)}" title="${escapeHtml(metricLabel)}"></div>
                     <div class="prediction-mini-value">${fmtNumber(item?.value_num, 2)} ${escapeHtml(item?.unit || '')}</div>
                     <div class="prediction-mini-meta">${escapeHtml(trendLine)}</div>
                     <div class="prediction-mini-confidence">${fmtNumber((Number(item?.confidence) || 0) * 100, 0)}% confidence</div>
