@@ -452,6 +452,28 @@ body {
     font-weight: 700;
 }
 
+.trend-reasons {
+    margin: 0.55rem 0 0;
+    padding-left: 1rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.trend-up {
+    color: #1f9d5e;
+    font-weight: 700;
+}
+
+.trend-down {
+    color: #d4672a;
+    font-weight: 700;
+}
+
+.trend-steady {
+    color: var(--muted);
+    font-weight: 700;
+}
+
 .forecast-wrap {
     max-width: 1200px;
     margin: 1rem auto;
