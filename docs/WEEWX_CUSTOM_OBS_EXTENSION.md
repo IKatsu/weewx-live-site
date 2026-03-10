@@ -37,7 +37,7 @@ From your WeeWX host:
 
 ```bash
 cd /path/to/pws-live-site/weewx/custom_obs
-weectl extension install .
+weectl extension install custom_obs-extension.zip
 ```
 
 Or install from the packaged zip in this repository:
