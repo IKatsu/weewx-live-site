@@ -742,8 +742,8 @@ function renderSkyWidget(metrics) {
         const sunY = solarAlt > 0
             ? yFromArc(sunX, baseY - peakY)
             : Math.min(bottomY - (4 * dpr), baseY + (8 * dpr) + Math.abs(solarAlt * 0.7 * dpr));
-        drawDot(sunX, sunY, 4.2, 'rgba(255,173,88,0.95)');
-        drawDot(sunX, sunY, 2.3, 'rgba(255,228,188,0.92)');
+        drawDot(sunX, sunY, 12.6, 'rgba(255,173,88,0.95)');
+        drawDot(sunX, sunY, 6.9, 'rgba(255,228,188,0.92)');
     }
 
     if (!Number.isNaN(lunarAlt) && lunarAlt > -12) {
@@ -754,8 +754,8 @@ function renderSkyWidget(metrics) {
         const moonY = lunarAlt > 0
             ? baseY + (14 * dpr) - (Math.sqrt(Math.max(0, 1 - Math.pow((moonX - ((left + right) / 2)) / (chartWidth / 2), 2))) * moonAmp)
             : Math.min(bottomY - (3 * dpr), baseY + (14 * dpr) + Math.abs(lunarAlt * 0.55 * dpr));
-        drawDot(moonX, moonY, 3.8, 'rgba(191,214,255,0.9)');
-        drawDot(moonX, moonY, 2.1, 'rgba(232,242,255,0.95)');
+        drawDot(moonX, moonY, 11.4, 'rgba(191,214,255,0.9)');
+        drawDot(moonX, moonY, 6.3, 'rgba(232,242,255,0.95)');
     }
 
     // Bottom annotation row mirrors the reference widget details.

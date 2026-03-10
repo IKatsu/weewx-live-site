@@ -669,6 +669,13 @@ a:visited {
     font-weight: 400;
 }
 
+.prediction-mini-support {
+    font-size: 0.74rem;
+    margin-top: 0.12rem;
+    color: rgba(255, 255, 255, 0.82);
+    font-weight: 400;
+}
+
 .range-toolbar {
     display: flex;
     flex-wrap: wrap;

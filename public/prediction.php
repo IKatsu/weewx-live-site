@@ -283,15 +283,20 @@ function renderHourWidgets(items) {
             const slope = Number(item?.details?.slope_per_hour);
             const arrow = arrowForSlope(slope);
             const trendLine = Number.isFinite(horizon) ? `${horizon}h, ${arrow} ${fmtNumber(Math.abs(slope), 2)}` : `${arrow} ${fmtNumber(Math.abs(slope), 2)}`;
+            const displayConfidence = Number(item?.display_confidence ?? item?.confidence ?? 0);
+            const supportNote = String(item?.forecast_support?.note || '');
             metric.innerHTML = `
                 <div class="prediction-mini-bg" aria-hidden="true"></div>
                 <div class="prediction-mini-content">
                     <div class="prediction-mini-label"><img class="prediction-mini-icon" src="${escapeHtml(metricIcon)}" alt="${escapeHtml(metricLabel)}" title="${escapeHtml(metricLabel)}"></div>
                     <div class="prediction-mini-value">${fmtNumber(item?.value_num, 2)} ${escapeHtml(item?.unit || '')}</div>
                     <div class="prediction-mini-meta">${escapeHtml(trendLine)}</div>
-                    <div class="prediction-mini-confidence">${fmtNumber((Number(item?.confidence) || 0) * 100, 0)}% confidence</div>
+                    <div class="prediction-mini-confidence">${fmtNumber(displayConfidence * 100, 0)}% confidence</div>
+                    ${supportNote !== '' ? `<div class="prediction-mini-support">${escapeHtml(supportNote)}</div>` : ''}
                 </div>
             `;
+            metric.className = `prediction-mini ${confidenceBand(displayConfidence)}`;
+            metric.style.setProperty('--prediction-svg', confidenceSvgDataUrl(displayConfidence));
             grid.appendChild(metric);
         }
 
