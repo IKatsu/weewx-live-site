@@ -140,7 +140,7 @@ try {
         'INSERT INTO `%s`
             (field_key, source_column, month_key, month_start, sample_days, low_value, avg_value, high_value, generated_at)
          VALUES
-            (:field_key, :source_column, :month_key, STR_TO_DATE(CONCAT(:month_key, \'-01\'), \'%%Y-%%m-%%d\'), :sample_days, :low_value, :avg_value, :high_value, UTC_TIMESTAMP())',
+            (:field_key, :source_column, :month_key, STR_TO_DATE(CONCAT(:month_start_key, \'-01\'), \'%%Y-%%m-%%d\'), :sample_days, :low_value, :avg_value, :high_value, UTC_TIMESTAMP())',
         $summaryTable
     );
     $insertStmt = $writePdo->prepare($insertSql);
@@ -195,6 +195,7 @@ try {
             ':field_key' => $fieldKey,
             ':source_column' => $mapped,
             ':month_key' => $monthKey,
+            ':month_start_key' => $monthKey,
             ':sample_days' => $rollup['sample_days'],
             ':low_value' => $rollup['low_value'],
             ':avg_value' => $rollup['avg_value'],
