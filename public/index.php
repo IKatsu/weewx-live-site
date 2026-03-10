@@ -784,7 +784,7 @@ function renderSkyWidget(metrics) {
         const sunY = solarAlt > 0
             ? yFromArc(sunX, baseY - peakY)
             : Math.min(bottomY - (4 * dpr), baseY + (8 * dpr) + Math.abs(solarAlt * 0.7 * dpr));
-        if (!drawIcon(sunIcon, sunX, sunY, 42)) {
+        if (!drawIcon(sunIcon, sunX, sunY, 84)) {
             drawDot(sunX, sunY, 12.6, 'rgba(255,173,88,0.95)');
             drawDot(sunX, sunY, 6.9, 'rgba(255,228,188,0.92)');
         }
