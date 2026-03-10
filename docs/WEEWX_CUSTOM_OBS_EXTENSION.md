@@ -83,12 +83,12 @@ Your `archive` table should include matching columns:
 Add them with `weectl database add-column` on the WeeWX host (WeeWX 5+):
 
 ```bash
-weectl database add-column solarAzimuth=REAL
-weectl database add-column solarAltitude=REAL
-weectl database add-column solarTime=REAL
-weectl database add-column lunarAzimuth=REAL
-weectl database add-column lunarAltitude=REAL
-weectl database add-column lunarTime=REAL
+weectl database add-column solarAzimuth
+weectl database add-column solarAltitude
+weectl database add-column solarTime
+weectl database add-column lunarAzimuth
+weectl database add-column lunarAltitude
+weectl database add-column lunarTime
 ```
 
 Restart WeeWX after adding/changing archive columns.
