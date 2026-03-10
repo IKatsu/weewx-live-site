@@ -79,7 +79,7 @@ function unit_map(int $usUnits): array
         ];
     }
 
-    if ($usUnits === 17) {
+    if ($usUnits === 16 || $usUnits === 17) {
         return [
             'temperature' => '°C',
             'pressure' => 'hPa',
