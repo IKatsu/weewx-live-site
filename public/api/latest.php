@@ -70,6 +70,21 @@ $metricSpec = [
     'inTempBatteryStatus' => ['label' => 'Indoor Temp Battery', 'unit' => 'voltage'],
 ];
 
+foreach ((array) ($config['optional_metric_groups'] ?? []) as $groupCfg) {
+    if (($groupCfg['enabled'] ?? false) !== true) {
+        continue;
+    }
+    foreach ((array) ($groupCfg['metrics'] ?? []) as $field => $spec) {
+        if (!is_string($field) || $field === '') {
+            continue;
+        }
+        $metricSpec[$field] = [
+            'label' => (string) ($spec['label'] ?? $field),
+            'unit' => (string) ($spec['unit'] ?? ''),
+        ];
+    }
+}
+
 $unitOverride = [
     'degree' => '°',
     'seconds' => 's',
@@ -78,6 +93,14 @@ $unitOverride = [
     'count' => 'count',
     'voltage' => 'V',
     'hours' => 'h',
+    'ppm' => 'ppm',
+    'status' => '',
+    'state' => '',
+    'index' => 'index',
+    'percent' => '%',
+    'mm' => 'mm',
+    'km' => 'km',
+    'usiecm' => 'µS/cm',
 ];
 
 try {

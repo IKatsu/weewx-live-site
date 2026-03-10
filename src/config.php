@@ -240,6 +240,7 @@ function app_config(): array
                 (array) ($predictionCfg['horizons_hours'] ?? [1, 3, 6, 12, 24])
             ), static fn($h) => $h > 0 && $h <= 72)),
         ],
+        'optional_metric_groups' => (array) ($local['optional_metric_groups'] ?? []),
         'security' => [
             'enable_headers' => env_bool('PWS_SECURITY_ENABLE_HEADERS', (bool) ($securityCfg['enable_headers'] ?? true)),
             'content_security_policy' => (string) ($securityCfg['content_security_policy'] ?? ''),
