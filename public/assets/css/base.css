@@ -164,7 +164,7 @@ a:visited {
 }
 
 .summary-side {
-    align-self: end;
+    align-self: start;
 }
 
 .summary-wind-rose-card {
