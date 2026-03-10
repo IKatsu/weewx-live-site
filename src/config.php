@@ -135,6 +135,7 @@ function app_config(): array
     $forecastCfg = (array) ($local['forecast'] ?? []);
     $predictionCfg = (array) ($local['prediction'] ?? []);
     $forecastWriterDbCfg = (array) ($local['forecast_writer_db'] ?? []);
+    $historyWriterDbCfg = (array) ($local['history_writer_db'] ?? []);
     $securityCfg = (array) ($local['security'] ?? []);
 
     $baseDir = resolve_base_dir((string) ($pathsCfg['base_dir'] ?? '__DIR__'));
@@ -158,6 +159,13 @@ function app_config(): array
             'database' => env_value('PWS_FORECAST_DB_NAME', (string) ($forecastWriterDbCfg['database'] ?? ($dbCfg['database'] ?? 'weather'))),
             'username' => env_value('PWS_FORECAST_DB_USER', (string) ($forecastWriterDbCfg['username'] ?? '')),
             'password' => env_value('PWS_FORECAST_DB_PASS', (string) ($forecastWriterDbCfg['password'] ?? '')),
+        ],
+        'history_writer_db' => [
+            'host' => env_value('PWS_HISTORY_DB_HOST', (string) ($historyWriterDbCfg['host'] ?? ($dbCfg['host'] ?? '127.0.0.1'))),
+            'port' => (int) env_value('PWS_HISTORY_DB_PORT', (string) ($historyWriterDbCfg['port'] ?? ($dbCfg['port'] ?? '3306'))),
+            'database' => env_value('PWS_HISTORY_DB_NAME', (string) ($historyWriterDbCfg['database'] ?? ($dbCfg['database'] ?? 'weather'))),
+            'username' => env_value('PWS_HISTORY_DB_USER', (string) ($historyWriterDbCfg['username'] ?? '')),
+            'password' => env_value('PWS_HISTORY_DB_PASS', (string) ($historyWriterDbCfg['password'] ?? '')),
         ],
         'mqtt' => [
             'enabled' => env_bool('PWS_MQTT_ENABLED', (bool) ($mqttCfg['enabled'] ?? true)),
@@ -242,6 +250,12 @@ function app_config(): array
                 (array) ($predictionCfg['horizons_hours'] ?? [1, 3, 6, 12, 24])
             ), static fn($h) => $h > 0 && $h <= 72)),
         ],
+        'history' => [
+            'default_hours' => max(1, (int) env_value('PWS_HISTORY_DEFAULT_HOURS', (string) ($historyCfg['default_hours'] ?? '24'))),
+            'max_hours' => max(1, (int) env_value('PWS_HISTORY_MAX_HOURS', (string) ($historyCfg['max_hours'] ?? (24 * 366)))),
+            'summary_table' => (string) ($historyCfg['summary_table'] ?? 'pws_history_monthly_summary'),
+            'lookback_years' => max(1, (int) ($historyCfg['lookback_years'] ?? 3)),
+        ],
         'optional_metric_groups' => (array) ($local['optional_metric_groups'] ?? []),
         'security' => [
             'enable_headers' => env_bool('PWS_SECURITY_ENABLE_HEADERS', (bool) ($securityCfg['enable_headers'] ?? true)),
@@ -250,7 +264,7 @@ function app_config(): array
             'frame_options' => (string) ($securityCfg['frame_options'] ?? 'SAMEORIGIN'),
             'permissions_policy' => (string) ($securityCfg['permissions_policy'] ?? 'geolocation=(), microphone=(), camera=()'),
         ],
-        'history_default_hours' => (int) env_value('PWS_HISTORY_DEFAULT_HOURS', (string) ($historyCfg['default_hours'] ?? '24')),
-        'history_max_hours' => (int) env_value('PWS_HISTORY_MAX_HOURS', (string) ($historyCfg['max_hours'] ?? (24 * 366))),
+        'history_default_hours' => max(1, (int) env_value('PWS_HISTORY_DEFAULT_HOURS', (string) ($historyCfg['default_hours'] ?? '24'))),
+        'history_max_hours' => max(1, (int) env_value('PWS_HISTORY_MAX_HOURS', (string) ($historyCfg['max_hours'] ?? (24 * 366)))),
     ];
 }

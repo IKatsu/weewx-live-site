@@ -579,6 +579,15 @@ return [
         'username' => '',
         'password' => '',
     ],
+    // Dedicated writer credentials for monthly history rollups.
+    // Leave empty to fall back to forecast_writer_db or the read-only db block.
+    'history_writer_db' => [
+        'host' => '127.0.0.1',
+        'port' => '3306',
+        'database' => 'weather',
+        'username' => '',
+        'password' => '',
+    ],
     'mqtt' => [
         'enabled' => true,
         // Keep false unless browser-side MQTT authentication is strictly required.
@@ -599,6 +608,9 @@ return [
     'history' => [
         'default_hours' => '24',
         'max_hours' => (string) (24 * 366),
+        // Closed months can be stored here by the monthly rollup CLI job.
+        'summary_table' => 'pws_history_monthly_summary',
+        'lookback_years' => 3,
     ],
     'security' => [
         'enable_headers' => true,

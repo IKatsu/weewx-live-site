@@ -26,6 +26,7 @@ if ($bootstrapPath === null) {
 
 require_once $bootstrapPath;
 require_once dirname($bootstrapPath) . '/view_helpers.php';
+require_once dirname($bootstrapPath) . '/history_metrics.php';
 
 function years_last_n(int $years): array
 {
@@ -42,7 +43,7 @@ function month_labels_short(): array
     return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 }
 
-function fetch_monthly_hilo(PDO $pdo, string $tableName): array
+function fetch_monthly_hilo(PDO $pdo, string $tableName, string $fromMonthKey): array
 {
     // archive_day_* already stores daily rollups; this query aggregates those into months.
     $sql = sprintf(
@@ -52,12 +53,14 @@ function fetch_monthly_hilo(PDO $pdo, string $tableName): array
             SUM(sum) / NULLIF(SUM(count), 0) AS avg_val,
             MAX(max) AS high_val
          FROM `%s`
-         WHERE dateTime >= UNIX_TIMESTAMP(DATE_SUB(CURDATE(), INTERVAL 12 MONTH))
+         WHERE DATE_FORMAT(FROM_UNIXTIME(dateTime), '%%Y-%%m') >= :from_month_key
          GROUP BY month_key",
         $tableName
     );
 
-    $rows = $pdo->query($sql)->fetchAll();
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':from_month_key' => $fromMonthKey]);
+    $rows = $stmt->fetchAll();
     $out = [];
     foreach ($rows as $row) {
         $key = (string) ($row['month_key'] ?? '');
@@ -70,6 +73,35 @@ function fetch_monthly_hilo(PDO $pdo, string $tableName): array
             'high' => $row['high_val'] !== null ? (float) $row['high_val'] : null,
         ];
     }
+    return $out;
+}
+
+function fetch_monthly_summary(PDO $pdo, string $tableName, string $fromMonthKey): array
+{
+    $sql = sprintf(
+        'SELECT field_key, month_key, low_value, avg_value, high_value
+         FROM `%s`
+         WHERE month_key >= :from_month_key',
+        $tableName
+    );
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':from_month_key' => $fromMonthKey]);
+    $rows = $stmt->fetchAll();
+
+    $out = [];
+    foreach ($rows as $row) {
+        $fieldKey = (string) ($row['field_key'] ?? '');
+        $monthKey = (string) ($row['month_key'] ?? '');
+        if ($fieldKey === '' || $monthKey === '') {
+            continue;
+        }
+        $out[$fieldKey][$monthKey] = [
+            'low' => $row['low_value'] !== null ? (float) $row['low_value'] : null,
+            'avg' => $row['avg_value'] !== null ? (float) $row['avg_value'] : null,
+            'high' => $row['high_value'] !== null ? (float) $row['high_value'] : null,
+        ];
+    }
+
     return $out;
 }
 
@@ -238,37 +270,17 @@ send_security_headers($config);
 $view = page_view_context($config);
 $defaultTheme = (string) $view['default_theme'];
 
-$metricDefs = [
-    ['field' => 'outTemp', 'label' => 'Outside Temperature', 'unit_key' => 'temperature', 'decimals' => 1, 'palette' => 'temperature'],
-    ['field' => 'inTemp', 'label' => 'Inside Temperature', 'unit_key' => 'temperature', 'decimals' => 1, 'palette' => 'temperature'],
-    ['field' => 'dewpoint', 'label' => 'Outside Dew Point', 'unit_key' => 'temperature', 'decimals' => 1, 'palette' => 'temperature'],
-    ['field' => 'inDewpoint', 'label' => 'Inside Dew Point', 'unit_key' => 'temperature', 'decimals' => 1, 'palette' => 'temperature'],
-    ['field' => 'outHumidity', 'label' => 'Outside Humidity', 'unit' => '%', 'decimals' => 1, 'palette' => 'default'],
-    ['field' => 'inHumidity', 'label' => 'Inside Humidity', 'unit' => '%', 'decimals' => 1, 'palette' => 'default'],
-    ['field' => 'windSpeed', 'label' => 'Wind Speed', 'unit_key' => 'wind', 'decimals' => 1, 'palette' => 'wind'],
-    ['field' => 'windGust', 'label' => 'Wind Gust', 'unit_key' => 'wind', 'decimals' => 1, 'palette' => 'wind'],
-    ['field' => 'barometer', 'label' => 'Barometer', 'unit_key' => 'pressure', 'decimals' => 1, 'palette' => 'default'],
-    ['field' => 'rainRate', 'label' => 'Rain Rate', 'unit_key' => 'rain_rate', 'decimals' => 2, 'palette' => 'rain'],
-    ['field' => 'rain', 'label' => 'Rain Total', 'unit_key' => 'rain', 'decimals' => 2, 'palette' => 'rain'],
-    ['field' => 'radiation', 'label' => 'Solar Radiation', 'unit' => 'W/m²', 'decimals' => 0, 'palette' => 'default'],
-    ['field' => 'UV', 'label' => 'UV Index', 'unit' => 'index', 'decimals' => 1, 'palette' => 'default'],
-    ['field' => 'ET', 'label' => 'Evapotranspiration', 'unit_key' => 'rain', 'decimals' => 2, 'palette' => 'rain'],
-    ['field' => 'pm2_5', 'label' => 'PM2.5', 'unit' => 'µg/m³', 'decimals' => 1, 'palette' => 'default'],
-    ['field' => 'lightning_strike_count', 'label' => 'Lightning Count', 'unit' => 'count', 'decimals' => 0, 'palette' => 'default'],
-    ['field' => 'windBatteryStatus', 'label' => 'Wind Battery', 'unit' => 'V', 'decimals' => 2, 'palette' => 'default'],
-    ['field' => 'rainBatteryStatus', 'label' => 'Rain Battery', 'unit' => 'V', 'decimals' => 2, 'palette' => 'default'],
-    ['field' => 'lightning_Batt', 'label' => 'Lightning Battery', 'unit' => 'V', 'decimals' => 2, 'palette' => 'default'],
-    ['field' => 'pm25_Batt1', 'label' => 'PM2.5 Battery', 'unit' => 'V', 'decimals' => 2, 'palette' => 'default'],
-    ['field' => 'inTempBatteryStatus', 'label' => 'Indoor Temp Battery', 'unit' => 'V', 'decimals' => 2, 'palette' => 'default'],
-];
-
     $sections = [];
     $error = null;
 
 try {
     $pdo = pdo_from_config($config);
     $columns = archive_columns($pdo);
-    $years = years_last_n(3);
+    $lookbackYears = max(1, (int) ($config['history']['lookback_years'] ?? 3));
+    $years = years_last_n($lookbackYears);
+    $fromMonthKey = sprintf('%04d-01', min($years));
+    $currentMonthKey = (new DateTimeImmutable('now'))->format('Y-m');
+    $summaryTable = (string) (($config['history']['summary_table'] ?? '') ?: 'pws_history_monthly_summary');
 
     $latestUnits = 17;
     $dateCol = mapped_archive_column($config, $columns, 'dateTime');
@@ -285,8 +297,15 @@ try {
     $tableExistsStmt = $pdo->prepare(
         'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table_name'
     );
+    $summaryByField = [];
+    if (is_safe_identifier($summaryTable)) {
+        $tableExistsStmt->execute([':table_name' => $summaryTable]);
+        if ((int) $tableExistsStmt->fetchColumn() > 0) {
+            $summaryByField = fetch_monthly_summary($pdo, $summaryTable, $fromMonthKey);
+        }
+    }
 
-    foreach ($metricDefs as $def) {
+    foreach (history_metric_definitions() as $def) {
         $field = (string) $def['field'];
         $mapped = mapped_archive_column($config, $columns, $field);
         if ($mapped === null) {
@@ -303,7 +322,13 @@ try {
             continue;
         }
 
-        $monthlyData = fetch_monthly_hilo($pdo, $tableName); // keyed by YYYY-MM
+        $monthlyData = fetch_monthly_hilo($pdo, $tableName, $fromMonthKey); // keyed by YYYY-MM
+        foreach (($summaryByField[$field] ?? []) as $monthKey => $entry) {
+            if ($monthKey === $currentMonthKey) {
+                continue;
+            }
+            $monthlyData[$monthKey] = $entry;
+        }
         $rowsByYear = [];
         $yearsWithData = [];
         foreach ($years as $year) {
@@ -348,7 +373,7 @@ try {
 <div class="history-wrap">
 <?php render_site_header('Monthly History', default_nav_links()); ?>
     <h1 class="title">Monthly High / Average / Low History</h1>
-    <p class="muted">Monthly high/average/low by metric (Jan-Dec columns, last 3 years) from available <code>archive_day_*</code> tables.</p>
+    <p class="muted">Monthly high/average/low by metric (Jan-Dec columns, last <?= (int) ($config['history']['lookback_years'] ?? 3) ?> years) using cached closed months plus live <code>archive_day_*</code> data for the current month.</p>
 
     <?php if ($error !== null): ?>
         <div class="history-card">Failed to load history: <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
