@@ -63,6 +63,14 @@ Open `http://127.0.0.1:8080`.
 - [`weewx-skyfield-almanac`](https://github.com/roe-dl/weewx-skyfield-almanac) for the live solar/lunar values archived by this project
 - [`weathericons`](https://github.com/roe-dl/weathericons) for the dashboard icon set
 
+## Screenshots
+
+- [Screenshot 1](screenshots/Screenshot1.png)
+- [Screenshot 2](screenshots/Screenshot2.png)
+- [Screenshot 3](screenshots/Screenshot3.png)
+- [Screenshot 4](screenshots/Screenshot4.png)
+- [Screenshot 5](screenshots/Screenshot5.png)
+
 ## Recommended install order
 
 1. Install system packages (`php`, Apache, DB driver, optional Mosquitto).
