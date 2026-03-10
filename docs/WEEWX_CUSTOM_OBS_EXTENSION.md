@@ -128,7 +128,7 @@ Accumulator example:
 Archive schema example:
 
 ```bash
-weectl database add-column soilTemp2=REAL
+weectl database add-column soilTemp2
 ```
 
 ### Common unit groups
