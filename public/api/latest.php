@@ -31,8 +31,8 @@ $config = app_config();
 
 // Logical metric definitions map to DB fields via src/config*.php field_map.
 $metricSpec = [
-    'outTemp' => ['label' => 'Outside Temperature', 'unit' => 'temperature'],
-    'inTemp' => ['label' => 'Inside Temperature', 'unit' => 'temperature'],
+    'outTemp' => ['label' => 'Outside Temp', 'unit' => 'temperature'],
+    'inTemp' => ['label' => 'Inside Temp', 'unit' => 'temperature'],
     'outHumidity' => ['label' => 'Outside Humidity', 'unit' => 'humidity'],
     'inHumidity' => ['label' => 'Inside Humidity', 'unit' => 'humidity'],
     'barometer' => ['label' => 'Sea-Level Pressure', 'unit' => 'pressure'],
@@ -49,7 +49,7 @@ $metricSpec = [
     'inDewpoint' => ['label' => 'Inside Dewpoint', 'unit' => 'temperature'],
     'heatindex' => ['label' => 'Heat Index', 'unit' => 'temperature'],
     'windchill' => ['label' => 'Wind Chill', 'unit' => 'temperature'],
-    'appTemp' => ['label' => 'Apparent Temperature', 'unit' => 'temperature'],
+    'appTemp' => ['label' => 'Apparent Temp', 'unit' => 'temperature'],
     'humidex' => ['label' => 'Humidex', 'unit' => 'temperature'],
     'cloudbase' => ['label' => 'Cloudbase', 'unit' => 'meters'],
     'ET' => ['label' => 'Evapotranspiration', 'unit' => 'rain'],

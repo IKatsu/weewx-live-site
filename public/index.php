@@ -120,7 +120,20 @@ render_site_header('PWS Live Dashboard', default_nav_links(), [
         </div>
     </section>
 
-    <section class="cards" id="cards"></section>
+    <section class="cards summary-top" id="cards-top"></section>
+
+    <section class="summary-grid">
+        <section class="cards" id="cards-bottom"></section>
+        <aside class="summary-side" id="summary-side">
+            <article class="chart-card summary-wind-rose-card" data-graph="wind_rose">
+                <h3 class="chart-title">Wind Rose (Direction x Speed Class)</h3>
+                <div class="chart-wrap wind-rose">
+                    <div id="chart-wind-rose-plotly" style="width:100%;height:100%;display:none;"></div>
+                    <canvas id="chart-wind-rose"></canvas>
+                </div>
+            </article>
+        </aside>
+    </section>
 
     <nav class="range-toolbar" id="range-toolbar">
         <button class="range-btn active" data-range="today">Today</button>
@@ -199,16 +212,6 @@ render_site_header('PWS Live Dashboard', default_nav_links(), [
         <article class="chart-card" data-graph="lightning">
             <h3 class="chart-title">Lightning Strike Count</h3>
             <div class="chart-wrap"><canvas id="chart-lightning"></canvas></div>
-        </article>
-    </section>
-
-    <section class="charts wind-rose-row">
-        <article class="chart-card" data-graph="wind_rose">
-            <h3 class="chart-title">Wind Rose (Direction x Speed Class)</h3>
-            <div class="chart-wrap wind-rose">
-                <div id="chart-wind-rose-plotly" style="width:100%;height:100%;display:none;"></div>
-                <canvas id="chart-wind-rose"></canvas>
-            </div>
         </article>
     </section>
 
@@ -303,11 +306,11 @@ const metricOrder = [
 ];
 
 const metricGroups = [
-    { title: 'Temperature', keys: ['outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'appTemp', 'heatindex', 'windchill', 'humidex'] },
+    { title: 'Temp', keys: ['outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'appTemp', 'heatindex', 'windchill', 'humidex'] },
     { title: 'Humidity', keys: ['outHumidity', 'inHumidity'] },
-    { title: 'Wind', keys: ['windSpeed', 'windGust', 'windDir', 'windrun'] },
     { title: 'Rain', keys: ['rainRate', 'rain', 'ET'] },
     { title: 'Sun / Sky', keys: ['UV', 'radiation', 'cloudbase', 'solarAltitude', 'solarAzimuth', 'solarTime', 'lunarAltitude', 'lunarAzimuth', 'lunarTime'] },
+    { title: 'Wind', keys: ['windSpeed', 'windGust', 'windDir', 'windrun'] },
     { title: 'Pressure', keys: ['barometer', 'pressure'] },
     { title: 'Air Quality', keys: ['pm2_5', 'pm1_0', 'pm4_0', 'pm10_0', 'pm25_2', 'pm25_3', 'pm25_4', 'co2', 'co2in', 'co2_Temp', 'co2_Hum'] },
     { title: 'Lightning', keys: ['lightning_strike_count'] },
@@ -1077,8 +1080,12 @@ function applyLayoutConfig() {
 
 function renderCards() {
     if (!state.latest) return;
-    const cards = document.getElementById('cards');
-    cards.innerHTML = '';
+    const cardsTop = document.getElementById('cards-top');
+    const cardsBottom = document.getElementById('cards-bottom');
+    const summarySide = document.getElementById('summary-side');
+    if (!cardsTop || !cardsBottom) return;
+    cardsTop.innerHTML = '';
+    cardsBottom.innerHTML = '';
     const metrics = state.latest.metrics || {};
 
     function applyInitialTempTextStyle(valueNode, metricKey, metricValue, metricUnit) {
@@ -1101,6 +1108,7 @@ function renderCards() {
         return card;
     }
 
+    const topGroups = new Set(['Temp', 'Humidity', 'Rain', 'Sun / Sky']);
     const rendered = new Set();
     // Render the top summary as labeled sensor rows rather than one large flat
     // grid. Anything not explicitly grouped falls through to "Other Sensors".
@@ -1122,7 +1130,11 @@ function renderCards() {
             grid.appendChild(buildCard(key, metrics[key]));
         }
         section.appendChild(grid);
-        cards.appendChild(section);
+        if (topGroups.has(group.title)) {
+            cardsTop.appendChild(section);
+        } else {
+            cardsBottom.appendChild(section);
+        }
     }
 
     const remaining = metricOrder
@@ -1144,7 +1156,11 @@ function renderCards() {
             grid.appendChild(buildCard(key, metrics[key]));
         }
         section.appendChild(grid);
-        cards.appendChild(section);
+        cardsBottom.appendChild(section);
+    }
+
+    if (summarySide) {
+        summarySide.hidden = cardsBottom.children.length === 0;
     }
 }
 
