@@ -18,9 +18,10 @@ function page_view_context(array $config): array
 
 function render_page_head(string $title, array $view): void
 {
+    $defaultTheme = (string) ($view['default_theme'] ?? 'bright');
     ?>
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="<?= htmlspecialchars($defaultTheme, ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

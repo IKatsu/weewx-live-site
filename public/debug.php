@@ -91,7 +91,7 @@ try {
     $forecastTable = (string) ($config['forecast']['cache_table'] ?? 'pws_wu_forecast_cache');
     if (is_safe_identifier($forecastTable)) {
         $forecastSql = sprintf(
-            'SELECT provider, dataset, fetched_at, source_status, source_error
+            'SELECT fc.provider, fc.dataset, fc.fetched_at, fc.source_status, fc.source_error
              FROM %1$s fc
              INNER JOIN (
                 SELECT provider, dataset, MAX(fetched_at) AS latest_fetched
