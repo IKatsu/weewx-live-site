@@ -209,7 +209,6 @@ render_site_header('PWS Live Dashboard', default_nav_links(), [
                 <div id="chart-wind-rose-plotly" style="width:100%;height:100%;display:none;"></div>
                 <canvas id="chart-wind-rose"></canvas>
             </div>
-            <div id="wind-rose-debug" class="wind-rose-debug">Awaiting wind rose data...</div>
         </article>
     </section>
 
@@ -1605,16 +1604,9 @@ function buildWindRose(dirSeries, speedSeries, windUnit) {
     const datasets = [];
     // Keep speed classes visually distinct so neighboring bins are easy to read.
     const colors = ['#7ab8ff', '#4ecb71', '#f2c54b', '#dd5a47'];
-    const classCounts = [];
 
     for (let i = 0; i < classes.length; i++) {
         const r = counts[i].map((v) => sampleCount > 0 ? (v / sampleCount) * 100 : 0);
-        const total = counts[i].reduce((sum, value) => sum + value, 0);
-        classCounts.push({
-            label: classes[i].label,
-            total,
-            percent: sampleCount > 0 ? (total / sampleCount) * 100 : 0,
-        });
         datasets.push({
             label: classes[i].label,
             data: r,
@@ -1624,7 +1616,7 @@ function buildWindRose(dirSeries, speedSeries, windUnit) {
         });
     }
 
-    return { sectors, datasets, sampleCount, classCounts };
+    return { sectors, datasets, sampleCount };
 }
 
 function destroyCharts() {
@@ -1636,17 +1628,6 @@ function destroyCharts() {
         Plotly.purge('chart-wind-rose-plotly');
     }
     state.windRosePlotly = false;
-}
-
-function renderWindRoseDebug(rose) {
-    const node = document.getElementById('wind-rose-debug');
-    if (!node) return;
-    if (!rose || !Array.isArray(rose.classCounts) || rose.classCounts.length === 0) {
-        node.textContent = 'Awaiting wind rose data...';
-        return;
-    }
-    const parts = rose.classCounts.map((entry) => `${entry.label}: ${entry.total} (${entry.percent.toFixed(1)}%)`);
-    node.textContent = `Samples ${rose.sampleCount}. ${parts.join(' | ')}`;
 }
 
 function unitLabelForMetric(field, fallbackUnits = {}) {
@@ -2002,7 +1983,6 @@ function buildCharts(history) {
     state.charts.lightning = new Chart(document.getElementById('chart-lightning'), lightning);
 
     const rose = buildWindRose(s.windDir || [], s.windSpeed || [], units.wind || 'km/h');
-    renderWindRoseDebug(rose);
     const roseCanvas = document.getElementById('chart-wind-rose');
     const rosePlotly = document.getElementById('chart-wind-rose-plotly');
     if (APP.usePlotlyWindRose && window.Plotly) {
