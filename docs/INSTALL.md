@@ -21,7 +21,13 @@ Notes:
 
 Optional WeeWX-side requirement (if installing the included WeeWX extension package):
 
-- WeeWX 5+ with `weectl` command available.
+- [WeeWX 5.x](https://weewx.com/) with the default `weectl` tooling available.
+
+Reference projects used during development:
+
+- [WeeWX](https://weewx.com/)
+- `Ecowitt-or-DAVIS-stations-and-Season-skin` (workspace reference for Ecowitt driver field naming/mapping)
+- `weathericons` (workspace reference for dashboard icons)
 
 ## 2. Recommended installation order
 

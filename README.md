@@ -50,9 +50,15 @@ Open `http://127.0.0.1:8080`.
 
 - PHP 8.0+ (`php`, `php-mysqlnd`, `php-json`, `php-mbstring`, `php-curl`)
 - MySQL/MariaDB server containing WeeWX archive data
+- [WeeWX 5.x](https://weewx.com/) with a MySQL/MariaDB-backed archive
 - Apache or another PHP-capable web server
-- Optional (for WeeWX extension install): `weectl` command on the WeeWX 5+ host
 - Optional (for live browser updates): WeeWX MQTT extension [`matthewwall/weewx-mqtt`](https://github.com/matthewwall/weewx-mqtt)
+
+## Reference projects used during development
+
+- [weewx](https://weewx.com/) for the archive layout, extension model, and MQTT/custom observation integration points
+- `Ecowitt-or-DAVIS-stations-and-Season-skin` from the workspace for the Ecowitt driver field names and custom observation mapping
+- `weathericons` from the workspace for the dashboard icon set
 
 ## Recommended install order
 
