@@ -573,6 +573,26 @@ function clamp(v, min, max) {
     return Math.max(min, Math.min(max, v));
 }
 
+const skyIconCache = new Map();
+
+function getSkyIcon(src) {
+    if (!src) return null;
+    const cached = skyIconCache.get(src);
+    if (cached) return cached;
+
+    // Cache icon instances so canvas redraws stay cheap during live updates.
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = src;
+    img.addEventListener('load', () => {
+        if (document.getElementById('sky-canvas')) {
+            renderSkyWidget(state.latestMetrics);
+        }
+    }, { once: true });
+    skyIconCache.set(src, img);
+    return img;
+}
+
 function renderSkyWidget(metrics) {
     const canvas = document.getElementById('sky-canvas');
     if (!canvas || !metrics || !window.SunCalc) return;
@@ -637,6 +657,25 @@ function renderSkyWidget(metrics) {
         ctx.beginPath();
         ctx.arc(x, y, r * dpr, 0, Math.PI * 2);
         ctx.fill();
+    }
+
+    function drawIcon(image, x, y, size) {
+        if (!(image instanceof Image) || !image.complete || !image.naturalWidth) return false;
+        const px = size * dpr;
+        ctx.drawImage(image, x - (px / 2), y - (px / 2), px, px);
+        return true;
+    }
+
+    function drawPhaseSymbol(symbol, x, y, size, alpha = 0.96) {
+        ctx.save();
+        ctx.font = `${size * dpr}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = `rgba(236,244,255,${alpha})`;
+        ctx.shadowColor = 'rgba(32, 46, 76, 0.42)';
+        ctx.shadowBlur = 8 * dpr;
+        ctx.fillText(symbol, x, y + (1 * dpr));
+        ctx.restore();
     }
 
     function fmtAngle(v) {
@@ -733,6 +772,9 @@ function renderSkyWidget(metrics) {
     drawGuideLine(xDawn, 'Dawn', formatClock(dawn, tz), false);
     drawGuideLine(xDusk, 'Dusk', formatClock(dusk, tz), false);
 
+    const sunIcon = getSkyIcon('assets/weathericons-filled/clear-day.svg');
+    const moonSymbol = moonPhaseIcon(moonIll.phase);
+
     // Current sun marker follows real solar altitude if available, else time-based progression.
     if (!Number.isNaN(solarAlt) && solarAlt > -12) {
         let sunX = xFromTime(now) ?? ((left + right) / 2);
@@ -742,8 +784,10 @@ function renderSkyWidget(metrics) {
         const sunY = solarAlt > 0
             ? yFromArc(sunX, baseY - peakY)
             : Math.min(bottomY - (4 * dpr), baseY + (8 * dpr) + Math.abs(solarAlt * 0.7 * dpr));
-        drawDot(sunX, sunY, 12.6, 'rgba(255,173,88,0.95)');
-        drawDot(sunX, sunY, 6.9, 'rgba(255,228,188,0.92)');
+        if (!drawIcon(sunIcon, sunX, sunY, 42)) {
+            drawDot(sunX, sunY, 12.6, 'rgba(255,173,88,0.95)');
+            drawDot(sunX, sunY, 6.9, 'rgba(255,228,188,0.92)');
+        }
     }
 
     if (!Number.isNaN(lunarAlt) && lunarAlt > -12) {
@@ -754,8 +798,7 @@ function renderSkyWidget(metrics) {
         const moonY = lunarAlt > 0
             ? baseY + (14 * dpr) - (Math.sqrt(Math.max(0, 1 - Math.pow((moonX - ((left + right) / 2)) / (chartWidth / 2), 2))) * moonAmp)
             : Math.min(bottomY - (3 * dpr), baseY + (14 * dpr) + Math.abs(lunarAlt * 0.55 * dpr));
-        drawDot(moonX, moonY, 11.4, 'rgba(191,214,255,0.9)');
-        drawDot(moonX, moonY, 6.3, 'rgba(232,242,255,0.95)');
+        drawPhaseSymbol(moonSymbol, moonX, moonY, 28, 0.98);
     }
 
     // Bottom annotation row mirrors the reference widget details.
