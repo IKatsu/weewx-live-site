@@ -316,6 +316,7 @@ const metricGroups = [
 
 const state = {
     latest: null,
+    history: null,
     charts: {},
     windRosePlotly: false,
     diagnostics: {
@@ -1022,6 +1023,11 @@ function applyTheme(themeName) {
     } catch (e) {
         // ignore
     }
+    if (state.history) {
+        // Plotly charts do not automatically pick up CSS variable changes, so
+        // rebuild the current chart set when the user changes theme.
+        buildCharts(state.history);
+    }
 }
 
 function initThemeSelector() {
@@ -1596,7 +1602,8 @@ function buildWindRose(dirSeries, speedSeries, windUnit) {
     }
 
     const datasets = [];
-    const colors = ['#b7d9f8', '#5da8e8', '#2b77c2', '#0b3f6e'];
+    // Keep speed classes visually distinct so neighboring bins are easy to read.
+    const colors = ['#7ab8ff', '#4ecb71', '#f2c54b', '#dd5a47'];
 
     for (let i = 0; i < classes.length; i++) {
         const r = counts[i].map((v) => sampleCount > 0 ? (v / sampleCount) * 100 : 0);
@@ -1981,13 +1988,17 @@ function buildCharts(history) {
     if (APP.usePlotlyWindRose && window.Plotly) {
         roseCanvas.style.display = 'none';
         rosePlotly.style.display = 'block';
+        const theme = getComputedStyle(document.documentElement);
+        const cardBg = (theme.getPropertyValue('--card') || '').trim() || '#ffffff';
+        const textColor = (theme.getPropertyValue('--text') || '').trim() || '#102137';
+        const borderColor = (theme.getPropertyValue('--border') || '').trim() || '#d7e1ec';
 
         const traces = rose.datasets.map((d) => ({
             type: 'barpolar',
             name: d.label,
             theta: rose.sectors,
             r: d.data,
-            marker: { color: d.backgroundColor, line: { color: '#ffffff', width: 0.6 } },
+            marker: { color: d.backgroundColor, line: { color: borderColor, width: 0.8 } },
             hovertemplate: '%{theta}<br>' + d.label + ': %{r:.1f}%<extra></extra>',
         }));
 
@@ -1995,10 +2006,26 @@ function buildCharts(history) {
             margin: { l: 24, r: 24, t: 8, b: 8 },
             barmode: 'stack',
             showlegend: true,
-            legend: { orientation: 'h' },
+            paper_bgcolor: cardBg,
+            plot_bgcolor: cardBg,
+            font: { color: textColor },
+            legend: { orientation: 'h', bgcolor: 'rgba(0,0,0,0)' },
             polar: {
-                angularaxis: { direction: 'clockwise', rotation: 90 },
-                radialaxis: { ticksuffix: '%', angle: 90 },
+                bgcolor: cardBg,
+                angularaxis: {
+                    direction: 'clockwise',
+                    rotation: 90,
+                    gridcolor: borderColor,
+                    linecolor: borderColor,
+                    tickfont: { color: textColor },
+                },
+                radialaxis: {
+                    ticksuffix: '%',
+                    angle: 90,
+                    gridcolor: borderColor,
+                    linecolor: borderColor,
+                    tickfont: { color: textColor },
+                },
             },
         }, { responsive: true, displayModeBar: false });
         state.windRosePlotly = true;
@@ -2157,6 +2184,7 @@ async function loadHistory(rangeKey = APP.historyRange) {
     const response = await fetch(`api/history.php?${query.toString()}`, { cache: 'no-store' });
     if (!response.ok) throw new Error(`history ${response.status}`);
     const history = await response.json();
+    state.history = history;
     buildCharts(history);
     document.getElementById('range-label').textContent = selected.label;
 }
