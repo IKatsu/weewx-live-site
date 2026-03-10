@@ -25,9 +25,9 @@ Optional WeeWX-side requirement (if installing the included WeeWX extension pack
 
 Reference projects used during development:
 
-- [WeeWX](https://weewx.com/)
-- `Ecowitt-or-DAVIS-stations-and-Season-skin` (workspace reference for Ecowitt driver field naming/mapping)
-- `weathericons` (workspace reference for dashboard icons)
+- [WeeWX](https://github.com/weewx/weewx)
+- [`Ecowitt-or-DAVIS-stations-and-Season-skin`](https://github.com/WernerKr/Ecowitt-or-DAVIS-stations-and-Season-skin) (Ecowitt driver field naming/mapping reference)
+- [`weathericons`](https://github.com/roe-dl/weathericons) (dashboard icon reference)
 
 ## 2. Recommended installation order
 

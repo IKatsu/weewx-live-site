@@ -56,9 +56,9 @@ Open `http://127.0.0.1:8080`.
 
 ## Reference projects used during development
 
-- [weewx](https://weewx.com/) for the archive layout, extension model, and MQTT/custom observation integration points
-- `Ecowitt-or-DAVIS-stations-and-Season-skin` from the workspace for the Ecowitt driver field names and custom observation mapping
-- `weathericons` from the workspace for the dashboard icon set
+- [WeeWX](https://github.com/weewx/weewx) for the archive layout, extension model, and MQTT/custom observation integration points
+- [`Ecowitt-or-DAVIS-stations-and-Season-skin`](https://github.com/WernerKr/Ecowitt-or-DAVIS-stations-and-Season-skin) for the Ecowitt driver field names and custom observation mapping
+- [`weathericons`](https://github.com/roe-dl/weathericons) for the dashboard icon set
 
 ## Recommended install order
 
