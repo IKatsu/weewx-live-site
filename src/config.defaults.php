@@ -77,6 +77,13 @@ return [
     'forecast' => [
         // Supported providers: "wu", "openweather", or "none".
         'provider' => 'wu',
+        // Optional multi-provider mode: list one or both ('wu', 'openweather').
+        // If set, this overrides 'provider' selection for fetching/reading.
+        'providers' => [],
+        // Optional provider preference when multiple providers are enabled.
+        'preferred_hourly_provider' => '',
+        'preferred_daily_provider' => '',
+        'alerts_provider' => 'openweather',
         'cache_ttl_seconds' => 900,
         // 1800s ~= 48 calls/day with single-call providers (keeps under 50/day).
         'refresh_interval_seconds' => 1800,

@@ -232,12 +232,16 @@ mysql -u DB_USER -p DB_NAME < docs/sql/create_pws_wu_forecast_cache.sql
 Then set in `src/config.local.php`:
 
 - `forecast.provider = 'wu'` or `forecast.provider = 'openweather'`
+- Optional combined mode:
+  - `forecast.providers = ['wu', 'openweather']`
+  - `forecast.preferred_hourly_provider` / `forecast.preferred_daily_provider`
 - WU:
   - `forecast.wu_api_key = '...'`
   - optional `forecast.wu_hourly_enabled = false` for daily-only WU plans
 - OpenWeather:
   - `forecast.owm_api_key = '...'`
   - `forecast.owm_mode = 'onecall_3'` (paid One Call API 3.0) or `forecast.owm_mode = 'free_5d'` (free plan)
+  - `onecall_3` provides weather alerts; these are shown on the dashboard alert banner
 - station geocode via `location.latitude` + `location.longitude` (or provider-specific `wu_*` / `owm_*` overrides)
 - `forecast.refresh_interval_seconds = 1800` to keep single-call providers around 48 calls/day (<50/day)
 - `forecast_writer_db.*` to use a cron-only DB account for forecast cache writes

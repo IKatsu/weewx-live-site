@@ -96,9 +96,9 @@ function owm_endpoint_url(array $config, string $path, array $extra = []): strin
 
 function owm_fetch_onecall(array $config): array
 {
-    // One Call 3.0 (paid plan): single call includes hourly + daily.
+    // One Call 3.0 (paid plan): single call includes hourly + daily + alerts.
     $url = owm_endpoint_url($config, '/data/3.0/onecall', [
-        'exclude' => 'minutely,alerts',
+        'exclude' => 'minutely',
     ]);
     return forecast_http_get_json($url);
 }
@@ -174,7 +174,22 @@ function owm_normalize_from_onecall(array $config, array $payload): array
         $daily['moonPhaseCode'][] = null;
     }
 
-    return ['hourly' => $hourly, 'daily' => $daily];
+    $alerts = [];
+    foreach ((array) ($payload['alerts'] ?? []) as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $alerts[] = [
+            'sender_name' => (string) ($row['sender_name'] ?? ''),
+            'event' => (string) ($row['event'] ?? ''),
+            'start_local' => isset($row['start']) ? local_iso((int) $row['start'], $tz) : '',
+            'end_local' => isset($row['end']) ? local_iso((int) $row['end'], $tz) : '',
+            'description' => (string) ($row['description'] ?? ''),
+            'tags' => array_values(array_map('strval', (array) ($row['tags'] ?? []))),
+        ];
+    }
+
+    return ['hourly' => $hourly, 'daily' => $daily, 'alerts' => $alerts];
 }
 
 function owm_normalize_from_free_5d(array $config, array $payload): array
@@ -262,14 +277,13 @@ function owm_normalize_from_free_5d(array $config, array $payload): array
         $daily['moonPhaseCode'][] = null;
     }
 
-    return ['hourly' => $hourly, 'daily' => $daily];
+    return ['hourly' => $hourly, 'daily' => $daily, 'alerts' => []];
 }
 
 $config = app_config();
 $force = in_array('--force', $argv, true);
-$provider = forecast_provider($config);
-
-if ($provider === 'none') {
+$providers = forecast_active_providers($config);
+if ($providers === []) {
     fwrite(STDOUT, "Forecast provider is set to 'none'; skipping.\n");
     exit(0);
 }
@@ -277,56 +291,65 @@ if ($provider === 'none') {
 try {
     $pdo = forecast_writer_pdo($config);
 
-    if (!$force && !forecast_should_refresh($pdo, $config, $provider)) {
-        fwrite(STDOUT, "Forecast cache refresh skipped (interval not reached).\n");
-        exit(0);
-    }
+    $ran = 0;
+    foreach ($providers as $provider) {
+        if (!$force && !forecast_should_refresh($pdo, $config, $provider)) {
+            fwrite(STDOUT, "Forecast cache refresh skipped for {$provider} (interval not reached).\n");
+            continue;
+        }
 
-    if ($provider === 'wu') {
-        $hourlyEnabled = (bool) ($config['forecast']['wu_hourly_enabled'] ?? true);
-        $hourlyWarnings = [];
-        if ($hourlyEnabled) {
-            try {
-                $hourly = wu_fetch_hourly($config);
-                forecast_write_dataset($pdo, $config, 'hourly', $hourly, 200, '', $provider);
-            } catch (Throwable $hourlyError) {
-                $hourlyWarnings[] = $hourlyError->getMessage();
-                forecast_write_dataset($pdo, $config, 'hourly', [], 401, $hourlyError->getMessage(), $provider);
+        if ($provider === 'wu') {
+            $hourlyEnabled = (bool) ($config['forecast']['wu_hourly_enabled'] ?? true);
+            $hourlyWarnings = [];
+            if ($hourlyEnabled) {
+                try {
+                    $hourly = wu_fetch_hourly($config);
+                    forecast_write_dataset($pdo, $config, 'hourly', $hourly, 200, '', $provider);
+                } catch (Throwable $hourlyError) {
+                    $hourlyWarnings[] = $hourlyError->getMessage();
+                    forecast_write_dataset($pdo, $config, 'hourly', [], 401, $hourlyError->getMessage(), $provider);
+                }
             }
-        }
 
-        $daily = wu_fetch_daily($config);
-        forecast_write_dataset($pdo, $config, 'daily', $daily, 200, '', $provider);
-
-        if ($hourlyWarnings !== []) {
-            fwrite(STDOUT, "WU forecast cache refresh completed (daily only; hourly unavailable).\n");
-            foreach ($hourlyWarnings as $warning) {
-                fwrite(STDOUT, "Hourly warning: {$warning}\n");
+            $daily = wu_fetch_daily($config);
+            forecast_write_dataset($pdo, $config, 'daily', $daily, 200, '', $provider);
+            $ran++;
+            if ($hourlyWarnings !== []) {
+                fwrite(STDOUT, "WU forecast cache refresh completed (daily only; hourly unavailable).\n");
+                foreach ($hourlyWarnings as $warning) {
+                    fwrite(STDOUT, "Hourly warning: {$warning}\n");
+                }
+            } else {
+                fwrite(STDOUT, "WU forecast cache refresh completed.\n");
             }
-        } else {
-            fwrite(STDOUT, "WU forecast cache refresh completed.\n");
-        }
-        exit(0);
-    }
-
-    if ($provider === 'openweather') {
-        $mode = strtolower(trim((string) ($config['forecast']['owm_mode'] ?? 'onecall_3')));
-        if ($mode === 'free_5d') {
-            $raw = owm_fetch_free_5d($config);
-            $normalized = owm_normalize_from_free_5d($config, $raw);
-        } else {
-            $raw = owm_fetch_onecall($config);
-            $normalized = owm_normalize_from_onecall($config, $raw);
+            continue;
         }
 
-        forecast_write_dataset($pdo, $config, 'hourly', (array) ($normalized['hourly'] ?? []), 200, '', $provider);
-        forecast_write_dataset($pdo, $config, 'daily', (array) ($normalized['daily'] ?? []), 200, '', $provider);
+        if ($provider === 'openweather') {
+            $mode = strtolower(trim((string) ($config['forecast']['owm_mode'] ?? 'onecall_3')));
+            if ($mode === 'free_5d') {
+                $raw = owm_fetch_free_5d($config);
+                $normalized = owm_normalize_from_free_5d($config, $raw);
+            } else {
+                $raw = owm_fetch_onecall($config);
+                $normalized = owm_normalize_from_onecall($config, $raw);
+            }
 
-        fwrite(STDOUT, "OpenWeather forecast cache refresh completed (mode={$mode}).\n");
-        exit(0);
+            forecast_write_dataset($pdo, $config, 'hourly', (array) ($normalized['hourly'] ?? []), 200, '', $provider);
+            forecast_write_dataset($pdo, $config, 'daily', (array) ($normalized['daily'] ?? []), 200, '', $provider);
+            forecast_write_dataset($pdo, $config, 'alerts', (array) ($normalized['alerts'] ?? []), 200, '', $provider);
+            $ran++;
+            fwrite(STDOUT, "OpenWeather forecast cache refresh completed (mode={$mode}).\n");
+            continue;
+        }
+
+        throw new RuntimeException('Unsupported forecast provider: ' . $provider);
     }
 
-    throw new RuntimeException('Unsupported forecast provider: ' . $provider);
+    if ($ran === 0) {
+        fwrite(STDOUT, "Forecast refresh skipped for all configured providers.\n");
+    }
+    exit(0);
 } catch (Throwable $exception) {
     fwrite(STDERR, 'Forecast refresh failed: ' . $exception->getMessage() . "\n");
     exit(1);

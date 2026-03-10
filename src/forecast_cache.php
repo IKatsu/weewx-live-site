@@ -16,6 +16,40 @@ function forecast_provider(array $config): string
     return $provider === '' ? 'none' : $provider;
 }
 
+/**
+ * @return list<string>
+ */
+function forecast_active_providers(array $config): array
+{
+    $f = (array) ($config['forecast'] ?? []);
+    $rawList = $f['providers'] ?? [];
+    $allowed = ['wu', 'openweather'];
+    $out = [];
+
+    if (is_string($rawList) && $rawList !== '') {
+        $rawList = array_map('trim', explode(',', $rawList));
+    }
+
+    if (is_array($rawList) && $rawList !== []) {
+        foreach ($rawList as $item) {
+            $p = strtolower(trim((string) $item));
+            if ($p !== '' && in_array($p, $allowed, true) && !in_array($p, $out, true)) {
+                $out[] = $p;
+            }
+        }
+    }
+
+    if ($out !== []) {
+        return $out;
+    }
+
+    $single = forecast_provider($config);
+    if (in_array($single, $allowed, true)) {
+        return [$single];
+    }
+    return [];
+}
+
 function forecast_cache_table(array $config): string
 {
     // Table name is configurable but must stay a plain SQL identifier.

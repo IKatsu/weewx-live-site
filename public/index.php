@@ -82,6 +82,7 @@ $forecastConfig = $config['forecast'] ?? ['provider' => 'none'];
             </button>
         </div>
     </header>
+    <section id="forecast-alerts" class="forecast-alerts" hidden></section>
     <section class="diag-panel" id="diag-popup" aria-label="Connection diagnostics" hidden>
         <div class="diag-item"><span>API poll:</span> <strong id="diag-api-state">idle</strong></div>
         <div class="diag-item"><span>Last API attempt:</span> <strong id="diag-api-attempt">never</strong></div>
@@ -1138,13 +1139,38 @@ function renderForecastCacheStatus(cache) {
 function renderForecastPlaceholders(message = 'Forecast cache not available yet.') {
     const five = document.getElementById('forecast-5h');
     const fiveDay = document.getElementById('forecast-5day');
+    const alerts = document.getElementById('forecast-alerts');
     const provider = APP.forecast?.provider || 'none';
+    if (alerts) {
+        alerts.hidden = true;
+        alerts.innerHTML = '';
+    }
     if (five) {
         five.innerHTML = `<div>Provider: ${provider}</div><div>${message}</div>`;
     }
     if (fiveDay) {
         fiveDay.innerHTML = `<div>Provider: ${provider}</div><div>${message}</div>`;
     }
+}
+
+function renderForecastAlerts(alertsPayload) {
+    const host = document.getElementById('forecast-alerts');
+    if (!host) return;
+    const rows = Array.isArray(alertsPayload) ? alertsPayload : [];
+    if (rows.length === 0) {
+        host.hidden = true;
+        host.innerHTML = '';
+        return;
+    }
+    host.hidden = false;
+    host.innerHTML = rows.slice(0, 4).map((a) => {
+        const title = escapeHtml(String(a?.event || 'Weather alert'));
+        const sender = escapeHtml(String(a?.sender_name || 'Unknown source'));
+        const description = escapeHtml(String(a?.description || '')).slice(0, 320);
+        const start = escapeHtml(String(a?.start_local || ''));
+        const end = escapeHtml(String(a?.end_local || ''));
+        return `<article class=\"forecast-alert-item\"><strong>${title}</strong> <span>(${sender})</span><div>${start !== '' || end !== '' ? `${start} - ${end}` : ''}</div><div>${description}</div></article>`;
+    }).join('');
 }
 
 function iconFromNarrative(text) {
@@ -1163,6 +1189,7 @@ function renderForecastData(payload) {
     const fiveDay = document.getElementById('forecast-5day');
     if (!five || !fiveDay) return;
 
+    renderForecastAlerts(payload?.alerts || []);
     const nextHours = Array.isArray(payload?.dashboard?.next_hours) ? payload.dashboard.next_hours : [];
     const daily = Array.isArray(payload?.daily) ? payload.daily.slice(0, 5) : [];
     const hourlyErr = payload?.cache?.hourly?.error || '';

@@ -201,6 +201,13 @@ function app_config(): array
         ],
         'forecast' => [
             'provider' => env_value('PWS_FORECAST_PROVIDER', (string) ($forecastCfg['provider'] ?? 'none')),
+            'providers' => array_values(array_filter(array_map(
+                static fn($p) => strtolower(trim((string) $p)),
+                (array) ($forecastCfg['providers'] ?? [])
+            ), static fn($p) => in_array($p, ['wu', 'openweather'], true))),
+            'preferred_hourly_provider' => (string) ($forecastCfg['preferred_hourly_provider'] ?? ''),
+            'preferred_daily_provider' => (string) ($forecastCfg['preferred_daily_provider'] ?? ''),
+            'alerts_provider' => (string) ($forecastCfg['alerts_provider'] ?? 'openweather'),
             'cache_ttl_seconds' => (int) ($forecastCfg['cache_ttl_seconds'] ?? 900),
             'refresh_interval_seconds' => (int) ($forecastCfg['refresh_interval_seconds'] ?? 1800),
             'cache_table' => (string) ($forecastCfg['cache_table'] ?? 'pws_wu_forecast_cache'),
