@@ -48,82 +48,25 @@ $graphHeightPx = (int) ($layoutConfig['graph_height_px'] ?? 260);
 $windRoseHeightPx = (int) ($layoutConfig['wind_rose_height_px'] ?? 380);
 $locationConfig = $config['location'] ?? ['latitude' => 0.0, 'longitude' => 0.0, 'timezone' => 'UTC'];
 $forecastConfig = $config['forecast'] ?? ['provider' => 'none'];
-$dashboardI18n = [
-    'today' => tr('range.today', 'Today'),
-    'yesterday' => tr('range.yesterday', 'Yesterday'),
-    'week' => tr('range.week', 'Last Week'),
-    'month' => tr('range.month', 'Last Month'),
-    'year' => tr('range.year', 'Last Year'),
-    'currentWeather' => tr('dashboard.current_weather', 'Current Weather'),
-    'forecastProviderPending' => tr('dashboard.forecast_provider_pending', 'Forecast provider: pending'),
-    'next5Hours' => tr('dashboard.next_5_hours', 'Next 5 Hours'),
-    'fiveDayForecast' => tr('dashboard.five_day_forecast', '5-Day Forecast'),
-    'sunMoon' => tr('dashboard.sun_moon', 'Sun & Moon'),
-    'wind' => tr('dashboard.wind', 'Wind'),
-    'windRose' => tr('dashboard.wind_rose', 'Wind Rose (Direction x Speed Class)'),
-    'weatherGraphs' => tr('dashboard.weather_graphs', 'Weather Graphs'),
-    'environmentGraphs' => tr('dashboard.environment_graphs', 'Environment Sensor Graphs'),
-    'batteryGraphs' => tr('dashboard.battery_graphs', 'Battery Graphs'),
-    'diagTitle' => tr('dashboard.diag_title', 'Connection diagnostics'),
-    'diagApiPoll' => tr('dashboard.diag_api_poll', 'API poll'),
-    'diagLastApiAttempt' => tr('dashboard.diag_last_api_attempt', 'Last API attempt'),
-    'diagLastApiSuccess' => tr('dashboard.diag_last_api_success', 'Last API success'),
-    'diagLastApiError' => tr('dashboard.diag_last_api_error', 'Last API error'),
-    'diagMqttStream' => tr('dashboard.diag_mqtt_stream', 'MQTT stream'),
-    'diagLastMqttMessage' => tr('dashboard.diag_last_mqtt_message', 'Last MQTT message'),
-    'tempGroup' => tr('dashboard.temp_group', 'Temp'),
-    'humidityGroup' => tr('dashboard.humidity_group', 'Humidity'),
-    'rainGroup' => tr('dashboard.rain_group', 'Rain'),
-    'sunSkyGroup' => tr('dashboard.sun_sky_group', 'Sun / Sky'),
-    'windGroup' => tr('dashboard.wind_group', 'Wind'),
-    'pressureGroup' => tr('dashboard.pressure_group', 'Pressure'),
-    'airQualityGroup' => tr('dashboard.air_quality_group', 'Air Quality'),
-    'lightningGroup' => tr('dashboard.lightning_group', 'Lightning'),
-    'powerBatteryGroup' => tr('dashboard.power_battery_group', 'Power / Battery'),
-    'otherSensors' => tr('dashboard.other_sensors', 'Other Sensors'),
-    'noWindRoseSamples' => tr('dashboard.no_wind_rose_samples', 'No wind rose samples in selected range'),
-    'forecastNotAvailable' => tr('dashboard.forecast_not_available', 'Forecast cache not available yet.'),
-    'loadingForecast' => tr('dashboard.loading_forecast', 'Loading cached forecast...'),
-    'noHourlyRows' => tr('dashboard.no_hourly_rows', 'No hourly forecast rows in cache.'),
-    'noDailyRows' => tr('dashboard.no_daily_rows', 'No daily forecast rows in cache.'),
-    'providerLabel' => tr('dashboard.provider_label', 'Provider: {provider}'),
-    'humidityValue' => tr('dashboard.humidity_value', 'Humidity {value}'),
-    'currentWeatherProvider' => tr('dashboard.current_weather_provider', 'Current Weather ({provider})'),
-    'rainChance' => tr('dashboard.rain_chance', 'Rain chance {value}'),
-    'highLow' => tr('dashboard.high_low', 'High {high} / Low {low}'),
-    'sunrise' => tr('dashboard.sunrise', 'Sunrise'),
-    'sunset' => tr('dashboard.sunset', 'Sunset'),
-    'solarNoon' => tr('dashboard.solar_noon', 'Solar noon'),
-    'dawn' => tr('dashboard.dawn', 'Dawn'),
-    'dusk' => tr('dashboard.dusk', 'Dusk'),
-    'moonrise' => tr('dashboard.moonrise', 'Moonrise'),
-    'moonset' => tr('dashboard.moonset', 'Moonset'),
-    'moonPhase' => tr('dashboard.moon_phase', 'Moon Phase'),
-    'alwaysUp' => tr('dashboard.always_up', 'Always up'),
-    'alwaysDown' => tr('dashboard.always_down', 'Always down'),
-    'forecastCache' => tr('dashboard.forecast_cache', 'Forecast cache'),
-    'nA' => tr('common.n_a', 'n/a'),
-    'local' => tr('common.local', 'local'),
-];
 ?>
-<?php render_page_head(tr('dashboard.page_title', 'PWS Live Dashboard'), $view); ?>
+<?php render_page_head('PWS Live Dashboard', $view); ?>
 <body>
 <div class="container">
 <?php
-render_site_header(tr('dashboard.page_title', 'PWS Live Dashboard'), default_nav_links(), [
-    '<div class="status-pill"><span>' . htmlspecialchars(tr('status.last_update', 'Last update'), ENT_QUOTES, 'UTF-8') . ':</span> <strong id="db-updated">-</strong></div>',
-    '<div class="status-pill"><span>' . htmlspecialchars(tr('status.range', 'Range'), ENT_QUOTES, 'UTF-8') . ':</span> <strong id="range-label">' . htmlspecialchars(tr('range.today', 'Today'), ENT_QUOTES, 'UTF-8') . '</strong></div>',
+render_site_header('PWS Live Dashboard', default_nav_links(), [
+    '<div class="status-pill"><span>Last update:</span> <strong id="db-updated">-</strong></div>',
+    '<div class="status-pill"><span>Range:</span> <strong id="range-label">Today</strong></div>',
     '<button type="button" class="status-pill status-pill-button" id="mqtt-pill" aria-expanded="false" aria-controls="diag-popup"><span class="dot" id="mqtt-dot"></span><span id="mqtt-status">MQTT: idle</span></button>',
 ]);
 ?>
     <section id="forecast-alerts" class="forecast-alerts" hidden></section>
-    <section class="diag-panel" id="diag-popup" aria-label="<?= htmlspecialchars(tr('dashboard.diag_title', 'Connection diagnostics'), ENT_QUOTES, 'UTF-8') ?>" hidden>
-        <div class="diag-item"><span><?= htmlspecialchars(tr('dashboard.diag_api_poll', 'API poll'), ENT_QUOTES, 'UTF-8') ?>:</span> <strong id="diag-api-state">idle</strong></div>
-        <div class="diag-item"><span><?= htmlspecialchars(tr('dashboard.diag_last_api_attempt', 'Last API attempt'), ENT_QUOTES, 'UTF-8') ?>:</span> <strong id="diag-api-attempt"><?= htmlspecialchars(tr('common.never', 'never'), ENT_QUOTES, 'UTF-8') ?></strong></div>
-        <div class="diag-item"><span><?= htmlspecialchars(tr('dashboard.diag_last_api_success', 'Last API success'), ENT_QUOTES, 'UTF-8') ?>:</span> <strong id="diag-api-success"><?= htmlspecialchars(tr('common.never', 'never'), ENT_QUOTES, 'UTF-8') ?></strong></div>
-        <div class="diag-item"><span><?= htmlspecialchars(tr('dashboard.diag_last_api_error', 'Last API error'), ENT_QUOTES, 'UTF-8') ?>:</span> <strong id="diag-api-error"><?= htmlspecialchars(tr('common.none', 'none'), ENT_QUOTES, 'UTF-8') ?></strong></div>
-        <div class="diag-item"><span><?= htmlspecialchars(tr('dashboard.diag_mqtt_stream', 'MQTT stream'), ENT_QUOTES, 'UTF-8') ?>:</span> <strong id="diag-mqtt-state">idle</strong></div>
-        <div class="diag-item"><span><?= htmlspecialchars(tr('dashboard.diag_last_mqtt_message', 'Last MQTT message'), ENT_QUOTES, 'UTF-8') ?>:</span> <strong id="diag-mqtt-last"><?= htmlspecialchars(tr('common.never', 'never'), ENT_QUOTES, 'UTF-8') ?></strong></div>
+    <section class="diag-panel" id="diag-popup" aria-label="Connection diagnostics" hidden>
+        <div class="diag-item"><span>API poll:</span> <strong id="diag-api-state">idle</strong></div>
+        <div class="diag-item"><span>Last API attempt:</span> <strong id="diag-api-attempt">never</strong></div>
+        <div class="diag-item"><span>Last API success:</span> <strong id="diag-api-success">never</strong></div>
+        <div class="diag-item"><span>Last API error:</span> <strong id="diag-api-error">none</strong></div>
+        <div class="diag-item"><span>MQTT stream:</span> <strong id="diag-mqtt-state">idle</strong></div>
+        <div class="diag-item"><span>Last MQTT message:</span> <strong id="diag-mqtt-last">never</strong></div>
     </section>
 
     <section class="hero-grid">
@@ -132,13 +75,13 @@ render_site_header(tr('dashboard.page_title', 'PWS Live Dashboard'), default_nav
                 <div class="current-main">
                     <img id="current-icon" class="current-icon" src="assets/weathericons/unknown.svg" alt="Current weather icon">
                     <div class="current-copy">
-                        <h2 id="current-condition"><?= htmlspecialchars(tr('dashboard.current_weather', 'Current Weather'), ENT_QUOTES, 'UTF-8') ?></h2>
+                        <h2 id="current-condition">Current Weather</h2>
                         <div id="current-temp" class="current-temp">--</div>
-                        <div id="current-sub" class="current-sub"><?= htmlspecialchars(tr('dashboard.forecast_provider_pending', 'Forecast provider: pending'), ENT_QUOTES, 'UTF-8') ?></div>
+                        <div id="current-sub" class="current-sub">Forecast provider: pending</div>
                         <div id="current-air-quality" class="current-air-quality" hidden></div>
                     </div>
-                    <div class="wind-compass-card" aria-label="<?= htmlspecialchars(tr('dashboard.wind_compass_aria', 'Wind compass'), ENT_QUOTES, 'UTF-8') ?>">
-                        <div class="wind-compass-title"><?= htmlspecialchars(tr('dashboard.wind', 'Wind'), ENT_QUOTES, 'UTF-8') ?></div>
+                    <div class="wind-compass-card" aria-label="Wind compass">
+                        <div class="wind-compass-title">Wind</div>
                         <div class="wind-compass-ring">
                             <div id="wind-gust-arc" class="wind-arc wind-arc-gust"></div>
                             <div id="wind-speed-arc" class="wind-arc wind-arc-speed"></div>
@@ -156,12 +99,12 @@ render_site_header(tr('dashboard.page_title', 'PWS Live Dashboard'), default_nav
                     </div>
                 </div>
                 <div class="forecast-now-col">
-                    <h3><?= htmlspecialchars(tr('dashboard.next_5_hours', 'Next 5 Hours'), ENT_QUOTES, 'UTF-8') ?></h3>
+                    <h3>Next 5 Hours</h3>
                     <div id="forecast-5h" class="forecast-list"></div>
                 </div>
             </div>
             <div class="forecast-5day">
-                <h3><?= htmlspecialchars(tr('dashboard.five_day_forecast', '5-Day Forecast'), ENT_QUOTES, 'UTF-8') ?></h3>
+                <h3>5-Day Forecast</h3>
                 <div id="forecast-5day" class="forecast-5day-grid"></div>
             </div>
         </article>
@@ -171,7 +114,7 @@ render_site_header(tr('dashboard.page_title', 'PWS Live Dashboard'), default_nav
                 <canvas id="sky-canvas" height="170"></canvas>
             </section>
             <section class="astro-info">
-                <h3><?= htmlspecialchars(tr('dashboard.sun_moon', 'Sun & Moon'), ENT_QUOTES, 'UTF-8') ?></h3>
+                <h3>Sun & Moon</h3>
                 <div id="astro-times" class="astro-grid"></div>
             </section>
         </div>
@@ -183,7 +126,7 @@ render_site_header(tr('dashboard.page_title', 'PWS Live Dashboard'), default_nav
         <section class="cards" id="cards-bottom"></section>
         <aside class="summary-side" id="summary-side">
             <article class="chart-card summary-wind-rose-card" data-graph="wind_rose">
-                <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.wind_rose', 'Wind Rose (Direction x Speed Class)'), ENT_QUOTES, 'UTF-8') ?></h3>
+                <h3 class="chart-title">Wind Rose (Direction x Speed Class)</h3>
                 <div class="chart-wrap wind-rose">
                     <div id="chart-wind-rose-plotly" style="width:100%;height:100%;display:none;"></div>
                     <canvas id="chart-wind-rose"></canvas>
@@ -193,14 +136,14 @@ render_site_header(tr('dashboard.page_title', 'PWS Live Dashboard'), default_nav
     </section>
 
     <nav class="range-toolbar" id="range-toolbar">
-        <button class="range-btn active" data-range="today"><?= htmlspecialchars(tr('range.today', 'Today'), ENT_QUOTES, 'UTF-8') ?></button>
-        <button class="range-btn" data-range="yesterday"><?= htmlspecialchars(tr('range.yesterday', 'Yesterday'), ENT_QUOTES, 'UTF-8') ?></button>
-        <button class="range-btn" data-range="week"><?= htmlspecialchars(tr('range.week', 'Last Week'), ENT_QUOTES, 'UTF-8') ?></button>
-        <button class="range-btn" data-range="month"><?= htmlspecialchars(tr('range.month', 'Last Month'), ENT_QUOTES, 'UTF-8') ?></button>
-        <button class="range-btn" data-range="year"><?= htmlspecialchars(tr('range.year', 'Last Year'), ENT_QUOTES, 'UTF-8') ?></button>
+        <button class="range-btn active" data-range="today">Today</button>
+        <button class="range-btn" data-range="yesterday">Yesterday</button>
+        <button class="range-btn" data-range="week">Last Week</button>
+        <button class="range-btn" data-range="month">Last Month</button>
+        <button class="range-btn" data-range="year">Last Year</button>
     </nav>
 
-    <h2 class="section-title"><?= htmlspecialchars(tr('dashboard.weather_graphs', 'Weather Graphs'), ENT_QUOTES, 'UTF-8') ?></h2>
+    <h2 class="section-title">Weather Graphs</h2>
     <section class="charts">
         <article class="chart-card" data-graph="temp_outside">
             <h3 class="chart-title">Outside Temperature / Dewpoint / Apparent</h3>
@@ -273,11 +216,11 @@ render_site_header(tr('dashboard.page_title', 'PWS Live Dashboard'), default_nav
     </section>
 
     <section id="optional-chart-section" hidden>
-        <h2 class="section-title"><?= htmlspecialchars(tr('dashboard.environment_graphs', 'Environment Sensor Graphs'), ENT_QUOTES, 'UTF-8') ?></h2>
+        <h2 class="section-title">Environment Sensor Graphs</h2>
         <section class="charts" id="optional-charts"></section>
     </section>
 
-    <h2 class="section-title"><?= htmlspecialchars(tr('dashboard.battery_graphs', 'Battery Graphs'), ENT_QUOTES, 'UTF-8') ?></h2>
+    <h2 class="section-title">Battery Graphs</h2>
     <section class="charts">
         <article class="chart-card" data-graph="battery_wind">
             <h3 class="chart-title">Wind Battery</h3>
@@ -335,7 +278,6 @@ const APP = {
     location: <?= json_encode($locationConfig) ?>,
     forecast: <?= json_encode($forecastConfig) ?>,
     timeFormat: <?= json_encode($timeFormat) ?>,
-    i18n: <?= json_encode($dashboardI18n) ?>,
     pollIntervalMs: <?= max(5000, ((int) ($config['ui']['poll_interval_seconds'] ?? 15)) * 1000) ?>,
     mqttReconnectDelayMs: <?= max(1000, (int) ($config['ui']['mqtt_reconnect_delay_ms'] ?? 10000)) ?>,
     layout: {
@@ -347,11 +289,11 @@ const APP = {
 };
 
 const historyRanges = {
-    today: { label: APP.i18n.today, hours: 24, endOffsetHours: 0, bucketMinutes: 5 },
-    yesterday: { label: APP.i18n.yesterday, hours: 24, endOffsetHours: 24, bucketMinutes: 5 },
-    week: { label: APP.i18n.week, hours: 24 * 7, endOffsetHours: 0, bucketMinutes: 15 },
-    month: { label: APP.i18n.month, hours: 24 * 30, endOffsetHours: 0, bucketMinutes: 60 },
-    year: { label: APP.i18n.year, hours: 24 * 365, endOffsetHours: 0, bucketMinutes: 6 * 60 },
+    today: { label: 'Today', hours: 24, endOffsetHours: 0, bucketMinutes: 5 },
+    yesterday: { label: 'Yesterday', hours: 24, endOffsetHours: 24, bucketMinutes: 5 },
+    week: { label: 'Last Week', hours: 24 * 7, endOffsetHours: 0, bucketMinutes: 15 },
+    month: { label: 'Last Month', hours: 24 * 30, endOffsetHours: 0, bucketMinutes: 60 },
+    year: { label: 'Last Year', hours: 24 * 365, endOffsetHours: 0, bucketMinutes: 6 * 60 },
 };
 
 const metricOrder = [
@@ -364,15 +306,15 @@ const metricOrder = [
 ];
 
 const metricGroups = [
-    { title: APP.i18n.tempGroup, keys: ['outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'appTemp', 'heatindex', 'windchill', 'humidex'] },
-    { title: APP.i18n.humidityGroup, keys: ['outHumidity', 'inHumidity'] },
-    { title: APP.i18n.rainGroup, keys: ['rainRate', 'rain', 'ET'] },
-    { title: APP.i18n.sunSkyGroup, keys: ['UV', 'radiation', 'cloudbase', 'solarAltitude', 'solarAzimuth', 'solarTime', 'lunarAltitude', 'lunarAzimuth', 'lunarTime'] },
-    { title: APP.i18n.windGroup, keys: ['windSpeed', 'windGust', 'windDir', 'windrun'] },
-    { title: APP.i18n.pressureGroup, keys: ['barometer', 'pressure'] },
-    { title: APP.i18n.airQualityGroup, keys: ['pm2_5', 'pm1_0', 'pm4_0', 'pm10_0', 'pm25_2', 'pm25_3', 'pm25_4', 'co2', 'co2in', 'co2_Temp', 'co2_Hum'] },
-    { title: APP.i18n.lightningGroup, keys: ['lightning_strike_count'] },
-    { title: APP.i18n.powerBatteryGroup, keys: ['windBatteryStatus', 'rainBatteryStatus', 'lightning_Batt', 'pm25_Batt1', 'inTempBatteryStatus'] },
+    { title: 'Temp', keys: ['outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'appTemp', 'heatindex', 'windchill', 'humidex'] },
+    { title: 'Humidity', keys: ['outHumidity', 'inHumidity'] },
+    { title: 'Rain', keys: ['rainRate', 'rain', 'ET'] },
+    { title: 'Sun / Sky', keys: ['UV', 'radiation', 'cloudbase', 'solarAltitude', 'solarAzimuth', 'solarTime', 'lunarAltitude', 'lunarAzimuth', 'lunarTime'] },
+    { title: 'Wind', keys: ['windSpeed', 'windGust', 'windDir', 'windrun'] },
+    { title: 'Pressure', keys: ['barometer', 'pressure'] },
+    { title: 'Air Quality', keys: ['pm2_5', 'pm1_0', 'pm4_0', 'pm10_0', 'pm25_2', 'pm25_3', 'pm25_4', 'co2', 'co2in', 'co2_Temp', 'co2_Hum'] },
+    { title: 'Lightning', keys: ['lightning_strike_count'] },
+    { title: 'Power / Battery', keys: ['windBatteryStatus', 'rainBatteryStatus', 'lightning_Batt', 'pm25_Batt1', 'inTempBatteryStatus'] },
 ];
 
 const state = {
@@ -917,11 +859,11 @@ function renderSkyWidget(metrics) {
     const xDawn = xFromTime(dawn);
     const xDusk = xFromTime(dusk);
 
-    drawGuideLine(xSunrise, <?= json_encode(tr('dashboard.sunrise', 'Sunrise')) ?>, formatClock(sunrise, tz), true);
-    drawGuideLine(xSunset, <?= json_encode(tr('dashboard.sunset', 'Sunset')) ?>, formatClock(sunset, tz), true);
-    drawGuideLine(xNoon, <?= json_encode(tr('dashboard.solar_noon', 'Solar noon')) ?>, formatClock(solarNoon, tz), false);
-    drawGuideLine(xDawn, <?= json_encode(tr('dashboard.dawn', 'Dawn')) ?>, formatClock(dawn, tz), false);
-    drawGuideLine(xDusk, <?= json_encode(tr('dashboard.dusk', 'Dusk')) ?>, formatClock(dusk, tz), false);
+    drawGuideLine(xSunrise, 'Sunrise', formatClock(sunrise, tz), true);
+    drawGuideLine(xSunset, 'Sunset', formatClock(sunset, tz), true);
+    drawGuideLine(xNoon, 'Solar noon', formatClock(solarNoon, tz), false);
+    drawGuideLine(xDawn, 'Dawn', formatClock(dawn, tz), false);
+    drawGuideLine(xDusk, 'Dusk', formatClock(dusk, tz), false);
 
     const sunIcon = getSkyIcon('assets/weathericons-filled/clear-day.svg');
     const moonSymbol = moonPhaseIcon(moonIll.phase);
@@ -955,8 +897,8 @@ function renderSkyWidget(metrics) {
     // Bottom annotation row mirrors the reference widget details.
     text(`Azimuth ${fmtAngle(solarAz)}`, left, bottomY - (30 * dpr), 'left', 0.92, 10);
     text(`Elevation ${fmtAngle(solarAlt)}`, right, bottomY - (30 * dpr), 'right', 0.92, 10);
-    text(`${APP.i18n.moonrise || 'Moonrise'} ${moonTimes.rise ? formatClock(moonTimes.rise, tz) : (APP.i18n.nA || 'n/a')}`, left, bottomY - (12 * dpr), 'left', 0.84, 10);
-    text(`${APP.i18n.moonset || 'Moonset'} ${moonTimes.set ? formatClock(moonTimes.set, tz) : (APP.i18n.nA || 'n/a')}`, right, bottomY - (12 * dpr), 'right', 0.84, 10);
+    text(`Moonrise ${moonTimes.rise ? formatClock(moonTimes.rise, tz) : 'n/a'}`, left, bottomY - (12 * dpr), 'left', 0.84, 10);
+    text(`Moonset ${moonTimes.set ? formatClock(moonTimes.set, tz) : 'n/a'}`, right, bottomY - (12 * dpr), 'right', 0.84, 10);
     text(`${moonPhaseIcon(moonIll.phase)} ${moonPhaseLabel(moonIll.phase)}`, (left + right) / 2, bottomY - (12 * dpr), 'center', 0.9, 10);
 
     // Border frame to match the widget look.
@@ -1204,7 +1146,7 @@ function renderCards() {
         section.className = 'metric-group';
         const title = document.createElement('h3');
         title.className = 'metric-group-title';
-        title.textContent = APP.i18n.otherSensors;
+        title.textContent = 'Other Sensors';
         section.appendChild(title);
 
         const grid = document.createElement('div');
@@ -1322,11 +1264,11 @@ function renderAstroInfo(metrics) {
     const phaseIcon = moonPhaseIcon(moonIll.phase);
 
     host.innerHTML = `
-        <div><strong>${APP.i18n.sunrise || 'Sunrise'}</strong><br>${formatClock(sunTimes.sunrise, tz)}</div>
-        <div><strong>${APP.i18n.sunset || 'Sunset'}</strong><br>${formatClock(sunTimes.sunset, tz)}</div>
-        <div><strong>${APP.i18n.moonrise || 'Moonrise'}</strong><br>${moonTimes.alwaysUp ? (APP.i18n.alwaysUp || 'Always up') : (moonTimes.rise ? formatClock(moonTimes.rise, tz) : (APP.i18n.nA || 'n/a'))}</div>
-        <div><strong>${APP.i18n.moonset || 'Moonset'}</strong><br>${moonTimes.alwaysDown ? (APP.i18n.alwaysDown || 'Always down') : (moonTimes.set ? formatClock(moonTimes.set, tz) : (APP.i18n.nA || 'n/a'))}</div>
-        <div><strong>${APP.i18n.moonPhase || 'Moon Phase'}</strong><br>${phaseIcon} ${phaseLabel}</div>
+        <div><strong>Sunrise</strong><br>${formatClock(sunTimes.sunrise, tz)}</div>
+        <div><strong>Sunset</strong><br>${formatClock(sunTimes.sunset, tz)}</div>
+        <div><strong>Moonrise</strong><br>${moonTimes.alwaysUp ? 'Always up' : (moonTimes.rise ? formatClock(moonTimes.rise, tz) : 'n/a')}</div>
+        <div><strong>Moonset</strong><br>${moonTimes.alwaysDown ? 'Always down' : (moonTimes.set ? formatClock(moonTimes.set, tz) : 'n/a')}</div>
+        <div><strong>Moon Phase</strong><br>${phaseIcon} ${phaseLabel}</div>
         <div><strong>Location</strong><br>${lat.toFixed(3)}, ${lon.toFixed(3)}</div>
     `;
 }
@@ -1359,10 +1301,10 @@ function renderCurrentVisual(metrics) {
         }
     }
     if (condNode) {
-        condNode.textContent = APP.i18n.currentWeatherProvider.replace('{provider}', APP.forecast?.provider || (APP.i18n.local || 'local'));
+        condNode.textContent = `Current Weather (${APP.forecast?.provider || 'local'})`;
     }
     if (subNode) {
-        subNode.textContent = APP.i18n.humidityValue.replace('{value}', formatValue(metrics?.outHumidity?.value, metrics?.outHumidity?.unit));
+        subNode.textContent = `Humidity ${formatValue(metrics?.outHumidity?.value, metrics?.outHumidity?.unit)}`;
     }
     if (airNode) {
         const pmValue = metrics?.pm2_5?.value ?? metrics?.pm25_1?.value ?? null;
@@ -1391,14 +1333,14 @@ function renderForecastCacheStatus(cache) {
     if (!cache?.hourly?.fetched_at) return;
     const fetched = new Date(`${cache.hourly.fetched_at}Z`);
     if (Number.isNaN(fetched.getTime())) return;
-    node.textContent += `  ${APP.i18n.forecastCache || 'Forecast cache'} ${fetched.toLocaleTimeString([], {
+    node.textContent += `  Forecast cache ${fetched.toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit',
         hour12: APP.timeFormat !== '24h',
     })}`;
 }
 
-function renderForecastPlaceholders(message = APP.i18n.forecastNotAvailable) {
+function renderForecastPlaceholders(message = 'Forecast cache not available yet.') {
     const five = document.getElementById('forecast-5h');
     const fiveDay = document.getElementById('forecast-5day');
     const alerts = document.getElementById('forecast-alerts');
@@ -1459,7 +1401,7 @@ function renderForecastData(payload) {
     if (nextHours.length === 0) {
         const message = hourlyErr !== ''
             ? `Hourly forecast unavailable (${hourlyErr}).`
-            : APP.i18n.noHourlyRows;
+            : 'No hourly forecast rows in cache.';
         renderForecastPlaceholders(message);
     } else {
         five.innerHTML = nextHours.map((row) => {
@@ -1480,7 +1422,7 @@ function renderForecastData(payload) {
     }
 
     if (daily.length === 0) {
-        fiveDay.innerHTML = `<div>${escapeHtml(APP.i18n.noDailyRows)}</div>`;
+        fiveDay.innerHTML = '<div>No daily forecast rows in cache.</div>';
     } else {
         fiveDay.innerHTML = daily.map((row) => {
             const high = row.temp_max !== null && row.temp_max !== undefined ? `${Number(row.temp_max).toFixed(0)}°` : '--';
@@ -2136,7 +2078,7 @@ function buildCharts(history) {
                     },
                     title: rose.sampleCount > 0 ? undefined : {
                         display: true,
-                        text: APP.i18n.noWindRoseSamples,
+                        text: 'No wind rose samples in selected range',
                     },
                 },
             },
@@ -2336,7 +2278,7 @@ function connectMqtt() {
     initThemeSelector();
     initDiagnosticsPopup();
     renderDiagnostics();
-    renderForecastPlaceholders(APP.i18n.loadingForecast);
+    renderForecastPlaceholders('Loading cached forecast...');
     applyLayoutConfig();
     try {
         await loadLatest();

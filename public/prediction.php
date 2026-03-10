@@ -33,22 +33,19 @@ $view = page_view_context($config);
 $defaultTheme = (string) $view['default_theme'];
 $timeConfig = $config['ui']['time'] ?? ['format' => '24h'];
 $timeFormat = (string) ($timeConfig['format'] ?? '24h');
-$predI18n = [
-    'noRows' => tr('prediction.no_rows', 'No prediction rows available.'),
-];
 ?>
-<?php render_page_head(tr('prediction.page_title', 'PWS Prediction'), $view); ?>
+<?php render_page_head('PWS Prediction', $view); ?>
 <body>
 <div class="forecast-wrap">
 <?php
-render_site_header(tr('prediction.title', 'Prediction'), default_nav_links(), [
-    '<div class="status-pill"><span>' . htmlspecialchars(tr('status.run', 'Run'), ENT_QUOTES, 'UTF-8') . ':</span> <strong id="pred-run">-</strong></div>',
-    '<div class="status-pill"><span>' . htmlspecialchars(tr('status.generated', 'Generated'), ENT_QUOTES, 'UTF-8') . ':</span> <strong id="pred-generated">-</strong></div>',
+render_site_header('Prediction', default_nav_links(), [
+    '<div class="status-pill"><span>Run:</span> <strong id="pred-run">-</strong></div>',
+    '<div class="status-pill"><span>Generated:</span> <strong id="pred-generated">-</strong></div>',
 ]);
 ?>
 
     <article class="card">
-        <h2 class="chart-title"><?= htmlspecialchars(tr('prediction.by_hour', 'Prediction By Hour'), ENT_QUOTES, 'UTF-8') ?></h2>
+        <h2 class="chart-title">Prediction By Hour</h2>
         <section id="prediction-hours" class="prediction-hours"></section>
     </article>
 </div>
@@ -58,7 +55,6 @@ const PRED_APP = {
     defaultTheme: <?= json_encode($defaultTheme) ?>,
     themes: <?= json_encode(array_keys((array) $view['css_themes'])) ?>,
     timeFormat: <?= json_encode($timeFormat) ?>,
-    i18n: <?= json_encode($predI18n) ?>,
 };
 const PRED_STATE = { items: [] };
 
@@ -235,7 +231,7 @@ function renderHourWidgets(items) {
     if (!host) return;
     host.innerHTML = '';
     if (!Array.isArray(items) || items.length === 0) {
-        host.innerHTML = `<div class="muted">${escapeHtml(PRED_APP.i18n.noRows)}</div>`;
+        host.innerHTML = '<div class="muted">No prediction rows available.</div>';
         return;
     }
 

@@ -34,33 +34,25 @@ $view = page_view_context($config);
 $defaultTheme = (string) $view['default_theme'];
 $timeConfig = $config['ui']['time'] ?? ['format' => '24h'];
 $timeFormat = (string) ($timeConfig['format'] ?? '24h');
-$forecastI18n = [
-    'noHourly' => tr('forecast.no_hourly_cache', 'No hourly forecast in cache.'),
-    'noDaily' => tr('forecast.no_daily_cache', 'No daily forecast in cache.'),
-    'failedCache' => tr('forecast.failed_cache', 'Failed to load forecast cache.'),
-    'rainChance' => tr('forecast.rain_chance', 'Rain chance {value}'),
-    'highLow' => tr('forecast.high_low', 'High {high} / Low {low}'),
-    'day' => tr('common.day', 'Day'),
-];
 ?>
-<?php render_page_head(tr('forecast.page_title', 'PWS Forecast'), $view); ?>
+<?php render_page_head('PWS Forecast', $view); ?>
 <body>
 <div class="forecast-wrap">
 <?php
-render_site_header(tr('forecast.title', 'Forecast'), default_nav_links(), [
-    '<div class="status-pill"><span>' . htmlspecialchars(tr('status.provider', 'Provider'), ENT_QUOTES, 'UTF-8') . ':</span> <strong id="provider">-</strong></div>',
-    '<div class="status-pill"><span>' . htmlspecialchars(tr('status.hourly_cache', 'Hourly cache'), ENT_QUOTES, 'UTF-8') . ':</span> <strong id="cache-hourly">-</strong></div>',
-    '<div class="status-pill"><span>' . htmlspecialchars(tr('status.daily_cache', 'Daily cache'), ENT_QUOTES, 'UTF-8') . ':</span> <strong id="cache-daily">-</strong></div>',
+render_site_header('Forecast', default_nav_links(), [
+    '<div class="status-pill"><span>Provider:</span> <strong id="provider">-</strong></div>',
+    '<div class="status-pill"><span>Hourly cache:</span> <strong id="cache-hourly">-</strong></div>',
+    '<div class="status-pill"><span>Daily cache:</span> <strong id="cache-daily">-</strong></div>',
 ]);
 ?>
 
     <article class="card">
-        <h2 class="chart-title"><?= htmlspecialchars(tr('forecast.next_hours', 'Next Hours'), ENT_QUOTES, 'UTF-8') ?></h2>
+        <h2 class="chart-title">Next Hours</h2>
         <div id="next-hours" class="forecast-grid"></div>
     </article>
 
     <article class="card">
-        <h2 class="chart-title"><?= htmlspecialchars(tr('forecast.daily_forecast', 'Daily Forecast'), ENT_QUOTES, 'UTF-8') ?></h2>
+        <h2 class="chart-title">Daily Forecast</h2>
         <div id="daily-forecast" class="forecast-grid"></div>
     </article>
 </div>
@@ -70,7 +62,6 @@ const FORECAST_APP = {
     defaultTheme: <?= json_encode($defaultTheme) ?>,
     themes: <?= json_encode(array_keys((array) $view['css_themes'])) ?>,
     timeFormat: <?= json_encode($timeFormat) ?>,
-    i18n: <?= json_encode($forecastI18n) ?>,
 };
 
 function setTheme(theme) {
@@ -189,7 +180,7 @@ function renderHourly(rows) {
     const host = document.getElementById('next-hours');
     if (!host) return;
     if (!Array.isArray(rows) || rows.length === 0) {
-        host.innerHTML = `<div class="muted">${escapeHtml(FORECAST_APP.i18n.noHourly)}</div>`;
+        host.innerHTML = '<div class="muted">No hourly forecast in cache.</div>';
         return;
     }
 
@@ -200,7 +191,7 @@ function renderHourly(rows) {
             : '--:--';
         const temp = r.temperature !== null && r.temperature !== undefined ? tempChip(r.temperature, '°C', 0) : '--';
         const precip = r.precip_chance !== null && r.precip_chance !== undefined ? `${Number(r.precip_chance).toFixed(0)}%` : '-';
-        return `<article class="card"><div class="forecast-row"><strong>${timeText}</strong></div><div class="forecast-row">${temp} ${escapeHtml(r.phrase || '')}</div><div class="forecast-row muted">${escapeHtml(FORECAST_APP.i18n.rainChance.replace('{value}', precip))}</div></article>`;
+        return `<article class="card"><div class="forecast-row"><strong>${timeText}</strong></div><div class="forecast-row">${temp} ${escapeHtml(r.phrase || '')}</div><div class="forecast-row muted">Rain chance ${precip}</div></article>`;
     }).join('');
 }
 
@@ -208,16 +199,14 @@ function renderDaily(rows) {
     const host = document.getElementById('daily-forecast');
     if (!host) return;
     if (!Array.isArray(rows) || rows.length === 0) {
-        host.innerHTML = `<div class="muted">${escapeHtml(FORECAST_APP.i18n.noDaily)}</div>`;
+        host.innerHTML = '<div class="muted">No daily forecast in cache.</div>';
         return;
     }
 
     host.innerHTML = rows.map((r) => {
         const high = r.temp_max !== null && r.temp_max !== undefined ? tempChip(r.temp_max, '°C', 0) : '--';
         const low = r.temp_min !== null && r.temp_min !== undefined ? tempChip(r.temp_min, '°C', 0) : '--';
-        const title = escapeHtml(r.day_of_week || FORECAST_APP.i18n.day);
-        const highLow = escapeHtml(FORECAST_APP.i18n.highLow.replace('{high}', '').replace('{low}', ''));
-        return `<article class="card"><div class="forecast-row"><strong>${title}</strong></div><div class="forecast-row">${FORECAST_APP.i18n.highLow.replace('{high}', high).replace('{low}', low)}</div><div class="forecast-row muted">${escapeHtml(r.narrative || '')}</div></article>`;
+        return `<article class="card"><div class="forecast-row"><strong>${escapeHtml(r.day_of_week || 'Day')}</strong></div><div class="forecast-row">High ${high} / Low ${low}</div><div class="forecast-row muted">${escapeHtml(r.narrative || '')}</div></article>`;
     }).join('');
 }
 
@@ -239,7 +228,7 @@ async function loadForecast() {
     try {
         await loadForecast();
     } catch (error) {
-        document.getElementById('daily-forecast').innerHTML = `<div class="muted">${escapeHtml(FORECAST_APP.i18n.failedCache)}</div>`;
+        document.getElementById('daily-forecast').innerHTML = '<div class="muted">Failed to load forecast cache.</div>';
         console.error(error);
     }
 })();
