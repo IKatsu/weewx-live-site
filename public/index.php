@@ -121,6 +121,11 @@ render_site_header('PWS Live Dashboard', default_nav_links(), [
 
     <section class="cards" id="cards"></section>
 
+    <section id="optional-chart-section" hidden>
+        <h2 class="section-title">Optional Sensor Graphs</h2>
+        <section class="charts" id="optional-charts"></section>
+    </section>
+
     <nav class="range-toolbar" id="range-toolbar">
         <button class="range-btn active" data-range="today">Today</button>
         <button class="range-btn" data-range="yesterday">Yesterday</button>
@@ -260,6 +265,7 @@ const APP = {
     themes: <?= json_encode(array_keys($cssThemes)) ?>,
     graphToggles: <?= json_encode($graphToggles) ?>,
     batteryStatusLabels: <?= json_encode($config['ui']['battery_status_labels'] ?? []) ?>,
+    optionalMetricGroups: <?= json_encode((array) ($config['optional_metric_groups'] ?? [])) ?>,
     location: <?= json_encode($locationConfig) ?>,
     forecast: <?= json_encode($forecastConfig) ?>,
     timeFormat: <?= json_encode($timeFormat) ?>,
@@ -330,9 +336,20 @@ const graphFieldRequirements = {
 };
 
 const batteryMetricKeys = ['windBatteryStatus', 'rainBatteryStatus', 'lightning_Batt', 'pm25_Batt1', 'inTempBatteryStatus'];
+const firstWaveOptionalGroups = ['extra_temperature', 'extra_humidity', 'co2_family', 'soil_moisture', 'soil_temperature', 'lightning_extended'];
 
 function graphEnabled(key) {
     return APP.graphToggles[key] !== false;
+}
+
+function optionalGroupConfig(groupKey) {
+    const groups = APP.optionalMetricGroups || {};
+    return groups[groupKey] || null;
+}
+
+function optionalGroupEnabled(groupKey) {
+    const cfg = optionalGroupConfig(groupKey);
+    return !!(cfg && cfg.enabled === true);
 }
 
 function requiredHistoryFields() {
@@ -340,6 +357,11 @@ function requiredHistoryFields() {
     for (const [key, req] of Object.entries(graphFieldRequirements)) {
         if (!graphEnabled(key)) continue;
         for (const field of req) fields.add(field);
+    }
+    for (const groupKey of firstWaveOptionalGroups) {
+        if (!optionalGroupEnabled(groupKey)) continue;
+        const metrics = optionalGroupConfig(groupKey)?.metrics || {};
+        for (const field of Object.keys(metrics)) fields.add(field);
     }
     return Array.from(fields);
 }
@@ -1461,6 +1483,188 @@ function destroyCharts() {
     state.windRosePlotly = false;
 }
 
+function unitLabelForMetric(field, fallbackUnits = {}) {
+    const latestUnit = state.latest?.metrics?.[field]?.unit || '';
+    if (latestUnit !== '') return latestUnit;
+
+    const groups = APP.optionalMetricGroups || {};
+    for (const groupCfg of Object.values(groups)) {
+        const spec = groupCfg?.metrics?.[field];
+        if (!spec) continue;
+        const unitKey = String(spec.unit || '');
+        if (unitKey === 'temperature') return fallbackUnits.temperature || '°C';
+        if (unitKey === 'humidity') return fallbackUnits.humidity || '%';
+        if (unitKey === 'rain') return fallbackUnits.rain || '';
+        if (unitKey === 'rain_rate') return fallbackUnits.rain_rate || '';
+        if (unitKey === 'voltage') return 'V';
+        if (unitKey === 'ppm') return 'ppm';
+        if (unitKey === 'percent') return '%';
+        if (unitKey === 'seconds') return 's';
+        if (unitKey === 'count') return 'count';
+        if (unitKey === 'km') return 'km';
+        if (unitKey === 'mm') return 'mm';
+        if (unitKey === 'usiecm') return 'µS/cm';
+        if (unitKey === 'index') return 'index';
+        return '';
+    }
+    return '';
+}
+
+function visibleSeriesFields(historySeries, fieldNames) {
+    return fieldNames.filter((field) => Array.isArray(historySeries[field]) && historySeries[field].length > 0);
+}
+
+function paletteColor(index) {
+    const colors = ['#cf3f2f', '#1177cc', '#2f7f40', '#9e7f09', '#7c5cff', '#8a3f7c', '#c18a00', '#309088', '#6f4a1f', '#40658f', '#cf5a30', '#3c8ac5'];
+    return colors[index % colors.length];
+}
+
+function createOptionalChartCard(host, chartId, title) {
+    const article = document.createElement('article');
+    article.className = 'chart-card';
+    article.innerHTML = `
+        <h3 class="chart-title">${escapeHtml(title)}</h3>
+        <div class="chart-wrap"><canvas id="${escapeHtml(chartId)}"></canvas></div>
+    `;
+    host.appendChild(article);
+}
+
+function buildOptionalCharts(history, xMin, xMax) {
+    const section = document.getElementById('optional-chart-section');
+    const host = document.getElementById('optional-charts');
+    if (!section || !host) return;
+
+    host.innerHTML = '';
+    const units = history.units || {};
+    const s = history.series || {};
+    let renderedCount = 0;
+
+    function mountLineChart(chartId, title, fields, options = {}) {
+        const usable = visibleSeriesFields(s, fields);
+        if (usable.length === 0) return;
+        createOptionalChartCard(host, chartId, title);
+        const cfg = lineOptions(xMin, xMax);
+        cfg.data = {
+            datasets: usable.map((field, index) => {
+                const color = paletteColor(index);
+                const label = options.labelFormatter
+                    ? options.labelFormatter(field)
+                    : `${state.latest?.metrics?.[field]?.label || field} (${unitLabelForMetric(field, units)})`.trim();
+                return {
+                    label,
+                    data: s[field] || [],
+                    borderColor: color,
+                    backgroundColor: color,
+                    yAxisID: options.datasetOptions?.[field]?.yAxisID || 'y',
+                    type: options.datasetOptions?.[field]?.type || 'line',
+                };
+            }),
+        };
+        if (options.scales?.y) cfg.options.scales.y = options.scales.y;
+        if (options.scales?.y1) cfg.options.scales.y1 = options.scales.y1;
+        state.charts[chartId] = new Chart(document.getElementById(chartId), cfg);
+        renderedCount += 1;
+    }
+
+    if (optionalGroupEnabled('extra_temperature')) {
+        mountLineChart('chart-opt-extra-temp', 'Extra Temperature Channels', Object.keys(optionalGroupConfig('extra_temperature')?.metrics || {}));
+    }
+
+    if (optionalGroupEnabled('extra_humidity')) {
+        mountLineChart('chart-opt-extra-humidity', 'Extra Humidity Channels', Object.keys(optionalGroupConfig('extra_humidity')?.metrics || {}), {
+            scales: { y: { suggestedMin: 0, suggestedMax: 100 } },
+        });
+    }
+
+    if (optionalGroupEnabled('co2_family')) {
+        mountLineChart('chart-opt-co2', 'CO2 Levels', ['co2', 'co2in']);
+        const companion = visibleSeriesFields(s, ['co2_Temp', 'co2_Hum']);
+        if (companion.length > 0) {
+            createOptionalChartCard(host, 'chart-opt-co2-companion', 'CO2 Companion Temperature / Humidity');
+            const cfg = lineOptions(xMin, xMax);
+            cfg.data = {
+                datasets: [
+                    ...(Array.isArray(s.co2_Temp) && s.co2_Temp.length > 0 ? [{
+                        label: `CO2 Sensor Temperature (${unitLabelForMetric('co2_Temp', units)})`,
+                        data: s.co2_Temp,
+                        borderColor: '#cf5a30',
+                        backgroundColor: '#cf5a30',
+                        yAxisID: 'y',
+                    }] : []),
+                    ...(Array.isArray(s.co2_Hum) && s.co2_Hum.length > 0 ? [{
+                        label: `CO2 Sensor Humidity (${unitLabelForMetric('co2_Hum', units)})`,
+                        data: s.co2_Hum,
+                        borderColor: '#1177cc',
+                        backgroundColor: '#1177cc',
+                        yAxisID: 'y1',
+                    }] : []),
+                ],
+            };
+            cfg.options.scales.y = { position: 'left' };
+            cfg.options.scales.y1 = { position: 'right', grid: { drawOnChartArea: false }, suggestedMin: 0, suggestedMax: 100 };
+            state.charts['chart-opt-co2-companion'] = new Chart(document.getElementById('chart-opt-co2-companion'), cfg);
+            renderedCount += 1;
+        }
+    }
+
+    if (optionalGroupEnabled('soil_moisture')) {
+        mountLineChart('chart-opt-soil-moisture', 'Soil Moisture Channels', Object.keys(optionalGroupConfig('soil_moisture')?.metrics || {}), {
+            scales: { y: { suggestedMin: 0, suggestedMax: 100 } },
+        });
+    }
+
+    if (optionalGroupEnabled('soil_temperature')) {
+        mountLineChart('chart-opt-soil-temp', 'Soil Temperature Channels', Object.keys(optionalGroupConfig('soil_temperature')?.metrics || {}));
+    }
+
+    if (optionalGroupEnabled('lightning_extended')) {
+        const lightningFields = visibleSeriesFields(s, ['lightning_distance', 'lightning_disturber_count', 'lightning_energy', 'lightning_noise_count']);
+        if (lightningFields.length > 0) {
+            createOptionalChartCard(host, 'chart-opt-lightning', 'Lightning Diagnostics');
+            const cfg = lineOptions(xMin, xMax);
+            cfg.data = {
+                datasets: [
+                    ...(Array.isArray(s.lightning_distance) && s.lightning_distance.length > 0 ? [{
+                        label: `Lightning Distance (${unitLabelForMetric('lightning_distance', units)})`,
+                        data: s.lightning_distance,
+                        borderColor: '#40658f',
+                        backgroundColor: '#40658f',
+                        yAxisID: 'y',
+                    }] : []),
+                    ...(Array.isArray(s.lightning_disturber_count) && s.lightning_disturber_count.length > 0 ? [{
+                        label: 'Lightning Disturber Count',
+                        data: s.lightning_disturber_count,
+                        borderColor: '#9e7f09',
+                        backgroundColor: 'rgba(158,127,9,0.28)',
+                        type: 'bar',
+                        yAxisID: 'y1',
+                    }] : []),
+                    ...(Array.isArray(s.lightning_noise_count) && s.lightning_noise_count.length > 0 ? [{
+                        label: 'Lightning Noise Count',
+                        data: s.lightning_noise_count,
+                        borderColor: '#8a3f7c',
+                        backgroundColor: '#8a3f7c',
+                        yAxisID: 'y1',
+                    }] : []),
+                    ...(Array.isArray(s.lightning_energy) && s.lightning_energy.length > 0 ? [{
+                        label: 'Lightning Energy',
+                        data: s.lightning_energy,
+                        borderColor: '#cf3f2f',
+                        backgroundColor: '#cf3f2f',
+                        yAxisID: 'y1',
+                    }] : []),
+                ],
+            };
+            cfg.options.scales.y = { position: 'left' };
+            cfg.options.scales.y1 = { position: 'right', grid: { drawOnChartArea: false } };
+            state.charts['chart-opt-lightning'] = new Chart(document.getElementById('chart-opt-lightning'), cfg);
+            renderedCount += 1;
+        }
+    }
+
+    section.hidden = renderedCount === 0;
+}
+
 function buildCharts(history) {
     const units = history.units || {};
     const s = history.series || {};
@@ -1730,6 +1934,7 @@ function buildCharts(history) {
     batteryChart('chart-batt-lightning', 'Lightning Battery', s.lightning_Batt, '#9f7a19');
     batteryChart('chart-batt-pm25', 'PM2.5 Battery', s.pm25_Batt1, '#6b4ea5');
     batteryChart('chart-batt-indoor', 'Indoor Temp Battery', s.inTempBatteryStatus, '#40658f');
+    buildOptionalCharts(history, xMin, xMax);
 }
 
 async function loadLatest() {
