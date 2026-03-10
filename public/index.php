@@ -1993,7 +1993,7 @@ function buildCharts(history) {
         const textColor = (theme.getPropertyValue('--text') || '').trim() || '#102137';
         const borderColor = (theme.getPropertyValue('--border') || '').trim() || '#d7e1ec';
 
-        const traces = rose.datasets.map((d) => ({
+        const traces = [...rose.datasets].reverse().map((d) => ({
             type: 'barpolar',
             name: d.label,
             theta: rose.sectors,
