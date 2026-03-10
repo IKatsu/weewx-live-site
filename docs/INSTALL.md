@@ -211,7 +211,7 @@ With `ui.plotly_js = 'auto'`, the site will automatically use the newest `plotly
 5. Confirm the range buttons (`Today`, `Yesterday`, `Last Week`, `Last Month`, `Last Year`) reload history successfully.
 6. Confirm rain chart shows both rain rate and hourly rain sum.
 7. Confirm battery charts render for wind/rain/lightning/pm25 battery fields.
-8. Confirm `php src/cli/fetch_wu_forecast.php --force` succeeds and dashboard forecast panels fill.
+8. Confirm `php src/cli/fetch_forecast.php --force` succeeds and dashboard forecast panels fill.
 
 API format check:
 
@@ -221,7 +221,7 @@ API format check:
    - `/api/dump.php?type=xml&limit=500&offset=0`
    - If `api.dump_token` is configured, include `token=...` or `X-Api-Token` header
 
-## 9. WU forecast DB cache (option 1)
+## 9. Forecast DB cache (WU or OpenWeather)
 
 Apply the SQL schema (run with a user that has CREATE TABLE rights):
 
@@ -231,15 +231,21 @@ mysql -u DB_USER -p DB_NAME < docs/sql/create_pws_wu_forecast_cache.sql
 
 Then set in `src/config.local.php`:
 
-- `forecast.provider = 'wu'`
-- `forecast.wu_api_key = '...'`
-- station geocode via `location.latitude` + `location.longitude` (or `forecast.wu_latitude` / `forecast.wu_longitude`)
+- `forecast.provider = 'wu'` or `forecast.provider = 'openweather'`
+- WU:
+  - `forecast.wu_api_key = '...'`
+  - optional `forecast.wu_hourly_enabled = false` for daily-only WU plans
+- OpenWeather:
+  - `forecast.owm_api_key = '...'`
+  - `forecast.owm_mode = 'onecall_3'` (paid One Call API 3.0) or `forecast.owm_mode = 'free_5d'` (free plan)
+- station geocode via `location.latitude` + `location.longitude` (or provider-specific `wu_*` / `owm_*` overrides)
+- `forecast.refresh_interval_seconds = 1800` to keep single-call providers around 48 calls/day (<50/day)
 - `forecast_writer_db.*` to use a cron-only DB account for forecast cache writes
 
-Cron example (15 min):
+Cron example (30 min):
 
 ```cron
-*/15 * * * * cd /path/to/pws-live-site && php src/cli/fetch_wu_forecast.php >> /var/log/pws-forecast-cron.log 2>&1
+*/30 * * * * cd /path/to/pws-live-site && php src/cli/fetch_forecast.php >> /var/log/pws-forecast-cron.log 2>&1
 ```
 
 ## 10. WeeWX custom_obs extension (optional but recommended for skyfield live fields)

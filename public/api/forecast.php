@@ -31,7 +31,7 @@ require_once dirname($bootstrapPath) . '/forecast_cache.php';
 $config = app_config();
 
 // Forecast API is cache-backed only; live HTTP calls happen via cron script.
-if (($config['forecast']['provider'] ?? 'none') !== 'wu') {
+if (($config['forecast']['provider'] ?? 'none') === 'none') {
     json_response([
         'provider' => $config['forecast']['provider'] ?? 'none',
         'dashboard' => [

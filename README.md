@@ -81,9 +81,11 @@ Environment variables (optional overrides):
 - `PWS_HISTORY_DEFAULT_HOURS` (default `24`)
 - `PWS_HISTORY_MAX_HOURS` (default `8784`)
 - `PWS_WU_API_KEY` (overrides `forecast.wu_api_key`)
+- `PWS_OWM_API_KEY` (overrides `forecast.owm_api_key`)
+- `PWS_FORECAST_PROVIDER` (`wu`, `openweather`, `none`)
 - `PWS_FORECAST_DB_HOST`, `PWS_FORECAST_DB_PORT`, `PWS_FORECAST_DB_NAME`, `PWS_FORECAST_DB_USER`, `PWS_FORECAST_DB_PASS`
 
-## Forecast cache setup (WU option 1)
+## Forecast cache setup (WU or OpenWeather)
 
 1. Apply SQL schema:
 
@@ -91,23 +93,28 @@ Environment variables (optional overrides):
 mysql -u DB_USER -p DB_NAME < docs/sql/create_pws_wu_forecast_cache.sql
 ```
 
-2. Configure WU values in `src/config.local.php`:
-- `forecast.provider = 'wu'`
-- `forecast.wu_api_key`
-- Set `forecast.wu_hourly_enabled = false` if your plan only includes daily forecast APIs.
-- `location.latitude` / `location.longitude` (used by both astro widgets and, by default, WU geocode)
+2. Configure forecast values in `src/config.local.php`:
+- `forecast.provider = 'wu'` or `forecast.provider = 'openweather'`
+- For WU:
+  - `forecast.wu_api_key`
+  - optional `forecast.wu_hourly_enabled = false` if your subscription only includes daily APIs
+- For OpenWeather:
+  - `forecast.owm_api_key`
+  - `forecast.owm_mode = 'onecall_3'` (paid) or `'free_5d'` (free 3-hour endpoint)
+- `location.latitude` / `location.longitude` (default geocode source for both providers)
+- `forecast.refresh_interval_seconds = 1800` keeps single-call providers at ~48 calls/day (<50/day target)
 - `forecast_writer_db.*` for the cron writer account (optional but recommended)
 
 3. Refresh cache manually:
 
 ```bash
-php src/cli/fetch_wu_forecast.php --force
+php src/cli/fetch_forecast.php --force
 ```
 
-4. Add cron (example every 15 minutes):
+4. Add cron (example every 30 minutes, ~48 calls/day):
 
 ```cron
-*/15 * * * * cd /path/to/pws-live-site && php src/cli/fetch_wu_forecast.php >> /var/log/pws-forecast-cron.log 2>&1
+*/30 * * * * cd /path/to/pws-live-site && php src/cli/fetch_forecast.php >> /var/log/pws-forecast-cron.log 2>&1
 ```
 
 ## Prediction setup (hybrid local + WU guardrails)
@@ -145,7 +152,7 @@ Required archive fields for prediction:
 - `rainRate`
 
 Optional for better hybrid behavior:
-- WU daily forecast cache table (`pws_wu_forecast_cache`) populated by `fetch_wu_forecast.php`
+- Daily forecast cache table (`pws_wu_forecast_cache`) populated by `fetch_forecast.php`
 
 ## Path and theme configuration
 

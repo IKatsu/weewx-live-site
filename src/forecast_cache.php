@@ -10,6 +10,12 @@ function arr_idx(array $array, int $idx, mixed $default = null): mixed
     return array_key_exists($idx, $array) ? $array[$idx] : $default;
 }
 
+function forecast_provider(array $config): string
+{
+    $provider = strtolower(trim((string) ($config['forecast']['provider'] ?? 'none')));
+    return $provider === '' ? 'none' : $provider;
+}
+
 function forecast_cache_table(array $config): string
 {
     // Table name is configurable but must stay a plain SQL identifier.
@@ -46,7 +52,7 @@ function forecast_http_get_json(string $url, int $timeoutSeconds = 10): array
         curl_close($ch);
 
         if ($raw === false || $raw === '') {
-            throw new RuntimeException('WU request failed: ' . ($error !== '' ? $error : 'empty response'));
+            throw new RuntimeException('Forecast request failed: ' . ($error !== '' ? $error : 'empty response'));
         }
         if ($code >= 400) {
             $decodedError = json_decode((string) $raw, true);
@@ -71,7 +77,7 @@ function forecast_http_get_json(string $url, int $timeoutSeconds = 10): array
                     }
                 }
             }
-            throw new RuntimeException('WU request failed with HTTP ' . $code . $errorSummary);
+            throw new RuntimeException('Forecast request failed with HTTP ' . $code . $errorSummary);
         }
 
         $decoded = json_decode($raw, true);
@@ -92,7 +98,7 @@ function forecast_http_get_json(string $url, int $timeoutSeconds = 10): array
 
     $raw = @file_get_contents($url, false, $context);
     if ($raw === false || $raw === '') {
-        throw new RuntimeException('WU request failed via file_get_contents');
+        throw new RuntimeException('Forecast request failed via file_get_contents');
     }
 
     $decoded = json_decode($raw, true);
@@ -152,9 +158,10 @@ function wu_fetch_daily(array $config): array
     return forecast_http_get_json(wu_endpoint_url($config, $path));
 }
 
-function forecast_read_dataset(PDO $pdo, array $config, string $dataset): ?array
+function forecast_read_dataset(PDO $pdo, array $config, string $dataset, ?string $provider = null): ?array
 {
     // Each dataset (hourly/daily) is cached in one row keyed by provider+dataset.
+    $provider = $provider !== null ? strtolower($provider) : forecast_provider($config);
     $table = forecast_cache_table($config);
     $sql = "SELECT dataset, payload_json, fetched_at, expires_at, source_status, source_error
             FROM {$table}
@@ -162,7 +169,7 @@ function forecast_read_dataset(PDO $pdo, array $config, string $dataset): ?array
             LIMIT 1";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
-        ':provider' => 'wu',
+        ':provider' => $provider,
         ':dataset' => $dataset,
     ]);
 
@@ -186,20 +193,22 @@ function forecast_read_dataset(PDO $pdo, array $config, string $dataset): ?array
     ];
 }
 
-function forecast_read_all(PDO $pdo, array $config): array
+function forecast_read_all(PDO $pdo, array $config, ?string $provider = null): array
 {
+    $provider = $provider !== null ? strtolower($provider) : forecast_provider($config);
     return [
-        'hourly' => forecast_read_dataset($pdo, $config, 'hourly'),
-        'daily' => forecast_read_dataset($pdo, $config, 'daily'),
+        'hourly' => forecast_read_dataset($pdo, $config, 'hourly', $provider),
+        'daily' => forecast_read_dataset($pdo, $config, 'daily', $provider),
     ];
 }
 
-function forecast_last_fetch_time(PDO $pdo, array $config): ?DateTimeImmutable
+function forecast_last_fetch_time(PDO $pdo, array $config, ?string $provider = null): ?DateTimeImmutable
 {
+    $provider = $provider !== null ? strtolower($provider) : forecast_provider($config);
     $table = forecast_cache_table($config);
     $sql = "SELECT MAX(fetched_at) AS fetched_at FROM {$table} WHERE provider = :provider";
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([':provider' => 'wu']);
+    $stmt->execute([':provider' => $provider]);
 
     $value = (string) ($stmt->fetchColumn() ?: '');
     if ($value === '') {
@@ -213,12 +222,12 @@ function forecast_last_fetch_time(PDO $pdo, array $config): ?DateTimeImmutable
     }
 }
 
-function forecast_should_refresh(PDO $pdo, array $config): bool
+function forecast_should_refresh(PDO $pdo, array $config, ?string $provider = null): bool
 {
     // Refresh policy is time-based so dashboard/API reads never trigger vendor calls.
     $forecast = (array) ($config['forecast'] ?? []);
     $interval = max(60, (int) ($forecast['refresh_interval_seconds'] ?? 900));
-    $last = forecast_last_fetch_time($pdo, $config);
+    $last = forecast_last_fetch_time($pdo, $config, $provider);
     if ($last === null) {
         return true;
     }
@@ -227,8 +236,9 @@ function forecast_should_refresh(PDO $pdo, array $config): bool
     return $age >= $interval;
 }
 
-function forecast_write_dataset(PDO $pdo, array $config, string $dataset, array $payload, int $sourceStatus = 200, string $sourceError = ''): void
+function forecast_write_dataset(PDO $pdo, array $config, string $dataset, array $payload, int $sourceStatus = 200, string $sourceError = '', ?string $provider = null): void
 {
+    $provider = $provider !== null ? strtolower($provider) : forecast_provider($config);
     $forecast = (array) ($config['forecast'] ?? []);
     $ttl = max(60, (int) ($forecast['cache_ttl_seconds'] ?? 900));
     $now = forecast_now_utc();
@@ -246,15 +256,20 @@ function forecast_write_dataset(PDO $pdo, array $config, string $dataset, array 
                 source_error = VALUES(source_error),
                 updated_at = CURRENT_TIMESTAMP";
 
-    $cfgLat = (float) ($forecast['wu_latitude'] ?? 0.0);
-    $cfgLon = (float) ($forecast['wu_longitude'] ?? 0.0);
+    if ($provider === 'openweather') {
+        $cfgLat = (float) ($forecast['owm_latitude'] ?? 0.0);
+        $cfgLon = (float) ($forecast['owm_longitude'] ?? 0.0);
+    } else {
+        $cfgLat = (float) ($forecast['wu_latitude'] ?? 0.0);
+        $cfgLon = (float) ($forecast['wu_longitude'] ?? 0.0);
+    }
     $lat = (abs($cfgLat) < 0.000001) ? (float) ($config['location']['latitude'] ?? 0.0) : $cfgLat;
     $lon = (abs($cfgLon) < 0.000001) ? (float) ($config['location']['longitude'] ?? 0.0) : $cfgLon;
     $locationKey = sprintf('%.4f,%.4f', $lat, $lon);
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
-        ':provider' => 'wu',
+        ':provider' => $provider,
         ':dataset' => $dataset,
         ':location_key' => $locationKey,
         ':payload_json' => json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
@@ -307,7 +322,7 @@ function forecast_parse_hourly_for_dashboard(array $hourlyPayload, int $takeHour
     return $rows;
 }
 
-function forecast_parse_tomorrow(array $dailyPayload): ?array
+function forecast_parse_tomorrow(array $dailyPayload, string $timezone = 'UTC'): ?array
 {
     $valid = (array) ($dailyPayload['validTimeLocal'] ?? []);
     $dayOfWeek = (array) ($dailyPayload['dayOfWeek'] ?? []);
@@ -321,14 +336,22 @@ function forecast_parse_tomorrow(array $dailyPayload): ?array
     $moonPhase = (array) ($dailyPayload['moonPhase'] ?? []);
     $moonPhaseCode = (array) ($dailyPayload['moonPhaseCode'] ?? []);
 
-    $tomorrow = (new DateTimeImmutable('now'))->modify('+1 day')->format('Y-m-d');
+    $tz = new DateTimeZone($timezone);
+    $tomorrow = (new DateTimeImmutable('now', $tz))->modify('+1 day')->format('Y-m-d');
     $idx = null;
 
     for ($i = 0, $n = count($valid); $i < $n; $i++) {
         $local = (string) arr_idx($valid, $i, '');
-        if ($local !== '' && str_starts_with($local, $tomorrow)) {
-            $idx = $i;
-            break;
+        if ($local !== '') {
+            try {
+                $localDate = (new DateTimeImmutable($local))->setTimezone($tz)->format('Y-m-d');
+                if ($localDate === $tomorrow) {
+                    $idx = $i;
+                    break;
+                }
+            } catch (Throwable) {
+                // Ignore parse failures and continue scanning.
+            }
         }
     }
 
@@ -389,7 +412,8 @@ function forecast_build_api_payload(array $config, array $cachedRows): array
     $dashboardHours = max(1, (int) ($config['forecast']['dashboard_hours'] ?? 5));
 
     $hourly = forecast_parse_hourly_for_dashboard($hourlyPayload, $dashboardHours);
-    $tomorrow = forecast_parse_tomorrow($dailyPayload);
+    $tz = (string) ($config['location']['timezone'] ?? 'UTC');
+    $tomorrow = forecast_parse_tomorrow($dailyPayload, $tz);
 
     return [
         'provider' => (string) ($config['forecast']['provider'] ?? 'none'),
