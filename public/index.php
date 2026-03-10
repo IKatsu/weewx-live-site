@@ -78,6 +78,7 @@ render_site_header('PWS Live Dashboard', default_nav_links(), [
                         <h2 id="current-condition">Current Weather</h2>
                         <div id="current-temp" class="current-temp">--</div>
                         <div id="current-sub" class="current-sub">Forecast provider: pending</div>
+                        <div id="current-air-quality" class="current-air-quality" hidden></div>
                     </div>
                     <div class="wind-compass-card" aria-label="Wind compass">
                         <div class="wind-compass-title">Wind</div>
@@ -120,11 +121,6 @@ render_site_header('PWS Live Dashboard', default_nav_links(), [
     </section>
 
     <section class="cards" id="cards"></section>
-
-    <section id="optional-chart-section" hidden>
-        <h2 class="section-title">Optional Sensor Graphs</h2>
-        <section class="charts" id="optional-charts"></section>
-    </section>
 
     <nav class="range-toolbar" id="range-toolbar">
         <button class="range-btn active" data-range="today">Today</button>
@@ -216,6 +212,11 @@ render_site_header('PWS Live Dashboard', default_nav_links(), [
         </article>
     </section>
 
+    <section id="optional-chart-section" hidden>
+        <h2 class="section-title">Environment Sensor Graphs</h2>
+        <section class="charts" id="optional-charts"></section>
+    </section>
+
     <h2 class="section-title">Battery Graphs</h2>
     <section class="charts">
         <article class="chart-card" data-graph="battery_wind">
@@ -237,6 +238,10 @@ render_site_header('PWS Live Dashboard', default_nav_links(), [
         <article class="chart-card" data-graph="battery_indoor">
             <h3 class="chart-title">Indoor Temp Battery</h3>
             <div class="chart-wrap"><canvas id="chart-batt-indoor"></canvas></div>
+        </article>
+        <article class="chart-card" data-graph="battery_generic_status" id="chart-card-batt-generic" hidden>
+            <h3 class="chart-title">Channel Battery Status</h3>
+            <div class="chart-wrap"><canvas id="chart-batt-generic"></canvas></div>
         </article>
     </section>
 </div>
@@ -265,11 +270,13 @@ const APP = {
     themes: <?= json_encode(array_keys($cssThemes)) ?>,
     graphToggles: <?= json_encode($graphToggles) ?>,
     batteryStatusLabels: <?= json_encode($config['ui']['battery_status_labels'] ?? []) ?>,
+    sensorThresholds: <?= json_encode($config['ui']['sensor_thresholds'] ?? []) ?>,
     optionalMetricGroups: <?= json_encode((array) ($config['optional_metric_groups'] ?? [])) ?>,
     location: <?= json_encode($locationConfig) ?>,
     forecast: <?= json_encode($forecastConfig) ?>,
     timeFormat: <?= json_encode($timeFormat) ?>,
     pollIntervalMs: <?= max(5000, ((int) ($config['ui']['poll_interval_seconds'] ?? 15)) * 1000) ?>,
+    mqttReconnectDelayMs: <?= max(1000, (int) ($config['ui']['mqtt_reconnect_delay_ms'] ?? 10000)) ?>,
     layout: {
         maxColumns: <?= max(1, $graphMaxColumns) ?>,
         minWidthPx: <?= max(220, $graphMinWidthPx) ?>,
@@ -289,10 +296,22 @@ const historyRanges = {
 const metricOrder = [
     'outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'appTemp', 'heatindex', 'windchill', 'humidex',
     'outHumidity', 'inHumidity', 'barometer', 'pressure', 'windSpeed', 'windGust', 'windDir', 'windrun',
-    'rainRate', 'rain', 'rainDur', 'UV', 'radiation', 'cloudbase', 'ET', 'solarAltitude', 'solarAzimuth', 'solarTime',
-    'lunarAltitude', 'lunarAzimuth', 'lunarTime', 'sunshineDur',
+    'rainRate', 'rain', 'UV', 'radiation', 'cloudbase', 'ET', 'solarAltitude', 'solarAzimuth', 'solarTime',
+    'lunarAltitude', 'lunarAzimuth', 'lunarTime',
     'pm2_5', 'lightning_strike_count', 'windBatteryStatus', 'rainBatteryStatus', 'lightning_Batt',
     'pm25_Batt1', 'inTempBatteryStatus'
+];
+
+const metricGroups = [
+    { title: 'Temperature', keys: ['outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'appTemp', 'heatindex', 'windchill', 'humidex'] },
+    { title: 'Humidity', keys: ['outHumidity', 'inHumidity'] },
+    { title: 'Wind', keys: ['windSpeed', 'windGust', 'windDir', 'windrun'] },
+    { title: 'Rain', keys: ['rainRate', 'rain', 'ET'] },
+    { title: 'Sun / Sky', keys: ['UV', 'radiation', 'cloudbase', 'solarAltitude', 'solarAzimuth', 'solarTime', 'lunarAltitude', 'lunarAzimuth', 'lunarTime'] },
+    { title: 'Pressure', keys: ['barometer', 'pressure'] },
+    { title: 'Air Quality', keys: ['pm2_5', 'pm1_0', 'pm4_0', 'pm10_0', 'pm25_2', 'pm25_3', 'pm25_4', 'co2', 'co2in', 'co2_Temp', 'co2_Hum'] },
+    { title: 'Lightning', keys: ['lightning_strike_count'] },
+    { title: 'Power / Battery', keys: ['windBatteryStatus', 'rainBatteryStatus', 'lightning_Batt', 'pm25_Batt1', 'inTempBatteryStatus'] },
 ];
 
 const state = {
@@ -358,9 +377,17 @@ function requiredHistoryFields() {
         if (!graphEnabled(key)) continue;
         for (const field of req) fields.add(field);
     }
+    // First-wave optional groups have dedicated chart builders, so their mapped
+    // fields must be requested up front from the history API when enabled.
     for (const groupKey of firstWaveOptionalGroups) {
         if (!optionalGroupEnabled(groupKey)) continue;
         const metrics = optionalGroupConfig(groupKey)?.metrics || {};
+        for (const field of Object.keys(metrics)) fields.add(field);
+    }
+    // Generic channel battery statuses live in the battery graph section, but
+    // they are still optional metrics rather than part of the built-in field set.
+    if (optionalGroupEnabled('generic_battery_status')) {
+        const metrics = optionalGroupConfig('generic_battery_status')?.metrics || {};
         for (const field of Object.keys(metrics)) fields.add(field);
     }
     return Array.from(fields);
@@ -484,6 +511,7 @@ function tempChipHtml(value, unit = '°C', decimals = 0) {
 
 function metricPalette(metricKey) {
     if (isTemperatureMetric(metricKey)) return 'temperature';
+    if (isPm25Metric(metricKey)) return 'air_quality_pm25';
     if (['rain', 'rainRate', 'ET', 'rainDur'].includes(metricKey)) return 'rain';
     if (['windSpeed', 'windGust', 'windrun'].includes(metricKey)) return 'wind';
     return 'default';
@@ -491,11 +519,51 @@ function metricPalette(metricKey) {
 
 function metricScale(metricKey) {
     if (isTemperatureMetric(metricKey)) return { min: -15, max: 35 };
+    if (isPm25Metric(metricKey)) return { min: 0, max: 140 };
     if (['rainRate'].includes(metricKey)) return { min: 0, max: 20 };
     if (['rain', 'ET'].includes(metricKey)) return { min: 0, max: 50 };
     if (['windSpeed', 'windGust'].includes(metricKey)) return { min: 0, max: 25 };
     if (['windrun'].includes(metricKey)) return { min: 0, max: 400 };
     return null;
+}
+
+function isPm25Metric(metricKey) {
+    return ['pm2_5', 'pm25_1', 'pm25_2', 'pm25_3', 'pm25_4'].includes(metricKey);
+}
+
+function isSoilMoistureMetric(metricKey) {
+    return /^soilMoist\d+$/.test(String(metricKey || ''));
+}
+
+function airQualityThresholds() {
+    return APP.sensorThresholds?.air_quality || {};
+}
+
+function soilMoistureThresholds() {
+    return APP.sensorThresholds?.soil_moisture || {};
+}
+
+function pm25BandInfo(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return null;
+
+    // Threshold bands are based on the PM2.5 column in the Dutch
+    // `Luchtmeetnet-luchtkwaliteitsindex` reference image kept in `reference/`.
+    const bands = [
+        { upper: 0, index: 1, color: [30, 102, 255] },
+        { upper: 10, index: 2, color: [104, 170, 242] },
+        { upper: 15, index: 3, color: [180, 214, 247] },
+        { upper: 20, index: 4, color: [221, 214, 170] },
+        { upper: 30, index: 5, color: [234, 229, 125] },
+        { upper: 40, index: 6, color: [240, 214, 0] },
+        { upper: 50, index: 7, color: [255, 180, 0] },
+        { upper: 70, index: 8, color: [255, 138, 0] },
+        { upper: 90, index: 9, color: [255, 92, 28] },
+        { upper: 100, index: 10, color: [225, 31, 38] },
+        { upper: Infinity, index: 11, color: [140, 22, 184] },
+    ];
+
+    return bands.find((band) => numeric <= band.upper) || bands[bands.length - 1];
 }
 
 function colorStops(palette) {
@@ -525,10 +593,23 @@ function applyMetricCardColor(cardNode, metricKey, value, unit = '') {
     if (!cardNode) return;
     const numeric = Number(value);
     cardNode.classList.remove('metric-tone-card');
+    cardNode.classList.remove('metric-alert-card', 'metric-alert-low', 'metric-alert-high');
     if (!Number.isFinite(numeric)) {
         cardNode.style.background = '';
         cardNode.style.borderColor = '';
         cardNode.style.removeProperty('--metric-rgb');
+        return;
+    }
+    if (isPm25Metric(metricKey)) {
+        const band = pm25BandInfo(numeric);
+        if (band) {
+            cardNode.classList.add('metric-tone-card');
+            cardNode.style.setProperty('--metric-rgb', `${band.color[0]},${band.color[1]},${band.color[2]}`);
+        }
+        const airAlertLevel = Number(airQualityThresholds().alert_level ?? 75);
+        if (Number.isFinite(airAlertLevel) && numeric > airAlertLevel) {
+            cardNode.classList.add('metric-alert-card', 'metric-alert-high');
+        }
         return;
     }
     const scale = metricScale(metricKey);
@@ -551,6 +632,15 @@ function applyMetricCardColor(cardNode, metricKey, value, unit = '') {
     const [r, g, b] = colorForRatio(metricPalette(metricKey), ratio);
     cardNode.classList.add('metric-tone-card');
     cardNode.style.setProperty('--metric-rgb', `${r},${g},${b}`);
+    if (isSoilMoistureMetric(metricKey)) {
+        const low = Number(soilMoistureThresholds().low ?? 20);
+        const high = Number(soilMoistureThresholds().high ?? 80);
+        if (Number.isFinite(low) && numeric < low) {
+            cardNode.classList.add('metric-alert-card', 'metric-alert-low');
+        } else if (Number.isFinite(high) && numeric > high) {
+            cardNode.classList.add('metric-alert-card', 'metric-alert-high');
+        }
+    }
 }
 
 function formatTimestamp(epochSeconds) {
@@ -995,29 +1085,60 @@ function renderCards() {
         valueNode.style.setProperty('--temp-base-rgb', `${tStyle.base[0]},${tStyle.base[1]},${tStyle.base[2]}`);
     }
 
-    const rendered = new Set();
-    for (const key of metricOrder) {
-        const metric = metrics[key];
-        if (!metric) continue;
-        rendered.add(key);
+    function buildCard(key, metric) {
         const card = document.createElement('article');
         card.className = 'card';
         card.dataset.metric = key;
         card.innerHTML = `<div class="label">${metric.label || key}</div><div class="value" id="metric-${key}">${formatMetricValue(key, metric.value, metric.unit)}</div>`;
         applyInitialTempTextStyle(card.querySelector('.value'), key, metric.value, metric.unit || '');
         applyMetricCardColor(card, key, metric.value, metric.unit || '');
-        cards.appendChild(card);
+        return card;
     }
 
-    for (const [key, metric] of Object.entries(metrics)) {
-        if (rendered.has(key)) continue;
-        const card = document.createElement('article');
-        card.className = 'card';
-        card.dataset.metric = key;
-        card.innerHTML = `<div class="label">${metric.label || key}</div><div class="value" id="metric-${key}">${formatMetricValue(key, metric.value, metric.unit)}</div>`;
-        applyInitialTempTextStyle(card.querySelector('.value'), key, metric.value, metric.unit || '');
-        applyMetricCardColor(card, key, metric.value, metric.unit || '');
-        cards.appendChild(card);
+    const rendered = new Set();
+    // Render the top summary as labeled sensor rows rather than one large flat
+    // grid. Anything not explicitly grouped falls through to "Other Sensors".
+    for (const group of metricGroups) {
+        const groupKeys = group.keys.filter((key) => metrics[key]);
+        if (groupKeys.length === 0) continue;
+
+        const section = document.createElement('section');
+        section.className = 'metric-group';
+        const title = document.createElement('h3');
+        title.className = 'metric-group-title';
+        title.textContent = group.title;
+        section.appendChild(title);
+
+        const grid = document.createElement('div');
+        grid.className = 'cards metric-group-grid';
+        for (const key of groupKeys) {
+            rendered.add(key);
+            grid.appendChild(buildCard(key, metrics[key]));
+        }
+        section.appendChild(grid);
+        cards.appendChild(section);
+    }
+
+    const remaining = metricOrder
+        .filter((key) => metrics[key] && !rendered.has(key))
+        .concat(Object.keys(metrics).filter((key) => !rendered.has(key) && !metricOrder.includes(key)));
+
+    if (remaining.length > 0) {
+        const section = document.createElement('section');
+        section.className = 'metric-group';
+        const title = document.createElement('h3');
+        title.className = 'metric-group-title';
+        title.textContent = 'Other Sensors';
+        section.appendChild(title);
+
+        const grid = document.createElement('div');
+        grid.className = 'cards metric-group-grid';
+        for (const key of remaining) {
+            rendered.add(key);
+            grid.appendChild(buildCard(key, metrics[key]));
+        }
+        section.appendChild(grid);
+        cards.appendChild(section);
     }
 }
 
@@ -1135,6 +1256,7 @@ function renderCurrentVisual(metrics) {
     const iconNode = document.getElementById('current-icon');
     const tempNode = document.getElementById('current-temp');
     const subNode = document.getElementById('current-sub');
+    const airNode = document.getElementById('current-air-quality');
     const condNode = document.getElementById('current-condition');
 
     if (iconNode) {
@@ -1161,6 +1283,24 @@ function renderCurrentVisual(metrics) {
     }
     if (subNode) {
         subNode.textContent = `Humidity ${formatValue(metrics?.outHumidity?.value, metrics?.outHumidity?.unit)}`;
+    }
+    if (airNode) {
+        const pmValue = metrics?.pm2_5?.value ?? metrics?.pm25_1?.value ?? null;
+        const pmUnit = metrics?.pm2_5?.unit || metrics?.pm25_1?.unit || 'µg/m³';
+        const band = pm25BandInfo(pmValue);
+        if (band) {
+            const airAlertLevel = Number(airQualityThresholds().alert_level ?? 75);
+            const isAlert = Number.isFinite(airAlertLevel) && Number(pmValue) > airAlertLevel;
+            airNode.hidden = false;
+            airNode.className = `current-air-quality${isAlert ? ' current-air-quality-alert' : ''}`;
+            airNode.style.setProperty('--aq-rgb', `${band.color[0]},${band.color[1]},${band.color[2]}`);
+            airNode.textContent = `Air Quality PM2.5 ${formatValue(pmValue, pmUnit)} (Index ${band.index})`;
+        } else {
+            airNode.hidden = true;
+            airNode.textContent = '';
+            airNode.className = 'current-air-quality';
+            airNode.style.removeProperty('--aq-rgb');
+        }
     }
     renderWindCompass(metrics || {});
 }
@@ -1736,8 +1876,8 @@ function buildCharts(history) {
     const pressure = lineOptions(xMin, xMax);
     pressure.data = {
         datasets: [
-            { label: `Barometer (${units.pressure || ''})`, data: s.barometer || [], borderColor: '#2f7f40', backgroundColor: '#2f7f40' },
-            { label: `Pressure (${units.pressure || ''})`, data: s.pressure || [], borderColor: '#309088', backgroundColor: '#309088' },
+            { label: `Sea-Level Pressure (${units.pressure || ''})`, data: s.barometer || [], borderColor: '#2f7f40', backgroundColor: '#2f7f40' },
+            { label: `Station Pressure (${units.pressure || ''})`, data: s.pressure || [], borderColor: '#309088', backgroundColor: '#309088' },
         ],
     };
     state.charts.pressure = new Chart(document.getElementById('chart-pressure'), pressure);
@@ -1934,6 +2074,48 @@ function buildCharts(history) {
     batteryChart('chart-batt-lightning', 'Lightning Battery', s.lightning_Batt, '#9f7a19');
     batteryChart('chart-batt-pm25', 'PM2.5 Battery', s.pm25_Batt1, '#6b4ea5');
     batteryChart('chart-batt-indoor', 'Indoor Temp Battery', s.inTempBatteryStatus, '#40658f');
+
+    const genericBatteryCard = document.getElementById('chart-card-batt-generic');
+    const genericBatteryFields = Object.keys(optionalGroupConfig('generic_battery_status')?.metrics || {});
+    const genericBatterySeries = visibleSeriesFields(s, genericBatteryFields);
+    if (genericBatteryCard) {
+        genericBatteryCard.hidden = !(optionalGroupEnabled('generic_battery_status') && genericBatterySeries.length > 0);
+    }
+    if (optionalGroupEnabled('generic_battery_status') && genericBatterySeries.length > 0) {
+        // These channels are status-like integer codes rather than voltages, so
+        // render them as stepped lines with mapped status labels on the y-axis.
+        const cfg = lineOptions(xMin, xMax);
+        const maxStatus = genericBatterySeries.reduce((maxValue, field) => {
+            const points = Array.isArray(s[field]) ? s[field] : [];
+            return Math.max(maxValue, ...points.map((point) => Math.round(Number(point?.y ?? 0))));
+        }, 0);
+        cfg.options.elements.line.stepped = true;
+        cfg.options.scales.y = {
+            beginAtZero: true,
+            suggestedMax: Math.max(1, maxStatus),
+            ticks: {
+                stepSize: 1,
+                callback(value) {
+                    const code = Math.round(Number(value));
+                    const mapped = batteryStatusLabel(code);
+                    return mapped !== '' ? `${mapped} (${code})` : `${code}`;
+                },
+            },
+            title: { display: true, text: 'Battery status' },
+        };
+        cfg.data = {
+            datasets: genericBatterySeries.map((field, index) => {
+                const color = paletteColor(index);
+                return {
+                    label: state.latest?.metrics?.[field]?.label || field,
+                    data: s[field] || [],
+                    borderColor: color,
+                    backgroundColor: color,
+                };
+            }),
+        };
+        state.charts['chart-batt-generic'] = new Chart(document.getElementById('chart-batt-generic'), cfg);
+    }
     buildOptionalCharts(history, xMin, xMax);
 }
 
@@ -2013,7 +2195,7 @@ function connectMqtt() {
 
     const options = {
         clean: true,
-        reconnectPeriod: 5000,
+        reconnectPeriod: APP.mqttReconnectDelayMs,
         connectTimeout: 8000,
     };
     if (APP.mqtt.username) options.username = APP.mqtt.username;

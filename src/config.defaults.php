@@ -20,6 +20,8 @@ return [
         'time_format' => '24h',
         // Browser polling interval for latest values when API polling is used.
         'poll_interval_seconds' => 15,
+        // Keep MQTT reconnects calm during transient broker/network outages.
+        'mqtt_reconnect_delay_ms' => 10000,
         'css_custom' => '',
         // "auto" selects the highest plotly-*.min.js found in public/assets/vendor.
         'plotly_js' => 'auto',
@@ -33,6 +35,18 @@ return [
             '4' => 'Critical',
             '5' => 'OK',
             '9' => 'Low',
+        ],
+        'sensor_thresholds' => [
+            'air_quality' => [
+                // Default alert threshold for air quality-related sensors. The
+                // dashboard currently applies this to PM2.5-style metrics first.
+                'alert_level' => 75,
+            ],
+            'soil_moisture' => [
+                // Default out-of-range markers; adjust per installation.
+                'low' => 20,
+                'high' => 80,
+            ],
         ],
         // Layout controls for all standard charts.
         'layout' => [

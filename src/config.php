@@ -186,6 +186,7 @@ function app_config(): array
                     : '24h',
             ],
             'poll_interval_seconds' => max(5, (int) env_value('PWS_UI_POLL_INTERVAL_SECONDS', (string) ($uiCfg['poll_interval_seconds'] ?? 15))),
+            'mqtt_reconnect_delay_ms' => max(1000, (int) ($uiCfg['mqtt_reconnect_delay_ms'] ?? 10000)),
             'plotly' => [
                 'js' => resolve_plotly_js_asset($uiCfg, $baseDir),
                 'wind_rose' => (bool) ($uiCfg['plotly_wind_rose'] ?? false),
@@ -193,6 +194,7 @@ function app_config(): array
             'layout' => (array) ($uiCfg['layout'] ?? []),
             'graphs' => (array) ($uiCfg['graphs'] ?? []),
             'battery_status_labels' => (array) ($uiCfg['battery_status_labels'] ?? []),
+            'sensor_thresholds' => (array) ($uiCfg['sensor_thresholds'] ?? []),
         ],
         'field_map' => (array) ($local['field_map'] ?? []),
         'location' => [

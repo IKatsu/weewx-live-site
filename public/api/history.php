@@ -90,11 +90,14 @@ try {
     }
 
     $mapped = [];
+    $missing = [];
     // Keep only mapped archive columns that physically exist in this database.
     foreach ($dbFields as $field) {
         $col = mapped_archive_column($config, $columns, $field);
         if ($col !== null) {
             $mapped[$field] = $col;
+        } else {
+            $missing[] = $field;
         }
     }
 
@@ -202,6 +205,9 @@ try {
         'endOffsetHours' => $endOffsetHours,
         'fields' => $fields,
         'availableFields' => array_keys($mapped),
+        // This is primarily useful for debugging field-map mismatches and sparse
+        // optional sensor rollouts; the frontend does not currently render it.
+        'missingFields' => $missing,
         'series' => $series,
         'usUnits' => $usUnits,
         'units' => $usUnits === null ? null : unit_map($usUnits),

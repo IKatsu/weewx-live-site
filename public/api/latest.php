@@ -35,15 +35,14 @@ $metricSpec = [
     'inTemp' => ['label' => 'Inside Temperature', 'unit' => 'temperature'],
     'outHumidity' => ['label' => 'Outside Humidity', 'unit' => 'humidity'],
     'inHumidity' => ['label' => 'Inside Humidity', 'unit' => 'humidity'],
-    'barometer' => ['label' => 'Barometer', 'unit' => 'pressure'],
-    'pressure' => ['label' => 'Pressure', 'unit' => 'pressure'],
+    'barometer' => ['label' => 'Sea-Level Pressure', 'unit' => 'pressure'],
+    'pressure' => ['label' => 'Station Pressure', 'unit' => 'pressure'],
     'windSpeed' => ['label' => 'Wind Speed', 'unit' => 'wind'],
     'windGust' => ['label' => 'Wind Gust', 'unit' => 'wind'],
     'windDir' => ['label' => 'Wind Direction', 'unit' => 'degree'],
     'windrun' => ['label' => 'Wind Run', 'unit' => 'wind'],
     'rainRate' => ['label' => 'Rain Rate', 'unit' => 'rain_rate'],
     'rain' => ['label' => 'Rain Total', 'unit' => 'rain'],
-    'rainDur' => ['label' => 'Rain Duration', 'unit' => 'seconds'],
     'radiation' => ['label' => 'Solar Radiation', 'unit' => 'radiation'],
     'UV' => ['label' => 'UV Index', 'unit' => 'uv'],
     'dewpoint' => ['label' => 'Dewpoint', 'unit' => 'temperature'],
@@ -60,7 +59,6 @@ $metricSpec = [
     'lunarAltitude' => ['label' => 'Lunar Altitude', 'unit' => 'degree'],
     'lunarAzimuth' => ['label' => 'Lunar Azimuth', 'unit' => 'degree'],
     'lunarTime' => ['label' => 'Lunar Time', 'unit' => 'hours'],
-    'sunshineDur' => ['label' => 'Sunshine Duration', 'unit' => 'seconds'],
     'pm2_5' => ['label' => 'PM2.5', 'unit' => 'ugm3'],
     'lightning_strike_count' => ['label' => 'Lightning Strikes', 'unit' => 'count'],
     'windBatteryStatus' => ['label' => 'Wind Battery', 'unit' => 'voltage'],
@@ -84,6 +82,11 @@ foreach ((array) ($config['optional_metric_groups'] ?? []) as $groupCfg) {
         ];
     }
 }
+
+// Local installation note: this site's `pm25_1` column mirrors the primary
+// `pm2_5` value. Suppress it here so the top-level latest metrics do not show
+// the same physical PM2.5 sensor twice.
+unset($metricSpec['pm25_1']);
 
 $unitOverride = [
     'degree' => '°',
@@ -120,10 +123,12 @@ try {
     ];
 
     $included = [];
+    $missing = [];
     // Select only metrics that are both configured and physically present in archive.
     foreach (array_keys($metricSpec) as $field) {
         $col = mapped_archive_column($config, $columns, $field);
         if ($col === null) {
+            $missing[] = $field;
             continue;
         }
         $select[] = sprintf('%s AS %s', $col, $field);
@@ -150,6 +155,7 @@ try {
             'label' => $spec['label'],
             'value' => $row[$field] ?? null,
             'unit' => $unit,
+            'missingColumn' => false,
         ];
     }
 
@@ -159,6 +165,9 @@ try {
         'usUnits' => (int) $row['usUnits'],
         'metrics' => $metrics,
         'availableFields' => $included,
+        // Keep missing configured fields visible to debug/admin consumers without
+        // exposing them as fake values in the normal latest metric payload.
+        'missingFields' => $missing,
     ]);
 } catch (Throwable $exception) {
     json_response([
