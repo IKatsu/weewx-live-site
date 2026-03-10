@@ -16,6 +16,8 @@ return [
             'dark' => 'assets/css/theme-dark.css',
         ],
         'default_theme' => 'bright',
+        'language_default' => 'en',
+        'languages' => ['en', 'nl', 'de', 'fr', 'es'],
         // Supported: "24h" (default) or "12h".
         'time_format' => '24h',
         // Browser polling interval for latest values when API polling is used.

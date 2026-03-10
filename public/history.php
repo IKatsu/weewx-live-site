@@ -355,7 +355,7 @@ try {
 
         $unit = $def['unit'] ?? ($unitMap[$def['unit_key'] ?? ''] ?? '');
         $sections[] = [
-            'label' => $def['label'],
+            'label' => tr((string) ($def['label_key'] ?? ''), (string) $def['label']),
             'unit' => (string) $unit,
             'decimals' => (int) $def['decimals'],
             'palette' => (string) ($def['palette'] ?? 'default'),
@@ -368,17 +368,17 @@ try {
     $sections = [];
 }
 ?>
-<?php render_page_head('Monthly History', $view); ?>
+<?php render_page_head(tr('history.page_title', 'Monthly History'), $view); ?>
 <body>
 <div class="history-wrap">
-<?php render_site_header('Monthly History', default_nav_links()); ?>
-    <h1 class="title">Monthly High / Average / Low History</h1>
-    <p class="muted">Monthly high/average/low by metric (Jan-Dec columns, last <?= (int) ($config['history']['lookback_years'] ?? 3) ?> years) using cached closed months plus live <code>archive_day_*</code> data for the current month.</p>
+<?php render_site_header(tr('history.page_title', 'Monthly History'), default_nav_links()); ?>
+    <h1 class="title"><?= htmlspecialchars(tr('history.title', 'Monthly High / Average / Low History'), ENT_QUOTES, 'UTF-8') ?></h1>
+    <p class="muted"><?= htmlspecialchars(tr('history.note', 'Monthly high/average/low by metric (Jan-Dec columns, last {years} years) using cached closed months plus live archive_day_* data for the current month.', ['years' => (int) ($config['history']['lookback_years'] ?? 3)]), ENT_QUOTES, 'UTF-8') ?></p>
 
     <?php if ($error !== null): ?>
-        <div class="history-card">Failed to load history: <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
+        <div class="history-card"><?= htmlspecialchars(tr('history.failed_load', 'Failed to load history: {error}', ['error' => $error]), ENT_QUOTES, 'UTF-8') ?></div>
     <?php elseif ($sections === []): ?>
-        <div class="history-card">No monthly history sections available for current field mappings.</div>
+        <div class="history-card"><?= htmlspecialchars(tr('history.no_sections', 'No monthly history sections available for current field mappings.'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php else: ?>
     <section class="history-grid">
         <?php foreach ($sections as $section): ?>
@@ -403,7 +403,7 @@ try {
                 <table class="history-table">
                     <thead>
                         <tr>
-                            <th>Year / Type</th>
+                            <th><?= htmlspecialchars(tr('history.year_type', 'Year / Type'), ENT_QUOTES, 'UTF-8') ?></th>
                             <?php foreach (month_labels_short() as $monthLabel): ?>
                                 <th><?= htmlspecialchars($monthLabel, ENT_QUOTES, 'UTF-8') ?></th>
                             <?php endforeach; ?>
@@ -413,19 +413,19 @@ try {
                         <?php foreach ($section['years'] as $year): ?>
                             <?php $bucket = $section['rows_by_year'][(string) $year]; ?>
                             <tr class="history-year-group history-year-group-start">
-                                <td><span class="history-year-label"><?= (int) $year ?></span> <span class="history-year-type">High</span></td>
+                                <td><span class="history-year-label"><?= (int) $year ?></span> <span class="history-year-type"><?= htmlspecialchars(tr('history.high', 'High'), ENT_QUOTES, 'UTF-8') ?></span></td>
                                 <?php foreach ($bucket['high'] as $v): ?>
                                     <td<?= cell_style($v, $highMin, $highMax, $section['palette'], $section['unit']) ?>><?= $section['palette'] === 'temperature' ? temp_text_html($v, $section['decimals'], $section['unit']) : fmt_val($v, $section['decimals']) ?></td>
                                 <?php endforeach; ?>
                             </tr>
                             <tr class="history-year-group">
-                                <td><span class="history-year-label"><?= (int) $year ?></span> <span class="history-year-type">Average</span></td>
+                                <td><span class="history-year-label"><?= (int) $year ?></span> <span class="history-year-type"><?= htmlspecialchars(tr('history.average', 'Average'), ENT_QUOTES, 'UTF-8') ?></span></td>
                                 <?php foreach ($bucket['avg'] as $v): ?>
                                     <td<?= cell_style($v, $avgMin, $avgMax, $section['palette'], $section['unit']) ?>><?= $section['palette'] === 'temperature' ? temp_text_html($v, $section['decimals'], $section['unit']) : fmt_val($v, $section['decimals']) ?></td>
                                 <?php endforeach; ?>
                             </tr>
                             <tr class="history-year-group history-year-group-end">
-                                <td><span class="history-year-label"><?= (int) $year ?></span> <span class="history-year-type">Low</span></td>
+                                <td><span class="history-year-label"><?= (int) $year ?></span> <span class="history-year-type"><?= htmlspecialchars(tr('history.low', 'Low'), ENT_QUOTES, 'UTF-8') ?></span></td>
                                 <?php foreach ($bucket['low'] as $v): ?>
                                     <td<?= cell_style($v, $lowMin, $lowMax, $section['palette'], $section['unit']) ?>><?= $section['palette'] === 'temperature' ? temp_text_html($v, $section['decimals'], $section['unit']) : fmt_val($v, $section['decimals']) ?></td>
                                 <?php endforeach; ?>

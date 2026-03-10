@@ -33,38 +33,44 @@ $view = page_view_context($config);
 $defaultTheme = (string) $view['default_theme'];
 $timeConfig = $config['ui']['time'] ?? ['format' => '24h'];
 $timeFormat = (string) ($timeConfig['format'] ?? '24h');
+$trendI18n = [
+    'themes' => tr('common.theme', 'Theme'),
+    'unavailable' => tr('common.unavailable', 'Unavailable'),
+    'noRainIndicators' => tr('trends.no_rain_indicators', 'No strong rain indicators at this time.'),
+    'failedLoad' => tr('trends.failed_load', 'Failed to load trends.'),
+];
 ?>
-<?php render_page_head('PWS Trends', $view); ?>
+<?php render_page_head(tr('trends.page_title', 'PWS Trends'), $view); ?>
 <body>
 <div class="forecast-wrap">
 <?php
-render_site_header('Trend Nowcast', default_nav_links(), [
-    '<div class="status-pill"><span>Window:</span> <strong id="window-hours">-</strong></div>',
-    '<div class="status-pill"><span>Updated:</span> <strong id="trend-updated">-</strong></div>',
+render_site_header(tr('trends.title', 'Trend Nowcast'), default_nav_links(), [
+    '<div class="status-pill"><span>' . htmlspecialchars(tr('status.window', 'Window'), ENT_QUOTES, 'UTF-8') . ':</span> <strong id="window-hours">-</strong></div>',
+    '<div class="status-pill"><span>' . htmlspecialchars(tr('status.updated', 'Updated'), ENT_QUOTES, 'UTF-8') . ':</span> <strong id="trend-updated">-</strong></div>',
 ]);
 ?>
 
     <section class="cards" id="trend-cards"></section>
 
     <article class="card">
-        <h2 class="chart-title">Rain Likelihood</h2>
-        <div id="rain-nowcast" class="forecast-row muted">Loading...</div>
+        <h2 class="chart-title"><?= htmlspecialchars(tr('trends.rain_likelihood', 'Rain Likelihood'), ENT_QUOTES, 'UTF-8') ?></h2>
+        <div id="rain-nowcast" class="forecast-row muted"><?= htmlspecialchars(tr('common.loading', 'Loading...'), ENT_QUOTES, 'UTF-8') ?></div>
         <ul id="rain-reasons" class="trend-reasons"></ul>
     </article>
 
     <article class="history-card">
-        <h2 class="history-title">Trend Details</h2>
+        <h2 class="history-title"><?= htmlspecialchars(tr('trends.trend_details', 'Trend Details'), ENT_QUOTES, 'UTF-8') ?></h2>
         <div class="history-table-wrap">
             <table class="history-table" id="trend-table">
                 <thead>
                     <tr>
-                        <th>Metric</th>
-                        <th>Current</th>
-                        <th>Direction</th>
-                        <th>Slope per hour</th>
-                        <th>Prediction</th>
-                        <th>Confidence</th>
-                        <th>Samples</th>
+                        <th><?= htmlspecialchars(tr('trends.metric', 'Metric'), ENT_QUOTES, 'UTF-8') ?></th>
+                        <th><?= htmlspecialchars(tr('trends.current', 'Current'), ENT_QUOTES, 'UTF-8') ?></th>
+                        <th><?= htmlspecialchars(tr('trends.direction', 'Direction'), ENT_QUOTES, 'UTF-8') ?></th>
+                        <th><?= htmlspecialchars(tr('trends.slope_per_hour', 'Slope per hour'), ENT_QUOTES, 'UTF-8') ?></th>
+                        <th><?= htmlspecialchars(tr('trends.prediction', 'Prediction'), ENT_QUOTES, 'UTF-8') ?></th>
+                        <th><?= htmlspecialchars(tr('trends.confidence', 'Confidence'), ENT_QUOTES, 'UTF-8') ?></th>
+                        <th><?= htmlspecialchars(tr('trends.samples', 'Samples'), ENT_QUOTES, 'UTF-8') ?></th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -73,7 +79,7 @@ render_site_header('Trend Nowcast', default_nav_links(), [
     </article>
 
     <article class="card">
-        <h2 class="chart-title">Summary</h2>
+        <h2 class="chart-title"><?= htmlspecialchars(tr('trends.summary', 'Summary'), ENT_QUOTES, 'UTF-8') ?></h2>
         <ul id="trend-summary" class="trend-reasons"></ul>
     </article>
 </div>
@@ -83,6 +89,7 @@ const TREND_APP = {
     defaultTheme: <?= json_encode($defaultTheme) ?>,
     themes: <?= json_encode(array_keys((array) $view['css_themes'])) ?>,
     timeFormat: <?= json_encode($timeFormat) ?>,
+    i18n: <?= json_encode($trendI18n) ?>,
 };
 
 function setTheme(theme) {
@@ -167,7 +174,7 @@ function renderRainNowcast(rainNowcast) {
     const reasons = document.getElementById('rain-reasons');
     if (!box || !reasons) return;
     if (!rainNowcast) {
-        box.textContent = 'Unavailable';
+        box.textContent = TREND_APP.i18n.unavailable;
         reasons.innerHTML = '';
         return;
     }
@@ -181,7 +188,7 @@ function renderRainNowcast(rainNowcast) {
     }
     if (items.length === 0) {
         const li = document.createElement('li');
-        li.textContent = 'No strong rain indicators at this time.';
+        li.textContent = TREND_APP.i18n.noRainIndicators;
         reasons.appendChild(li);
     }
 }
@@ -239,7 +246,7 @@ async function loadTrends() {
     } catch (error) {
         console.error(error);
         const box = document.getElementById('rain-nowcast');
-        if (box) box.textContent = 'Failed to load trends.';
+        if (box) box.textContent = TREND_APP.i18n.failedLoad;
     }
 })();
 </script>

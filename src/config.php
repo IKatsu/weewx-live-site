@@ -187,6 +187,11 @@ function app_config(): array
                 'themes' => (array) ($uiCfg['css_themes'] ?? ['bright' => 'assets/css/theme-bright.css']),
                 'default_theme' => (string) ($uiCfg['default_theme'] ?? 'bright'),
                 'custom' => (string) ($uiCfg['css_custom'] ?? ''),
+                'language_default' => strtolower((string) ($uiCfg['language_default'] ?? 'en')),
+                'languages' => array_values(array_filter(array_map(
+                    static fn($lang) => strtolower(trim((string) $lang)),
+                    (array) ($uiCfg['languages'] ?? ['en'])
+                ), static fn($lang) => preg_match('/^[a-z]{2}$/', $lang) === 1)),
             ],
             'time' => [
                 'format' => in_array((string) ($uiCfg['time_format'] ?? '24h'), ['12h', '24h'], true)

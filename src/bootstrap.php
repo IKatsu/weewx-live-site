@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/i18n.php';
 
 function send_security_headers(?array $config = null): void
 {
