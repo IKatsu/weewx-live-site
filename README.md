@@ -269,6 +269,8 @@ weectl extension install https://github.com/matthewwall/weewx-mqtt/archive/maste
 
 Then add/configure `[StdRESTful][[MQTT]]` in `weewx.conf` (server URL, topic, binding `archive, loop`) so data is published to your broker topic used by this dashboard.
 
+If your WeeWX setup uses `METRICWX` for MQTT publishing, keep that setting. The dashboard handles MetricWX/Metric archive differences internally.
+
 Relative paths are resolved against `paths.base_dir`.
 
 ### Plotly auto-discovery

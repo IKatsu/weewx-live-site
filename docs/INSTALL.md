@@ -220,7 +220,7 @@ Then configure in `weewx.conf`:
     [[MQTT]]
         server_url = mqtt://weewx:YOUR_PASSWORD@localhost:1883
         topic = weewx
-        unit_system = METRIC
+        unit_system = METRICWX
         retain = true
         binding = archive, loop
         aggregation = aggregate
@@ -374,12 +374,12 @@ Then ensure archive columns exist for these observations:
 Add them with `weectl` on the WeeWX host:
 
 ```bash
-weectl database add-column solarAzimuth=REAL
-weectl database add-column solarAltitude=REAL
-weectl database add-column solarTime=REAL
-weectl database add-column lunarAzimuth=REAL
-weectl database add-column lunarAltitude=REAL
-weectl database add-column lunarTime=REAL
+weectl database add-column solarAzimuth
+weectl database add-column solarAltitude
+weectl database add-column solarTime
+weectl database add-column lunarAzimuth
+weectl database add-column lunarAltitude
+weectl database add-column lunarTime
 ```
 
 Restart WeeWX after database column changes so services and accumulators pick up the updated schema.
