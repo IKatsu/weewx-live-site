@@ -14,3 +14,7 @@ CREATE TABLE IF NOT EXISTS `pws_history_monthly_summary` (
   KEY `idx_pws_history_month_start` (`month_start`),
   KEY `idx_pws_history_source_column` (`source_column`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Reuse the localhost-only writer used by the forecast and prediction cron jobs.
+GRANT SELECT, INSERT, UPDATE ON weather.pws_history_monthly_summary TO 'pws_forecast_writer'@'localhost';
+FLUSH PRIVILEGES;
