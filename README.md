@@ -54,6 +54,23 @@ Open `http://127.0.0.1:8080`.
 - Optional (for WeeWX extension install): `weectl` command on the WeeWX 5+ host
 - Optional (for live browser updates): WeeWX MQTT extension [`matthewwall/weewx-mqtt`](https://github.com/matthewwall/weewx-mqtt)
 
+## Recommended install order
+
+1. Install system packages (`php`, Apache, DB driver, optional Mosquitto).
+2. Deploy the project files so `public/` is the web root and `src/` stays outside the served path.
+3. Create `src/config.local.php` and configure:
+   - read-only website DB access
+   - optional forecast-writer DB access
+   - location
+   - MQTT broker settings
+4. Make sure the WeeWX archive already contains the fields you want to show.
+5. If needed, install the included WeeWX `custom_obs` extension and add missing archive columns with `weectl database add-column`.
+6. Restart WeeWX after any archive schema changes.
+7. If using live updates, install/configure Mosquitto and the WeeWX MQTT publisher extension.
+8. If using forecast/prediction pages, create the cache tables and schedule the CLI cron jobs.
+9. Drop Plotly into `public/assets/vendor` if you want the Plotly-based wind rose.
+10. Open the dashboard and verify cards, charts, MQTT, and forecast cache behavior.
+
 ## Configuration model
 
 - Safe defaults: `src/config.defaults.php` (tracked in git)
@@ -167,9 +184,12 @@ Edit `src/config.local.php` to control filesystem/UI settings and field mappings
 - `ui.css_*` and `ui.css_themes` for theme files
 - `ui.time_format` for clock style (`24h` default, or `12h`)
 - `ui.plotly_js` for plotly loading (`auto` default)
+- `ui.mqtt_reconnect_delay_ms` to slow MQTT reconnect attempts during broker/network outages (`10000` default)
 - `mqtt.enabled` to enable/disable live MQTT updates (`true` default)
 - `mqtt.expose_password` to explicitly expose MQTT password to browser JS (`false` default)
 - `ui.battery_status_labels` to map integer battery status codes (for example `5`) to text labels
+- `ui.sensor_thresholds.air_quality.alert_level` for PM2.5 warning highlighting (`75` default)
+- `ui.sensor_thresholds.soil_moisture.low` / `high` for soil moisture out-of-range highlighting
 - `ui.graphs.*` to enable/disable specific graphs
 - `field_map.*` to map logical fields to database column names
 
@@ -179,6 +199,11 @@ Keep `mqtt.expose_password = false` unless browser auth is unavoidable for your 
 Battery note:
 - Battery series are auto-detected as status-style values when they are integer codes (for example `0`, `1`, `5`, `9`).
 - In that case, cards/charts show status labels instead of assuming volts.
+
+Air-quality note:
+- The dashboard colors PM2.5 values using the Dutch `Luchtmeetnet` PM2.5 index-style bands.
+- The current-weather area also shows a PM2.5 air-quality pill.
+- `pm25_1` is suppressed in this installation because it duplicates the primary `pm2_5` reading.
 
 ### WeeWX MQTT extension setup (for live updates)
 
@@ -228,6 +253,8 @@ See:
     - `offset`
   - Optional token protection:
     - `token=...` query or `X-Api-Token` header when `api.dump_token` is configured
+
+There is currently no separate `docs/API.md`; the API summary lives here in the main README.
 
 ---
 Author: Codex (GPT-5)

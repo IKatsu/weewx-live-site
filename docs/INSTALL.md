@@ -23,7 +23,18 @@ Optional WeeWX-side requirement (if installing the included WeeWX extension pack
 
 - WeeWX 5+ with `weectl` command available.
 
-## 2. Deploy the project
+## 2. Recommended installation order
+
+1. Install the required OS packages.
+2. Deploy the PHP project so `public/` is the document root and `src/` remains outside the served path.
+3. Create `src/config.local.php` and configure the read-only DB account, location, and optional MQTT settings.
+4. Verify that the WeeWX archive already contains the fields you need.
+5. If you need solar/lunar custom observations, install the included `custom_obs` extension, add archive columns with `weectl database add-column`, then restart WeeWX.
+6. If you want live browser updates, install/configure Mosquitto and the WeeWX MQTT publisher extension.
+7. If you want forecast and prediction pages, create the cache tables and schedule the CLI cron jobs.
+8. Verify the dashboard, charts, MQTT, and forecast cache.
+
+## 3. Deploy the project
 
 Project path:
 
@@ -50,7 +61,7 @@ Example VirtualHost:
 </VirtualHost>
 ```
 
-## 3. Apache + SELinux notes
+## 4. Apache + SELinux notes
 
 If SELinux blocks Apache from remote DB access, allow outbound DB connections:
 
@@ -65,7 +76,7 @@ sudo systemctl enable --now httpd
 sudo systemctl restart httpd
 ```
 
-## 4. Runtime configuration (optional)
+## 5. Runtime configuration
 
 Create a local config file from template:
 
@@ -75,12 +86,15 @@ cp src/config.defaults.php src/config.local.php
 
 Edit `src/config.local.php` with your DB/MQTT settings and optional field mappings/graph toggles/themes.
 Set `ui.time_format` to `24h` (default) or `12h` for all displayed times.
+Set `ui.mqtt_reconnect_delay_ms` if you want slower MQTT reconnect attempts during outages (`10000` default).
 Set `ui.plotly_js` to:
 - `auto` (default): highest `plotly-*.min.js` in `public/assets/vendor`
 - explicit file path to pin a specific Plotly build
 Set `mqtt.enabled` to `false` if you want to run without live MQTT push updates.
 Set `mqtt.expose_password` to `true` only if browser-side MQTT auth is unavoidable.
 Use `ui.battery_status_labels` to label integer battery status codes (for example `5 = OK`).
+Use `ui.sensor_thresholds.air_quality.alert_level` to control PM2.5 warning highlighting (`75` default).
+Use `ui.sensor_thresholds.soil_moisture.low` / `high` to control soil moisture out-of-range highlighting.
 
 Environment variable overrides:
 
@@ -93,7 +107,7 @@ Environment variable overrides:
 
 If you run the site over HTTPS, use secure MQTT WebSocket (`wss://...`) to avoid browser mixed-content blocking.
 
-## 5. Mosquitto broker setup (MQTT/WebSocket)
+## 6. Mosquitto broker setup (MQTT/WebSocket)
 
 Reference config files in this repository:
 
@@ -159,7 +173,7 @@ The provided ACL grants:
 - `weewx`: read/write on `weewx/#`
 - `weewx-readonly`: read-only on `weewx/#`
 
-## 6. WeeWX MQTT publisher extension (for live updates)
+## 7. WeeWX MQTT publisher extension (for live updates)
 
 The dashboard's browser live updates require WeeWX to publish LOOP/archive data to MQTT.
 
@@ -188,7 +202,7 @@ Then configure in `weewx.conf`:
 
 If you skip this, set `mqtt.enabled = false` in this project so the UI does not try to connect.
 
-## 7. Plotly upgrades
+## 8. Plotly upgrades
 
 To upgrade Plotly, copy a new build into:
 
@@ -202,7 +216,7 @@ cp plotly-3.1.0.min.js /path/to/pws-live-site/public/assets/vendor/
 
 With `ui.plotly_js = 'auto'`, the site will automatically use the newest `plotly-*.min.js` file.
 
-## 8. Verification checklist
+## 9. Verification checklist
 
 1. Open the dashboard page.
 2. Confirm weather cards load values from MySQL.
@@ -211,17 +225,18 @@ With `ui.plotly_js = 'auto'`, the site will automatically use the newest `plotly
 5. Confirm the range buttons (`Today`, `Yesterday`, `Last Week`, `Last Month`, `Last Year`) reload history successfully.
 6. Confirm rain chart shows both rain rate and hourly rain sum.
 7. Confirm battery charts render for wind/rain/lightning/pm25 battery fields.
-8. Confirm `php src/cli/fetch_forecast.php --force` succeeds and dashboard forecast panels fill.
+8. Confirm the top-of-page metric rows are grouped logically and PM2.5 shows air-quality coloring.
+9. Confirm `php src/cli/fetch_forecast.php --force` succeeds and dashboard forecast panels fill.
 
 API format check:
 
-9. Confirm archive export formats:
+10. Confirm archive export formats:
    - `/api/dump.php` (CSV default, limited rows)
    - `/api/dump.php?type=json&limit=500`
    - `/api/dump.php?type=xml&limit=500&offset=0`
    - If `api.dump_token` is configured, include `token=...` or `X-Api-Token` header
 
-## 9. Forecast DB cache (WU or OpenWeather)
+## 10. Forecast DB cache (WU or OpenWeather)
 
 Apply the SQL schema (run with a user that has CREATE TABLE rights):
 
@@ -252,7 +267,7 @@ Cron example (30 min):
 */30 * * * * cd /path/to/pws-live-site && php src/cli/fetch_forecast.php >> /var/log/pws-forecast-cron.log 2>&1
 ```
 
-## 10. WeeWX custom_obs extension (optional but recommended for skyfield live fields)
+## 11. WeeWX custom_obs extension (optional but recommended for skyfield live fields)
 
 This repo includes an extension package at:
 
@@ -289,7 +304,7 @@ weectl database add-column lunarTime=REAL
 
 Restart WeeWX after database column changes so services and accumulators pick up the updated schema.
 
-## 11. Prediction cache (hybrid local + WU)
+## 12. Prediction cache (hybrid local + WU)
 
 Apply the SQL schema (run with a user that has CREATE TABLE rights):
 
