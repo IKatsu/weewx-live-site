@@ -270,11 +270,20 @@ function forecast_should_refresh(PDO $pdo, array $config, ?string $provider = nu
     return $age >= $interval;
 }
 
+function forecast_dataset_ttl(array $config, string $dataset): int
+{
+    $forecast = (array) ($config['forecast'] ?? []);
+    return match ($dataset) {
+        'hourly' => max(60, (int) ($forecast['hourly_cache_ttl_seconds'] ?? $forecast['cache_ttl_seconds'] ?? 900)),
+        'alerts' => max(60, (int) ($forecast['alerts_cache_ttl_seconds'] ?? $forecast['cache_ttl_seconds'] ?? 900)),
+        default => max(60, (int) ($forecast['cache_ttl_seconds'] ?? 900)),
+    };
+}
+
 function forecast_write_dataset(PDO $pdo, array $config, string $dataset, array $payload, int $sourceStatus = 200, string $sourceError = '', ?string $provider = null): void
 {
     $provider = $provider !== null ? strtolower($provider) : forecast_provider($config);
-    $forecast = (array) ($config['forecast'] ?? []);
-    $ttl = max(60, (int) ($forecast['cache_ttl_seconds'] ?? 900));
+    $ttl = forecast_dataset_ttl($config, $dataset);
     $now = forecast_now_utc();
     $expires = $now->modify('+' . $ttl . ' seconds');
     $table = forecast_cache_table($config);

@@ -85,6 +85,8 @@ return [
         'preferred_daily_provider' => '',
         'alerts_provider' => 'openweather',
         'cache_ttl_seconds' => 900,
+        'hourly_cache_ttl_seconds' => 14400,
+        'alerts_cache_ttl_seconds' => 1800,
         // 1800s ~= 48 calls/day with single-call providers (keeps under 50/day).
         'refresh_interval_seconds' => 1800,
         'cache_table' => 'pws_wu_forecast_cache',

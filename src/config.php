@@ -210,6 +210,8 @@ function app_config(): array
             'preferred_daily_provider' => (string) ($forecastCfg['preferred_daily_provider'] ?? ''),
             'alerts_provider' => (string) ($forecastCfg['alerts_provider'] ?? 'openweather'),
             'cache_ttl_seconds' => (int) ($forecastCfg['cache_ttl_seconds'] ?? 900),
+            'hourly_cache_ttl_seconds' => (int) ($forecastCfg['hourly_cache_ttl_seconds'] ?? 14400),
+            'alerts_cache_ttl_seconds' => (int) ($forecastCfg['alerts_cache_ttl_seconds'] ?? 1800),
             'refresh_interval_seconds' => (int) ($forecastCfg['refresh_interval_seconds'] ?? 1800),
             'cache_table' => (string) ($forecastCfg['cache_table'] ?? 'pws_wu_forecast_cache'),
             'dashboard_hours' => (int) ($forecastCfg['dashboard_hours'] ?? 5),
