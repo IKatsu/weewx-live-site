@@ -5,6 +5,7 @@
 This deployment was tested on Fedora 43.
 It should also work on other Linux distributions; Ubuntu examples are included below.
 The WeeWX database integration has been tested with WeeWX 5.x archives.
+The reference station path used during development was an Ecowitt HP2553 console sending to a custom server endpoint, with WeeWX using the `ecowittcustom` driver from `Ecowitt-or-DAVIS-stations-and-Season-skin`.
 
 ## 1. Required software
 
@@ -22,11 +23,13 @@ Notes:
 Optional WeeWX-side requirement (if installing the included WeeWX extension package):
 
 - [WeeWX 5.x](https://weewx.com/) with the default `weectl` tooling available.
+- [`weewx-skyfield-almanac`](https://github.com/roe-dl/weewx-skyfield-almanac) if you want the solar/lunar archive fields used by the dashboard sky widget
 
 Reference projects used during development:
 
 - [WeeWX](https://github.com/weewx/weewx)
 - [`Ecowitt-or-DAVIS-stations-and-Season-skin`](https://github.com/WernerKr/Ecowitt-or-DAVIS-stations-and-Season-skin) (Ecowitt driver field naming/mapping reference)
+- [`weewx-skyfield-almanac`](https://github.com/roe-dl/weewx-skyfield-almanac) (solar/lunar field source used by the sky widget)
 - [`weathericons`](https://github.com/roe-dl/weathericons) (dashboard icon reference)
 
 ## 2. Recommended installation order
@@ -35,7 +38,7 @@ Reference projects used during development:
 2. Deploy the PHP project so `public/` is the document root and `src/` remains outside the served path.
 3. Create `src/config.local.php` and configure the read-only DB account, location, and optional MQTT settings.
 4. Verify that the WeeWX archive already contains the fields you need.
-5. If you need solar/lunar custom observations, install the included `custom_obs` extension, add archive columns with `weectl database add-column`, then restart WeeWX.
+5. If you need solar/lunar custom observations, install `weewx-skyfield-almanac`, then the included `custom_obs` extension, add archive columns with `weectl database add-column`, then restart WeeWX.
 6. If you want live browser updates, install/configure Mosquitto and the WeeWX MQTT publisher extension.
 7. If you want forecast and prediction pages, create the cache tables and schedule the CLI cron jobs.
 8. Verify the dashboard, charts, MQTT, and forecast cache.

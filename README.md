@@ -33,6 +33,7 @@ Live weather dashboard for weewx data with:
 
 Compatibility note:
 - This project has been tested against a WeeWX 5.x archive database layout.
+- Tested station path: Ecowitt HP2553 console sending to a custom server endpoint, with WeeWX using the `ecowittcustom` driver from `Ecowitt-or-DAVIS-stations-and-Season-skin`.
 - Runtime stack and MQTT setup have been tested on Fedora 43; Ubuntu instructions are in `docs/INSTALL.md`.
 
 ## Run locally
@@ -51,6 +52,7 @@ Open `http://127.0.0.1:8080`.
 - PHP 8.0+ (`php`, `php-mysqlnd`, `php-json`, `php-mbstring`, `php-curl`)
 - MySQL/MariaDB server containing WeeWX archive data
 - [WeeWX 5.x](https://weewx.com/) with a MySQL/MariaDB-backed archive
+- [`weewx-skyfield-almanac`](https://github.com/roe-dl/weewx-skyfield-almanac) if you want the solar/lunar archive fields used by the sky widget
 - Apache or another PHP-capable web server
 - Optional (for live browser updates): WeeWX MQTT extension [`matthewwall/weewx-mqtt`](https://github.com/matthewwall/weewx-mqtt)
 
@@ -58,6 +60,7 @@ Open `http://127.0.0.1:8080`.
 
 - [WeeWX](https://github.com/weewx/weewx) for the archive layout, extension model, and MQTT/custom observation integration points
 - [`Ecowitt-or-DAVIS-stations-and-Season-skin`](https://github.com/WernerKr/Ecowitt-or-DAVIS-stations-and-Season-skin) for the Ecowitt driver field names and custom observation mapping
+- [`weewx-skyfield-almanac`](https://github.com/roe-dl/weewx-skyfield-almanac) for the live solar/lunar values archived by this project
 - [`weathericons`](https://github.com/roe-dl/weathericons) for the dashboard icon set
 
 ## Recommended install order
@@ -70,7 +73,7 @@ Open `http://127.0.0.1:8080`.
    - location
    - MQTT broker settings
 4. Make sure the WeeWX archive already contains the fields you want to show.
-5. If needed, install the included WeeWX `custom_obs` extension and add missing archive columns with `weectl database add-column`.
+5. If you want the sky widget solar/lunar archive fields, install `weewx-skyfield-almanac`, then install the included WeeWX `custom_obs` extension and add missing archive columns with `weectl database add-column`.
 6. Restart WeeWX after any archive schema changes.
 7. If using live updates, install/configure Mosquitto and the WeeWX MQTT publisher extension.
 8. If using forecast/prediction pages, create the cache tables and schedule the CLI cron jobs.
