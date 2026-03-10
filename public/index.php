@@ -203,71 +203,71 @@ render_site_header(tr('dashboard.page_title', 'PWS Live Dashboard'), default_nav
     <h2 class="section-title"><?= htmlspecialchars(tr('dashboard.weather_graphs', 'Weather Graphs'), ENT_QUOTES, 'UTF-8') ?></h2>
     <section class="charts">
         <article class="chart-card" data-graph="temp_outside">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.outside_temp_chart', 'Outside Temperature / Dewpoint / Apparent'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Outside Temperature / Dewpoint / Apparent</h3>
             <div class="chart-wrap"><canvas id="chart-temp"></canvas></div>
         </article>
         <article class="chart-card" data-graph="temp_inside">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.inside_temp_chart', 'Inside Temperature / Dewpoint'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Inside Temperature / Dewpoint</h3>
             <div class="chart-wrap"><canvas id="chart-temp-in"></canvas></div>
         </article>
         <article class="chart-card" data-graph="humidity_outside">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.outside_humidity_chart', 'Outside Humidity'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Outside Humidity</h3>
             <div class="chart-wrap"><canvas id="chart-humidity"></canvas></div>
         </article>
         <article class="chart-card" data-graph="humidity_inside">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.inside_humidity_chart', 'Inside Humidity'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Inside Humidity</h3>
             <div class="chart-wrap"><canvas id="chart-humidity-in"></canvas></div>
         </article>
         <article class="chart-card" data-graph="wind_speed">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.wind_speed_chart', 'Wind Speed / Gust'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Wind Speed / Gust</h3>
             <div class="chart-wrap"><canvas id="chart-wind"></canvas></div>
         </article>
         <article class="chart-card" data-graph="wind_direction">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.wind_dir_chart', 'Wind Direction (Points)'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Wind Direction (Points)</h3>
             <div class="chart-wrap"><canvas id="chart-wind-dir"></canvas></div>
         </article>
         <article class="chart-card" data-graph="pressure">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.pressure_chart', 'Pressure'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Pressure</h3>
             <div class="chart-wrap"><canvas id="chart-pressure"></canvas></div>
         </article>
         <article class="chart-card" data-graph="rain_rate_hourly">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.rain_rate_chart', 'Rain Rate + Hourly Rain Sum'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Rain Rate + Hourly Rain Sum</h3>
             <div class="chart-wrap"><canvas id="chart-rain"></canvas></div>
         </article>
         <article class="chart-card" data-graph="rain_total_duration">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.rain_total_chart', 'Rain Total / Rain Duration'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Rain Total / Rain Duration</h3>
             <div class="chart-wrap"><canvas id="chart-rain-total"></canvas></div>
         </article>
         <article class="chart-card" data-graph="feels_like">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.feels_like_chart', 'Feels Like Indicators'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Feels Like Indicators</h3>
             <div class="chart-wrap"><canvas id="chart-feels"></canvas></div>
         </article>
         <article class="chart-card" data-graph="solar">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.solar_chart', 'Solar Radiation / UV / Solar Altitude'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Solar Radiation / UV / Solar Altitude</h3>
             <div class="chart-wrap"><canvas id="chart-solar"></canvas></div>
         </article>
         <article class="chart-card" data-graph="cloudbase">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.cloudbase_chart', 'Cloudbase'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Cloudbase</h3>
             <div class="chart-wrap"><canvas id="chart-cloudbase"></canvas></div>
         </article>
         <article class="chart-card" data-graph="et">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.et_chart', 'Evapotranspiration (ET)'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Evapotranspiration (ET)</h3>
             <div class="chart-wrap"><canvas id="chart-et"></canvas></div>
         </article>
         <article class="chart-card" data-graph="sunshine">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.sunshine_chart', 'Sunshine Duration'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Sunshine Duration</h3>
             <div class="chart-wrap"><canvas id="chart-sunshine"></canvas></div>
         </article>
         <article class="chart-card" data-graph="windrun">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.windrun_chart', 'Wind Run'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Wind Run</h3>
             <div class="chart-wrap"><canvas id="chart-windrun"></canvas></div>
         </article>
         <article class="chart-card" data-graph="pm25">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.pm25_chart', 'PM2.5'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">PM2.5</h3>
             <div class="chart-wrap"><canvas id="chart-pm25"></canvas></div>
         </article>
         <article class="chart-card" data-graph="lightning">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.lightning_chart', 'Lightning Strike Count'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Lightning Strike Count</h3>
             <div class="chart-wrap"><canvas id="chart-lightning"></canvas></div>
         </article>
     </section>
@@ -280,27 +280,27 @@ render_site_header(tr('dashboard.page_title', 'PWS Live Dashboard'), default_nav
     <h2 class="section-title"><?= htmlspecialchars(tr('dashboard.battery_graphs', 'Battery Graphs'), ENT_QUOTES, 'UTF-8') ?></h2>
     <section class="charts">
         <article class="chart-card" data-graph="battery_wind">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.wind_battery_chart', 'Wind Battery'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Wind Battery</h3>
             <div class="chart-wrap"><canvas id="chart-batt-wind"></canvas></div>
         </article>
         <article class="chart-card" data-graph="battery_rain">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.rain_battery_chart', 'Rain Battery'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Rain Battery</h3>
             <div class="chart-wrap"><canvas id="chart-batt-rain"></canvas></div>
         </article>
         <article class="chart-card" data-graph="battery_lightning">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.lightning_battery_chart', 'Lightning Battery'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Lightning Battery</h3>
             <div class="chart-wrap"><canvas id="chart-batt-lightning"></canvas></div>
         </article>
         <article class="chart-card" data-graph="battery_pm25">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.pm25_battery_chart', 'PM2.5 Battery'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">PM2.5 Battery</h3>
             <div class="chart-wrap"><canvas id="chart-batt-pm25"></canvas></div>
         </article>
         <article class="chart-card" data-graph="battery_indoor">
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.indoor_battery_chart', 'Indoor Temp Battery'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Indoor Temp Battery</h3>
             <div class="chart-wrap"><canvas id="chart-batt-indoor"></canvas></div>
         </article>
         <article class="chart-card" data-graph="battery_generic_status" id="chart-card-batt-generic" hidden>
-            <h3 class="chart-title"><?= htmlspecialchars(tr('dashboard.channel_battery_chart', 'Channel Battery Status'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <h3 class="chart-title">Channel Battery Status</h3>
             <div class="chart-wrap"><canvas id="chart-batt-generic"></canvas></div>
         </article>
     </section>
