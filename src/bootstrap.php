@@ -4,12 +4,43 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
 
+function send_security_headers(?array $config = null): void
+{
+    $cfg = $config ?? app_config();
+    $security = (array) ($cfg['security'] ?? []);
+    if (($security['enable_headers'] ?? true) !== true) {
+        return;
+    }
+
+    header('X-Content-Type-Options: nosniff');
+
+    $referrerPolicy = trim((string) ($security['referrer_policy'] ?? ''));
+    if ($referrerPolicy !== '') {
+        header('Referrer-Policy: ' . $referrerPolicy);
+    }
+
+    $frameOptions = trim((string) ($security['frame_options'] ?? ''));
+    if ($frameOptions !== '') {
+        header('X-Frame-Options: ' . $frameOptions);
+    }
+
+    $permissionsPolicy = trim((string) ($security['permissions_policy'] ?? ''));
+    if ($permissionsPolicy !== '') {
+        header('Permissions-Policy: ' . $permissionsPolicy);
+    }
+
+    $csp = trim((string) ($security['content_security_policy'] ?? ''));
+    if ($csp !== '') {
+        header('Content-Security-Policy: ' . $csp);
+    }
+}
+
 function json_response(array $payload, int $statusCode = 200): void
 {
     // Central JSON response helper so all API endpoints behave consistently.
+    send_security_headers();
     http_response_code($statusCode);
     header('Content-Type: application/json; charset=utf-8');
-    header('X-Content-Type-Options: nosniff');
     echo json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     exit;
 }

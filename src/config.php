@@ -135,6 +135,7 @@ function app_config(): array
     $forecastCfg = (array) ($local['forecast'] ?? []);
     $predictionCfg = (array) ($local['prediction'] ?? []);
     $forecastWriterDbCfg = (array) ($local['forecast_writer_db'] ?? []);
+    $securityCfg = (array) ($local['security'] ?? []);
 
     $baseDir = resolve_base_dir((string) ($pathsCfg['base_dir'] ?? '__DIR__'));
     $srcDir = resolve_relative_path((string) ($pathsCfg['src_dir'] ?? '../src'), $baseDir);
@@ -236,6 +237,13 @@ function app_config(): array
                 static fn($h) => (int) $h,
                 (array) ($predictionCfg['horizons_hours'] ?? [1, 3, 6, 12, 24])
             ), static fn($h) => $h > 0 && $h <= 72)),
+        ],
+        'security' => [
+            'enable_headers' => env_bool('PWS_SECURITY_ENABLE_HEADERS', (bool) ($securityCfg['enable_headers'] ?? true)),
+            'content_security_policy' => (string) ($securityCfg['content_security_policy'] ?? ''),
+            'referrer_policy' => (string) ($securityCfg['referrer_policy'] ?? 'strict-origin-when-cross-origin'),
+            'frame_options' => (string) ($securityCfg['frame_options'] ?? 'SAMEORIGIN'),
+            'permissions_policy' => (string) ($securityCfg['permissions_policy'] ?? 'geolocation=(), microphone=(), camera=()'),
         ],
         'history_default_hours' => (int) env_value('PWS_HISTORY_DEFAULT_HOURS', (string) ($historyCfg['default_hours'] ?? '24')),
         'history_max_hours' => (int) env_value('PWS_HISTORY_MAX_HOURS', (string) ($historyCfg['max_hours'] ?? (24 * 366))),

@@ -700,6 +700,13 @@ a:visited {
     font-weight: 700;
 }
 
+.status-pill.is-active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 700;
+}
+
 .section-title {
     font-size: 1.06rem;
     margin: 1.2rem 0 0.7rem;
@@ -742,6 +749,31 @@ a:visited {
 #chart-wind-rose-plotly {
     width: 100%;
     height: 100%;
+}
+
+.debug-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 0.9rem;
+    margin-bottom: 0.9rem;
+}
+
+.debug-table th {
+    width: 38%;
+}
+
+.debug-pre {
+    margin: 0;
+    padding: 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 0.7rem;
+    background: color-mix(in srgb, var(--card) 84%, black 16%);
+    color: var(--text);
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.86rem;
+    line-height: 1.45;
 }
 
 @media (max-width: 700px) {

@@ -10,61 +10,41 @@ $srcCandidates = [
     dirname(__DIR__, 2) . '/src',
 ];
 
-$configPath = null;
+$bootstrapPath = null;
 foreach ($srcCandidates as $candidate) {
-    if (is_file($candidate . '/config.php')) {
-        $configPath = $candidate . '/config.php';
+    if (is_file($candidate . '/bootstrap.php')) {
+        $bootstrapPath = $candidate . '/bootstrap.php';
         break;
     }
 }
 
-if ($configPath === null) {
+if ($bootstrapPath === null) {
     http_response_code(500);
-    echo 'Unable to locate src/config.php';
+    echo 'Unable to locate src/bootstrap.php';
     exit;
 }
 
-require_once $configPath;
+require_once $bootstrapPath;
+require_once dirname($bootstrapPath) . '/view_helpers.php';
 
 $config = app_config();
+send_security_headers($config);
+$view = page_view_context($config);
 // Theme/time settings are read server-side and forwarded to JS config below.
-$cssConfig = $config['ui']['css'] ?? [];
-$cssBase = (string) ($cssConfig['base'] ?? 'assets/css/base.css');
-$cssThemes = $cssConfig['themes'] ?? ['bright' => 'assets/css/theme-bright.css', 'dark' => 'assets/css/theme-dark.css'];
-$defaultTheme = (string) ($cssConfig['default_theme'] ?? 'bright');
+$defaultTheme = (string) $view['default_theme'];
 $timeConfig = $config['ui']['time'] ?? ['format' => '24h'];
 $timeFormat = (string) ($timeConfig['format'] ?? '24h');
 ?>
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>PWS Forecast</title>
-    <link rel="stylesheet" href="<?= htmlspecialchars($cssBase, ENT_QUOTES, 'UTF-8') ?>">
-<?php foreach ($cssThemes as $themeName => $themePath): ?>
-<?php if (is_string($themePath) && $themePath !== ''): ?>
-    <link rel="stylesheet" href="<?= htmlspecialchars($themePath, ENT_QUOTES, 'UTF-8') ?>">
-<?php endif; ?>
-<?php endforeach; ?>
-</head>
+<?php render_page_head('PWS Forecast', $view); ?>
 <body>
 <div class="forecast-wrap">
-    <header class="header">
-        <h1 class="title">Forecast</h1>
-        <div class="status-row">
-            <a class="status-pill" href="index.php">Dashboard</a>
-            <a class="status-pill" href="trends.php">Trends</a>
-            <a class="status-pill" href="history.php">History</a>
-            <label class="status-pill" for="theme-select">
-                <span>Theme:</span>
-                <select id="theme-select"></select>
-            </label>
-            <div class="status-pill"><span>Provider:</span> <strong id="provider">-</strong></div>
-            <div class="status-pill"><span>Hourly cache:</span> <strong id="cache-hourly">-</strong></div>
-            <div class="status-pill"><span>Daily cache:</span> <strong id="cache-daily">-</strong></div>
-        </div>
-    </header>
+<?php
+render_site_header('Forecast', default_nav_links(), [
+    '<div class="status-pill"><span>Provider:</span> <strong id="provider">-</strong></div>',
+    '<div class="status-pill"><span>Hourly cache:</span> <strong id="cache-hourly">-</strong></div>',
+    '<div class="status-pill"><span>Daily cache:</span> <strong id="cache-daily">-</strong></div>',
+]);
+?>
 
     <article class="card">
         <h2 class="chart-title">Next Hours</h2>

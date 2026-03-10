@@ -10,29 +10,31 @@ $srcCandidates = [
     dirname(__DIR__, 2) . '/src',
 ];
 
-$configPath = null;
+$bootstrapPath = null;
 foreach ($srcCandidates as $candidate) {
-    if (is_file($candidate . '/config.php')) {
-        $configPath = $candidate . '/config.php';
+    if (is_file($candidate . '/bootstrap.php')) {
+        $bootstrapPath = $candidate . '/bootstrap.php';
         break;
     }
 }
 
-if ($configPath === null) {
+if ($bootstrapPath === null) {
     http_response_code(500);
-    echo 'Unable to locate src/config.php';
+    echo 'Unable to locate src/bootstrap.php';
     exit;
 }
 
-require_once $configPath;
+require_once $bootstrapPath;
+require_once dirname($bootstrapPath) . '/view_helpers.php';
 
 $config = app_config();
+send_security_headers($config);
+$view = page_view_context($config);
 // UI/runtime values are loaded once server-side, then passed to JS via APP below.
-$cssConfig = $config['ui']['css'] ?? [];
-$cssBase = (string) ($cssConfig['base'] ?? 'assets/css/base.css');
-$cssThemes = $cssConfig['themes'] ?? ['bright' => 'assets/css/theme-bright.css', 'dark' => 'assets/css/theme-dark.css'];
-$defaultTheme = (string) ($cssConfig['default_theme'] ?? 'bright');
-$cssCustom = (string) ($cssConfig['custom'] ?? '');
+$cssBase = (string) $view['css_base'];
+$cssThemes = $view['css_themes'];
+$defaultTheme = (string) $view['default_theme'];
+$cssCustom = (string) $view['css_custom'];
 $plotlyConfig = $config['ui']['plotly'] ?? [];
 $plotlyJs = (string) ($plotlyConfig['js'] ?? '');
 $plotlyWindRose = (bool) ($plotlyConfig['wind_rose'] ?? false);
@@ -47,41 +49,16 @@ $windRoseHeightPx = (int) ($layoutConfig['wind_rose_height_px'] ?? 380);
 $locationConfig = $config['location'] ?? ['latitude' => 0.0, 'longitude' => 0.0, 'timezone' => 'UTC'];
 $forecastConfig = $config['forecast'] ?? ['provider' => 'none'];
 ?>
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>PWS Live Dashboard</title>
-    <link rel="stylesheet" href="<?= htmlspecialchars($cssBase, ENT_QUOTES, 'UTF-8') ?>">
-<?php foreach ($cssThemes as $themeName => $themePath): ?>
-<?php if (is_string($themePath) && $themePath !== ''): ?>
-    <link rel="stylesheet" href="<?= htmlspecialchars($themePath, ENT_QUOTES, 'UTF-8') ?>">
-<?php endif; ?>
-<?php endforeach; ?>
-<?php if ($cssCustom !== ''): ?>
-    <link rel="stylesheet" href="<?= htmlspecialchars($cssCustom, ENT_QUOTES, 'UTF-8') ?>">
-<?php endif; ?>
-</head>
+<?php render_page_head('PWS Live Dashboard', $view); ?>
 <body>
 <div class="container">
-    <header class="header">
-        <h1 class="title">PWS Live Dashboard</h1>
-        <div class="status-row">
-            <a class="status-pill" href="history.php">History</a>
-            <a class="status-pill" href="trends.php">Trends</a>
-            <a class="status-pill" href="prediction.php">Prediction</a>
-            <label class="status-pill" for="theme-select">
-                <span>Theme:</span>
-                <select id="theme-select"></select>
-            </label>
-            <div class="status-pill"><span>Last update:</span> <strong id="db-updated">-</strong></div>
-            <div class="status-pill"><span>Range:</span> <strong id="range-label">Today</strong></div>
-            <button type="button" class="status-pill status-pill-button" id="mqtt-pill" aria-expanded="false" aria-controls="diag-popup">
-                <span class="dot" id="mqtt-dot"></span><span id="mqtt-status">MQTT: idle</span>
-            </button>
-        </div>
-    </header>
+<?php
+render_site_header('PWS Live Dashboard', default_nav_links(), [
+    '<div class="status-pill"><span>Last update:</span> <strong id="db-updated">-</strong></div>',
+    '<div class="status-pill"><span>Range:</span> <strong id="range-label">Today</strong></div>',
+    '<button type="button" class="status-pill status-pill-button" id="mqtt-pill" aria-expanded="false" aria-controls="diag-popup"><span class="dot" id="mqtt-dot"></span><span id="mqtt-status">MQTT: idle</span></button>',
+]);
+?>
     <section id="forecast-alerts" class="forecast-alerts" hidden></section>
     <section class="diag-panel" id="diag-popup" aria-label="Connection diagnostics" hidden>
         <div class="diag-item"><span>API poll:</span> <strong id="diag-api-state">idle</strong></div>

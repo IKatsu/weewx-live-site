@@ -25,6 +25,7 @@ if ($bootstrapPath === null) {
 }
 
 require_once $bootstrapPath;
+require_once dirname($bootstrapPath) . '/view_helpers.php';
 
 function years_last_n(int $years): array
 {
@@ -233,11 +234,9 @@ function fmt_val(?float $value, int $decimals): string
 }
 
 $config = app_config();
-$cssConfig = $config['ui']['css'] ?? [];
-$cssBase = (string) ($cssConfig['base'] ?? 'assets/css/base.css');
-$cssThemes = $cssConfig['themes'] ?? ['bright' => 'assets/css/theme-bright.css', 'dark' => 'assets/css/theme-dark.css'];
-$defaultTheme = (string) ($cssConfig['default_theme'] ?? 'bright');
-$cssCustom = (string) ($cssConfig['custom'] ?? '');
+send_security_headers($config);
+$view = page_view_context($config);
+$defaultTheme = (string) $view['default_theme'];
 
 $metricDefs = [
     ['field' => 'outTemp', 'label' => 'Outside Temperature', 'unit_key' => 'temperature', 'decimals' => 1, 'palette' => 'temperature'],
@@ -333,33 +332,10 @@ try {
     $sections = [];
 }
 ?>
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Monthly History</title>
-    <link rel="stylesheet" href="<?= htmlspecialchars($cssBase, ENT_QUOTES, 'UTF-8') ?>">
-<?php foreach ($cssThemes as $themePath): ?>
-<?php if (is_string($themePath) && $themePath !== ''): ?>
-    <link rel="stylesheet" href="<?= htmlspecialchars($themePath, ENT_QUOTES, 'UTF-8') ?>">
-<?php endif; ?>
-<?php endforeach; ?>
-<?php if ($cssCustom !== ''): ?>
-    <link rel="stylesheet" href="<?= htmlspecialchars($cssCustom, ENT_QUOTES, 'UTF-8') ?>">
-<?php endif; ?>
-</head>
+<?php render_page_head('Monthly History', $view); ?>
 <body>
 <div class="history-wrap">
-    <div class="status-row status-row-spaced">
-        <a class="status-pill" href="index.php">Dashboard</a>
-        <a class="status-pill" href="trends.php">Trends</a>
-        <a class="status-pill" href="history.php">History</a>
-        <label class="status-pill" for="theme-select">
-            <span>Theme:</span>
-            <select id="theme-select"></select>
-        </label>
-    </div>
+<?php render_site_header('Monthly History', default_nav_links()); ?>
     <h1 class="title">Monthly High / Average / Low History</h1>
     <p class="muted">Monthly high/average/low by metric (Jan-Dec columns, last 3 years) from available <code>archive_day_*</code> tables.</p>
 
