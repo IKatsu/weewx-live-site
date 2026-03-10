@@ -460,6 +460,31 @@ a:visited {
     font-weight: 700;
 }
 
+.history-year-group-start td {
+    border-top: 0.45rem solid color-mix(in srgb, var(--muted) 55%, var(--border) 45%);
+}
+
+.history-year-group-end td {
+    border-bottom: 0.2rem solid color-mix(in srgb, var(--muted) 45%, var(--border) 55%);
+}
+
+.history-year-group td:first-child {
+    min-width: 8.5rem;
+}
+
+.history-year-label {
+    display: inline-block;
+    min-width: 3.5rem;
+    color: var(--text);
+    font-weight: 700;
+}
+
+.history-year-type {
+    display: inline-block;
+    color: var(--muted);
+    font-weight: 600;
+}
+
 .trend-reasons {
     margin: 0.55rem 0 0;
     padding-left: 1rem;

@@ -305,6 +305,7 @@ try {
 
         $monthlyData = fetch_monthly_hilo($pdo, $tableName); // keyed by YYYY-MM
         $rowsByYear = [];
+        $yearsWithData = [];
         foreach ($years as $year) {
             $y = (string) $year;
             $rowsByYear[$y] = ['high' => [], 'avg' => [], 'low' => []];
@@ -315,6 +316,16 @@ try {
                 $rowsByYear[$y]['avg'][] = $entry['avg'];
                 $rowsByYear[$y]['low'][] = $entry['low'];
             }
+
+            $flatYearValues = array_merge($rowsByYear[$y]['high'], $rowsByYear[$y]['avg'], $rowsByYear[$y]['low']);
+            $hasData = array_filter($flatYearValues, static fn($value) => $value !== null) !== [];
+            if ($hasData) {
+                $yearsWithData[] = $year;
+            }
+        }
+
+        if ($yearsWithData === []) {
+            continue;
         }
 
         $unit = $def['unit'] ?? ($unitMap[$def['unit_key'] ?? ''] ?? '');
@@ -323,7 +334,7 @@ try {
             'unit' => (string) $unit,
             'decimals' => (int) $def['decimals'],
             'palette' => (string) ($def['palette'] ?? 'default'),
-            'years' => $years,
+            'years' => $yearsWithData,
             'rows_by_year' => $rowsByYear,
         ];
     }
@@ -376,20 +387,20 @@ try {
                     <tbody>
                         <?php foreach ($section['years'] as $year): ?>
                             <?php $bucket = $section['rows_by_year'][(string) $year]; ?>
-                            <tr>
-                                <td><?= (int) $year ?> High</td>
+                            <tr class="history-year-group history-year-group-start">
+                                <td><span class="history-year-label"><?= (int) $year ?></span> <span class="history-year-type">High</span></td>
                                 <?php foreach ($bucket['high'] as $v): ?>
                                     <td<?= cell_style($v, $highMin, $highMax, $section['palette'], $section['unit']) ?>><?= $section['palette'] === 'temperature' ? temp_text_html($v, $section['decimals'], $section['unit']) : fmt_val($v, $section['decimals']) ?></td>
                                 <?php endforeach; ?>
                             </tr>
-                            <tr>
-                                <td><?= (int) $year ?> Average</td>
+                            <tr class="history-year-group">
+                                <td><span class="history-year-label"><?= (int) $year ?></span> <span class="history-year-type">Average</span></td>
                                 <?php foreach ($bucket['avg'] as $v): ?>
                                     <td<?= cell_style($v, $avgMin, $avgMax, $section['palette'], $section['unit']) ?>><?= $section['palette'] === 'temperature' ? temp_text_html($v, $section['decimals'], $section['unit']) : fmt_val($v, $section['decimals']) ?></td>
                                 <?php endforeach; ?>
                             </tr>
-                            <tr>
-                                <td><?= (int) $year ?> Low</td>
+                            <tr class="history-year-group history-year-group-end">
+                                <td><span class="history-year-label"><?= (int) $year ?></span> <span class="history-year-type">Low</span></td>
                                 <?php foreach ($bucket['low'] as $v): ?>
                                     <td<?= cell_style($v, $lowMin, $lowMax, $section['palette'], $section['unit']) ?>><?= $section['palette'] === 'temperature' ? temp_text_html($v, $section['decimals'], $section['unit']) : fmt_val($v, $section['decimals']) ?></td>
                                 <?php endforeach; ?>
