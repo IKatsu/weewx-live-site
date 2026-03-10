@@ -131,6 +131,7 @@ function app_config(): array
     $mqttCfg = (array) ($local['mqtt'] ?? []);
     $historyCfg = (array) ($local['history'] ?? []);
     $apiCfg = (array) ($local['api'] ?? []);
+    $debugCfg = (array) ($local['debug'] ?? []);
     $locationCfg = (array) ($local['location'] ?? []);
     $forecastCfg = (array) ($local['forecast'] ?? []);
     $predictionCfg = (array) ($local['prediction'] ?? []);
@@ -180,6 +181,13 @@ function app_config(): array
             'dump_default_rows' => max(1, (int) env_value('PWS_API_DUMP_DEFAULT_ROWS', (string) ($apiCfg['dump_default_rows'] ?? 1000))),
             'dump_max_rows' => max(1, (int) env_value('PWS_API_DUMP_MAX_ROWS', (string) ($apiCfg['dump_max_rows'] ?? 10000))),
             'dump_token' => env_value('PWS_API_DUMP_TOKEN', (string) ($apiCfg['dump_token'] ?? '')),
+        ],
+        'debug' => [
+            'enabled' => env_bool('PWS_DEBUG_ENABLED', (bool) ($debugCfg['enabled'] ?? true)),
+            'allowed_cidrs' => array_values(array_filter(array_map(
+                static fn($cidr) => trim((string) $cidr),
+                (array) ($debugCfg['allowed_cidrs'] ?? [])
+            ), static fn($cidr) => $cidr !== '')),
         ],
         'ui' => [
             'css' => [

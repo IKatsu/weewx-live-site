@@ -144,3 +144,60 @@ function mapped_archive_column(array $config, array $archiveColumns, string $fie
     }
     return $mapped;
 }
+
+function ip_in_cidr(string $ip, string $cidr): bool
+{
+    $parts = explode('/', $cidr, 2);
+    $network = trim($parts[0] ?? '');
+    $prefix = isset($parts[1]) ? (int) $parts[1] : null;
+    if ($network === '' || !filter_var($ip, FILTER_VALIDATE_IP) || !filter_var($network, FILTER_VALIDATE_IP)) {
+        return false;
+    }
+
+    $ipBin = @inet_pton($ip);
+    $netBin = @inet_pton($network);
+    if ($ipBin === false || $netBin === false || strlen($ipBin) !== strlen($netBin)) {
+        return false;
+    }
+
+    $maxBits = strlen($ipBin) * 8;
+    if ($prefix === null) {
+        $prefix = $maxBits;
+    }
+    if ($prefix < 0 || $prefix > $maxBits) {
+        return false;
+    }
+
+    $fullBytes = intdiv($prefix, 8);
+    $remainingBits = $prefix % 8;
+
+    if ($fullBytes > 0 && substr($ipBin, 0, $fullBytes) !== substr($netBin, 0, $fullBytes)) {
+        return false;
+    }
+
+    if ($remainingBits === 0) {
+        return true;
+    }
+
+    $mask = (0xFF << (8 - $remainingBits)) & 0xFF;
+    return (ord($ipBin[$fullBytes]) & $mask) === (ord($netBin[$fullBytes]) & $mask);
+}
+
+function client_ip_allowed(array $allowedCidrs, ?string $remoteAddr): bool
+{
+    $ip = trim((string) $remoteAddr);
+    if ($ip === '' || !filter_var($ip, FILTER_VALIDATE_IP)) {
+        return false;
+    }
+
+    foreach ($allowedCidrs as $cidr) {
+        if (!is_string($cidr) || trim($cidr) === '') {
+            continue;
+        }
+        if (ip_in_cidr($ip, trim($cidr))) {
+            return true;
+        }
+    }
+
+    return false;
+}

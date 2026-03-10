@@ -48,6 +48,18 @@ function debug_fmt_ts(?int $ts, string $timezone, string $timeFormat): string
 
 $config = app_config();
 send_security_headers($config);
+$debugCfg = (array) ($config['debug'] ?? []);
+if (($debugCfg['enabled'] ?? true) !== true) {
+    http_response_code(403);
+    echo 'Debug page disabled';
+    exit;
+}
+$allowedCidrs = (array) ($debugCfg['allowed_cidrs'] ?? []);
+if (!client_ip_allowed($allowedCidrs, (string) ($_SERVER['REMOTE_ADDR'] ?? ''))) {
+    http_response_code(403);
+    echo 'Forbidden';
+    exit;
+}
 $view = page_view_context($config);
 $defaultTheme = (string) $view['default_theme'];
 $timeFormat = (string) $view['time_format'];

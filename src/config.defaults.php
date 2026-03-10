@@ -605,6 +605,17 @@ return [
         // If set, /api/dump.php requires this token (GET token= or X-Api-Token header).
         'dump_token' => '',
     ],
+    'debug' => [
+        // Keep the debug page LAN-only by default.
+        'enabled' => true,
+        'allowed_cidrs' => [
+            '127.0.0.1/32',
+            '::1/128',
+            '10.0.0.0/8',
+            '172.16.0.0/12',
+            '192.168.0.0/16',
+        ],
+    ],
     'history' => [
         'default_hours' => '24',
         'max_hours' => (string) (24 * 366),
