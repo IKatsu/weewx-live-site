@@ -405,7 +405,7 @@ try {
 <script>
 const HISTORY_APP = {
     defaultTheme: <?= json_encode($defaultTheme) ?>,
-    themes: <?= json_encode(array_keys($cssThemes)) ?>,
+    themes: <?= json_encode(array_keys((array) $view['css_themes'])) ?>,
 };
 
 function setTheme(themeName) {

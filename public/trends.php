@@ -81,7 +81,7 @@ render_site_header('Trend Nowcast', default_nav_links(), [
 <script>
 const TREND_APP = {
     defaultTheme: <?= json_encode($defaultTheme) ?>,
-    themes: <?= json_encode(array_keys($cssThemes)) ?>,
+    themes: <?= json_encode(array_keys((array) $view['css_themes'])) ?>,
     timeFormat: <?= json_encode($timeFormat) ?>,
 };
 
