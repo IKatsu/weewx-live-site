@@ -85,8 +85,10 @@ Open `http://127.0.0.1:8080`.
 6. Restart WeeWX after any archive schema changes.
 7. If using live updates, install/configure Mosquitto and the WeeWX MQTT publisher extension.
 8. If using forecast/prediction pages, create the cache tables and schedule the CLI cron jobs.
-9. Drop Plotly into `public/assets/vendor` if you want the Plotly-based wind rose.
-10. Open the dashboard and verify cards, charts, MQTT, and forecast cache behavior.
+9. If using the monthly history page long-term, create the monthly summary table and schedule the first-of-month rollup.
+10. Drop Plotly into `public/assets/vendor` if you want the Plotly-based wind rose.
+11. Optionally mirror the recommended security headers in Apache using `docs/reference/apache-pws-live-site.conf`.
+12. Open the dashboard and verify cards, charts, MQTT, and forecast cache behavior.
 
 ## Configuration model
 
@@ -192,6 +194,41 @@ Required archive fields for prediction:
 
 Optional for better hybrid behavior:
 - Daily forecast cache table (`pws_wu_forecast_cache`) populated by `fetch_forecast.php`
+
+## Monthly history rollup setup
+
+1. Apply the SQL schema:
+
+```bash
+mysql -u DB_USER -p DB_NAME < docs/sql/create_pws_history_monthly_summary.sql
+```
+
+2. Ensure `history_writer_db.*` in `src/config.local.php` can write to `pws_history_monthly_summary`.
+   If left empty, the app falls back to `forecast_writer_db.*`, then to the main `db` block.
+
+3. Build the previous month manually:
+
+```bash
+php src/cli/build_monthly_history.php
+```
+
+Expected success output:
+- `Monthly history refresh completed: month=2026-02 inserted=21 existing=0 empty=0 missing=0`
+
+Useful flags:
+- `php src/cli/build_monthly_history.php --force`
+- `php src/cli/build_monthly_history.php --month=2026-02`
+
+4. Add cron on the first day of each month:
+
+```cron
+5 0 1 * * cd /path/to/pws-live-site && php src/cli/build_monthly_history.php >> /var/log/pws-history-rollup.log 2>&1
+```
+
+Behavior:
+- closed months are read from `pws_history_monthly_summary`
+- the current month still reads live from `archive_day_*`
+- the history page now honors `history.lookback_years` instead of silently truncating to 12 months
 
 ## Path and theme configuration
 

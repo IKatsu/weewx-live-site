@@ -41,7 +41,9 @@ Reference projects used during development:
 5. If you need solar/lunar custom observations, install `weewx-skyfield-almanac`, then the included `custom_obs` extension, add archive columns with `weectl database add-column`, then restart WeeWX.
 6. If you want live browser updates, install/configure Mosquitto and the WeeWX MQTT publisher extension.
 7. If you want forecast and prediction pages, create the cache tables and schedule the CLI cron jobs.
-8. Verify the dashboard, charts, MQTT, and forecast cache.
+8. If you want monthly history to stop re-aggregating closed months, create the summary table and schedule the first-of-month rollup.
+9. Optionally mirror the recommended security headers in Apache.
+10. Verify the dashboard, charts, MQTT, forecast cache, and history page.
 
 ## 3. Deploy the project
 
@@ -70,6 +72,10 @@ Example VirtualHost:
 </VirtualHost>
 ```
 
+Reference file in this repository:
+
+- `docs/reference/apache-pws-live-site.conf`
+
 ## 4. Apache + SELinux notes
 
 If SELinux blocks Apache from remote DB access, allow outbound DB connections:
@@ -84,6 +90,17 @@ Then restart Apache:
 sudo systemctl enable --now httpd
 sudo systemctl restart httpd
 ```
+
+Recommended Apache modules:
+
+- `mod_headers` for the hardening headers in `docs/reference/apache-pws-live-site.conf`
+- `mod_php` or PHP-FPM, depending on your host layout
+
+The application already sends matching headers from PHP, but mirroring them in Apache is still useful:
+
+- consistent behavior for static assets
+- visible vhost-level policy
+- one place to tighten or relax headers during deployment
 
 ## 5. Runtime configuration
 
@@ -276,7 +293,61 @@ Cron example (30 min):
 */30 * * * * cd /path/to/pws-live-site && php src/cli/fetch_forecast.php >> /var/log/pws-forecast-cron.log 2>&1
 ```
 
-## 11. WeeWX custom_obs extension (optional but recommended for skyfield live fields)
+## 11. Monthly history rollup cache
+
+Apply the SQL schema (run with a user that has CREATE TABLE and GRANT rights):
+
+```bash
+mysql -u DB_USER -p DB_NAME < docs/sql/create_pws_history_monthly_summary.sql
+```
+
+This creates:
+
+- `pws_history_monthly_summary`
+
+and grants the localhost cron writer user access:
+
+- `pws_forecast_writer@localhost`
+
+If you prefer a different writer account, adjust the SQL and `src/config.local.php` accordingly.
+
+Configure writer credentials in `src/config.local.php`:
+
+- `history_writer_db.*` for a dedicated monthly-history writer
+- if left empty, the CLI falls back to `forecast_writer_db.*`
+- if that is also empty, it falls back to the main `db` account
+
+Manual build:
+
+```bash
+php src/cli/build_monthly_history.php
+```
+
+Expected success output:
+
+- `Monthly history refresh completed: month=2026-02 inserted=21 existing=0 empty=0 missing=0`
+
+Useful flags:
+
+```bash
+php src/cli/build_monthly_history.php --force
+php src/cli/build_monthly_history.php --month=2026-02
+```
+
+Cron example (first day of each month):
+
+```cron
+5 0 1 * * cd /path/to/pws-live-site && php src/cli/build_monthly_history.php >> /var/log/pws-history-rollup.log 2>&1
+```
+
+Behavior:
+
+- closed months are served from `pws_history_monthly_summary`
+- the current month still uses live `archive_day_*` data
+- the history page uses `history.lookback_years` from config
+- nothing is inserted if a month has no data
+- without `--force`, an existing month is left untouched
+## 12. WeeWX custom_obs extension (optional but recommended for skyfield live fields)
 
 This repo includes an extension package at:
 
@@ -313,7 +384,7 @@ weectl database add-column lunarTime=REAL
 
 Restart WeeWX after database column changes so services and accumulators pick up the updated schema.
 
-## 12. Prediction cache (hybrid local + WU)
+## 13. Prediction cache (hybrid local + WU)
 
 Apply the SQL schema (run with a user that has CREATE TABLE rights):
 
