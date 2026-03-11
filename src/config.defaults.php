@@ -137,6 +137,10 @@ return [
     'optional_metric_groups' => [
         // Optional groups stay disabled by default. Users can enable whole groups
         // or override labels per metric in config.local.php without editing PHP.
+        // Enabling a group only exposes mapped metrics; the UI still skips any
+        // metric whose archive column does not exist. Existing columns with a
+        // NULL latest value still render as "n/a", while history charts only
+        // appear once there are non-NULL samples for that field.
         'extra_temperature' => [
             'enabled' => false,
             'metrics' => [

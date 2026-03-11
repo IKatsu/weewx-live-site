@@ -111,6 +111,12 @@ cp src/config.defaults.php src/config.local.php
 ```
 
 Edit `src/config.local.php` with your DB/MQTT settings and optional field mappings/graph toggles/themes.
+
+Optional metric group note:
+- Enabling a group only makes its mapped metrics eligible for output.
+- If the underlying archive column does not exist, that metric will not render.
+- If the column exists but the latest value is `NULL`, the current-value card renders as `n/a`.
+- History charts for optional metrics only appear when there are non-`NULL` samples in the selected range.
 Set `ui.time_format` to `24h` (default) or `12h` for all displayed times.
 Set `ui.mqtt_reconnect_delay_ms` if you want slower MQTT reconnect attempts during outages (`10000` default).
 Set `ui.plotly_js` to:
