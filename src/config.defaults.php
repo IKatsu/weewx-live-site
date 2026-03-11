@@ -22,6 +22,9 @@ return [
         'poll_interval_seconds' => 15,
         // Keep MQTT reconnects calm during transient broker/network outages.
         'mqtt_reconnect_delay_ms' => 10000,
+        // When MQTT is connected and recent, the dashboard skips latest.php polls.
+        // Fallback polling resumes if MQTT is disabled, disconnected, or stale.
+        'mqtt_stale_after_seconds' => 60,
         'css_custom' => '',
         // "auto" selects the highest plotly-*.min.js found in public/assets/vendor.
         'plotly_js' => 'auto',
