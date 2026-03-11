@@ -629,7 +629,7 @@ return [
     ],
     'security' => [
         'enable_headers' => true,
-        'content_security_policy' => "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self' ws: wss: https:; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'",
+        'content_security_policy' => "default-src 'self'; img-src 'self' data: https:; media-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; worker-src 'self' blob:; connect-src 'self' ws: wss: https:; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'",
         'referrer_policy' => 'strict-origin-when-cross-origin',
         'frame_options' => 'SAMEORIGIN',
         'permissions_policy' => 'geolocation=(), microphone=(), camera=()',

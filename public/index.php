@@ -2167,7 +2167,7 @@ async function loadLatest() {
     state.diagnostics.apiLastAttemptAt = Date.now();
     renderDiagnostics();
     try {
-        const response = await fetch('api/latest.php', { cache: 'no-store' });
+        const response = await fetch(`api/latest.php?_=${Date.now()}`, { cache: 'no-store' });
         if (!response.ok) throw new Error(`latest ${response.status}`);
         state.latest = await response.json();
         state.diagnostics.apiPollState = 'ok';
