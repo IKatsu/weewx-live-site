@@ -928,18 +928,6 @@ function setMqttStatus(text, mode) {
     renderDiagnostics();
 }
 
-function pulseMqttActivity() {
-    const pill = document.getElementById('mqtt-pill');
-    if (!pill) return;
-    pill.classList.remove('mqtt-activity');
-    // Force reflow so rapid successive MQTT messages can retrigger the pulse.
-    void pill.offsetWidth;
-    pill.classList.add('mqtt-activity');
-    window.setTimeout(() => {
-        pill.classList.remove('mqtt-activity');
-    }, 950);
-}
-
 function formatDiagTime(epochMs) {
     if (!Number.isFinite(epochMs)) return 'never';
     return formatClock(new Date(epochMs), APP.location?.timezone || 'UTC');
@@ -2279,7 +2267,6 @@ function connectMqtt() {
         if (rootTopic !== '' && !topic.startsWith(rootTopic)) return;
         try {
             mergeMqttUpdate(JSON.parse(payload.toString()));
-            pulseMqttActivity();
             state.diagnostics.mqttLastMessageAt = Date.now();
             renderDiagnostics();
         } catch {
