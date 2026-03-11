@@ -1503,10 +1503,11 @@ function mergeMqttUpdate(payload) {
         windDir: ['windDir'],
         barometer: ['barometer', 'barometer_mbar', 'barometer_inHg'],
         pressure: ['pressure', 'pressure_mbar', 'pressure_inHg'],
-        rainRate: ['rainRate', 'rainRate_mm_per_hr', 'rainRate_in_per_hr'],
-        rain: ['rain', 'rain_mm', 'rain_in'],
+        rainRate: ['rainRate', 'rainRate_mm_per_hour', 'rainRate_mm_per_hr', 'rainRate_in_per_hour', 'rainRate_in_per_hr'],
+        // Prefer WeeWX rolling day total from loop packets for the summary rain card.
+        rain: ['dayRain_mm', 'dayRain_in', 'rain', 'rain_mm', 'rain_in'],
         UV: ['UV'],
-        radiation: ['radiation'],
+        radiation: ['radiation', 'radiation_Wpm2'],
         dewpoint: ['dewpoint', 'dewpoint_C', 'dewpoint_F'],
         heatindex: ['heatindex', 'heatindex_C', 'heatindex_F'],
         windchill: ['windchill', 'windchill_C', 'windchill_F'],
@@ -1517,12 +1518,12 @@ function mergeMqttUpdate(payload) {
         lunarAltitude: ['lunarAltitude'],
         lunarAzimuth: ['lunarAzimuth'],
         lunarTime: ['lunarTime'],
-        pm2_5: ['pm2_5'],
-        lightning_strike_count: ['lightning_strike_count'],
-        windBatteryStatus: ['windBatteryStatus'],
-        rainBatteryStatus: ['rainBatteryStatus'],
-        lightning_Batt: ['lightning_Batt'],
-        pm25_Batt1: ['pm25_Batt1'],
+        pm2_5: ['pm2_5', 'pm2_5_microgram_per_meter_cubed'],
+        lightning_strike_count: ['lightning_strike_count', 'lightning_strike_count_count', 'lightning_num_count'],
+        windBatteryStatus: ['windBatteryStatus', 'windBatteryStatus_volt', 'ws80_batt_volt'],
+        rainBatteryStatus: ['rainBatteryStatus', 'rainBatteryStatus_volt'],
+        lightning_Batt: ['lightning_Batt', 'lightning_Batt_count'],
+        pm25_Batt1: ['pm25_Batt1', 'pm25_Batt1_count'],
     };
 
     for (const [metricKey, sourceKeys] of Object.entries(map)) {

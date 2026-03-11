@@ -147,15 +147,17 @@ try {
     }
 
     $derivedValues = [];
+    $timezone = (string) (($config['location']['timezone'] ?? 'UTC') ?: 'UTC');
     $latestTs = (int) $row['dateTime'];
     $rainColumn = mapped_archive_column($config, $columns, 'rain');
     if ($rainColumn !== null) {
         // WeeWX archive.rain is the amount for that archive interval, not a
-        // sticky total. Derive a trailing 24-hour accumulation so the summary
-        // card reflects recent rainfall even after the newest archive row is dry.
-        $windowStartTs = $latestTs - 86400;
+        // sticky total. Derive a local-midnight accumulation so the summary
+        // card matches the live MQTT dayRain_* values from the WeeWX loop feed.
+        $latestLocal = (new DateTimeImmutable('@' . $latestTs))->setTimezone(new DateTimeZone($timezone));
+        $windowStartTs = $latestLocal->setTime(0, 0, 0)->getTimestamp();
         $rainSumSql = sprintf(
-            'SELECT COALESCE(SUM(%s), 0) AS rain_24h
+            'SELECT COALESCE(SUM(%s), 0) AS rain_today
              FROM archive
              WHERE %s >= :window_start_ts AND %s <= :latest_ts',
             $rainColumn,
@@ -167,7 +169,7 @@ try {
             ':window_start_ts' => $windowStartTs,
             ':latest_ts' => $latestTs,
         ]);
-        $derivedValues['rain'] = (float) (($rainSumStmt->fetch()['rain_24h'] ?? 0.0));
+        $derivedValues['rain'] = (float) (($rainSumStmt->fetch()['rain_today'] ?? 0.0));
     }
 
     $units = unit_map((int) $row['usUnits']);
@@ -178,7 +180,7 @@ try {
         $value = $derivedValues[$field] ?? ($row[$field] ?? null);
         $label = $spec['label'];
         if ($field === 'rain' && array_key_exists('rain', $derivedValues)) {
-            $label = 'Rain 24h';
+            $label = 'Rain Today';
         }
         $metrics[$field] = [
             'label' => $label,
