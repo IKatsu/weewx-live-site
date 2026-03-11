@@ -146,14 +146,46 @@ try {
         json_response(['error' => 'No weather records found in archive table.'], 404);
     }
 
+    $derivedValues = [];
+    $timezone = (string) (($config['location']['timezone'] ?? 'UTC') ?: 'UTC');
+    $latestTs = (int) $row['dateTime'];
+    $rainColumn = mapped_archive_column($config, $columns, 'rain');
+    if ($rainColumn !== null) {
+        // WeeWX archive.rain is the amount for that archive interval, not a
+        // sticky day total. Derive a local-midnight accumulation so the latest
+        // metric card reflects "rain today" instead of dropping back to zero
+        // once the shower has passed.
+        $latestLocal = (new DateTimeImmutable('@' . $latestTs))->setTimezone(new DateTimeZone($timezone));
+        $midnightTs = $latestLocal->setTime(0, 0, 0)->getTimestamp();
+        $rainSumSql = sprintf(
+            'SELECT COALESCE(SUM(%s), 0) AS rain_today
+             FROM archive
+             WHERE %s >= :midnight_ts AND %s <= :latest_ts',
+            $rainColumn,
+            $dateTimeCol,
+            $dateTimeCol
+        );
+        $rainSumStmt = $pdo->prepare($rainSumSql);
+        $rainSumStmt->execute([
+            ':midnight_ts' => $midnightTs,
+            ':latest_ts' => $latestTs,
+        ]);
+        $derivedValues['rain'] = (float) (($rainSumStmt->fetch()['rain_today'] ?? 0.0));
+    }
+
     $units = unit_map((int) $row['usUnits']);
     $metrics = [];
     foreach ($included as $field) {
         $spec = $metricSpec[$field];
         $unit = $unitOverride[$spec['unit']] ?? ($units[$spec['unit']] ?? '');
+        $value = $derivedValues[$field] ?? ($row[$field] ?? null);
+        $label = $spec['label'];
+        if ($field === 'rain' && array_key_exists('rain', $derivedValues)) {
+            $label = 'Rain Today';
+        }
         $metrics[$field] = [
-            'label' => $spec['label'],
-            'value' => $row[$field] ?? null,
+            'label' => $label,
+            'value' => $value,
             'unit' => $unit,
             'missingColumn' => false,
         ];
