@@ -83,6 +83,41 @@ a:visited {
     color: var(--text);
 }
 
+.status-pill-button.mqtt-activity {
+    box-shadow: 0 0 0 0 rgba(47, 168, 79, 0.0);
+    animation: mqtt-heartbeat 0.9s ease-out;
+}
+
+.status-pill-button.mqtt-activity .dot {
+    animation: mqtt-dot-heartbeat 0.9s ease-out;
+}
+
+@keyframes mqtt-heartbeat {
+    0% {
+        box-shadow: 0 0 0 0 rgba(47, 168, 79, 0.0);
+        color: var(--muted);
+    }
+    20% {
+        box-shadow: 0 0 0 0.35rem rgba(47, 168, 79, 0.24);
+        color: var(--text);
+    }
+    45% {
+        box-shadow: 0 0 0 0.65rem rgba(47, 168, 79, 0.12);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(47, 168, 79, 0.0);
+        color: var(--muted);
+    }
+}
+
+@keyframes mqtt-dot-heartbeat {
+    0% { transform: scale(1); }
+    18% { transform: scale(1.28); }
+    36% { transform: scale(0.96); }
+    54% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+}
+
 .diag-panel {
     position: fixed;
     z-index: 40;
