@@ -147,30 +147,27 @@ try {
     }
 
     $derivedValues = [];
-    $timezone = (string) (($config['location']['timezone'] ?? 'UTC') ?: 'UTC');
     $latestTs = (int) $row['dateTime'];
     $rainColumn = mapped_archive_column($config, $columns, 'rain');
     if ($rainColumn !== null) {
         // WeeWX archive.rain is the amount for that archive interval, not a
-        // sticky day total. Derive a local-midnight accumulation so the latest
-        // metric card reflects "rain today" instead of dropping back to zero
-        // once the shower has passed.
-        $latestLocal = (new DateTimeImmutable('@' . $latestTs))->setTimezone(new DateTimeZone($timezone));
-        $midnightTs = $latestLocal->setTime(0, 0, 0)->getTimestamp();
+        // sticky total. Derive a trailing 24-hour accumulation so the summary
+        // card reflects recent rainfall even after the newest archive row is dry.
+        $windowStartTs = $latestTs - 86400;
         $rainSumSql = sprintf(
-            'SELECT COALESCE(SUM(%s), 0) AS rain_today
+            'SELECT COALESCE(SUM(%s), 0) AS rain_24h
              FROM archive
-             WHERE %s >= :midnight_ts AND %s <= :latest_ts',
+             WHERE %s >= :window_start_ts AND %s <= :latest_ts',
             $rainColumn,
             $dateTimeCol,
             $dateTimeCol
         );
         $rainSumStmt = $pdo->prepare($rainSumSql);
         $rainSumStmt->execute([
-            ':midnight_ts' => $midnightTs,
+            ':window_start_ts' => $windowStartTs,
             ':latest_ts' => $latestTs,
         ]);
-        $derivedValues['rain'] = (float) (($rainSumStmt->fetch()['rain_today'] ?? 0.0));
+        $derivedValues['rain'] = (float) (($rainSumStmt->fetch()['rain_24h'] ?? 0.0));
     }
 
     $units = unit_map((int) $row['usUnits']);
@@ -181,7 +178,7 @@ try {
         $value = $derivedValues[$field] ?? ($row[$field] ?? null);
         $label = $spec['label'];
         if ($field === 'rain' && array_key_exists('rain', $derivedValues)) {
-            $label = 'Rain Today';
+            $label = 'Rain 24h';
         }
         $metrics[$field] = [
             'label' => $label,
