@@ -278,9 +278,8 @@ const APP = {
     location: <?= json_encode($locationConfig) ?>,
     forecast: <?= json_encode($forecastConfig) ?>,
     timeFormat: <?= json_encode($timeFormat) ?>,
-    pollIntervalMs: <?= max(5000, ((int) ($config['ui']['poll_interval_seconds'] ?? 15)) * 1000) ?>,
+    pollIntervalMs: <?= max(60000, ((int) ($config['ui']['poll_interval_seconds'] ?? 1800)) * 1000) ?>,
     mqttReconnectDelayMs: <?= max(1000, (int) ($config['ui']['mqtt_reconnect_delay_ms'] ?? 10000)) ?>,
-    mqttStaleAfterMs: <?= max(10000, ((int) ($config['ui']['mqtt_stale_after_seconds'] ?? 60)) * 1000) ?>,
     layout: {
         maxColumns: <?= max(1, $graphMaxColumns) ?>,
         minWidthPx: <?= max(220, $graphMinWidthPx) ?>,
@@ -2275,16 +2274,6 @@ function connectMqtt() {
     });
 }
 
-function shouldPollLatest() {
-    if (!APP.mqtt.enabled) return true;
-    const mqttState = String(state.diagnostics.mqttState || 'idle');
-    if (mqttState === 'disabled' || mqttState === 'error' || mqttState === 'idle') return true;
-    if (mqttState !== 'connected') return false;
-    const lastMessageAt = Number(state.diagnostics.mqttLastMessageAt || 0);
-    if (!Number.isFinite(lastMessageAt) || lastMessageAt <= 0) return true;
-    return (Date.now() - lastMessageAt) >= APP.mqttStaleAfterMs;
-}
-
 (async function init() {
     applyGraphVisibility();
     initThemeSelector();
@@ -2305,8 +2294,8 @@ function shouldPollLatest() {
     connectMqtt();
 
     setInterval(() => {
-        if (!shouldPollLatest()) return;
         loadLatest().catch(() => {});
+        loadForecast().catch(() => {});
     }, APP.pollIntervalMs);
 
     window.addEventListener('resize', () => {

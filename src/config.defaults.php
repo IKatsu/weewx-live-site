@@ -18,13 +18,10 @@ return [
         'default_theme' => 'bright',
         // Supported: "24h" (default) or "12h".
         'time_format' => '24h',
-        // Browser polling interval for latest values when API polling is used.
-        'poll_interval_seconds' => 15,
+        // Slow background refresh for non-MQTT-backed page state.
+        'poll_interval_seconds' => 1800,
         // Keep MQTT reconnects calm during transient broker/network outages.
         'mqtt_reconnect_delay_ms' => 10000,
-        // When MQTT is connected and recent, the dashboard skips latest.php polls.
-        // Fallback polling resumes if MQTT is disabled, disconnected, or stale.
-        'mqtt_stale_after_seconds' => 60,
         'css_custom' => '',
         // "auto" selects the highest plotly-*.min.js found in public/assets/vendor.
         'plotly_js' => 'auto',
