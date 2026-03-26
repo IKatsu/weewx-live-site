@@ -24,6 +24,8 @@ Live weather dashboard for weewx data with:
 - live value updates via MQTT WebSocket (`weewx/#`)
 - history presets: `Today`, `Yesterday`, `Last Week`, `Last Month`, `Last Year`
 - wind rose + wind direction point chart
+- wind row summary cards for 1h and 3h average wind/gust values
+- dedicated wind averages chart (hourly average wind + hourly average gust)
 - separate rain chart with rain rate and hourly rain totals
 - dedicated battery charts (`windBatteryStatus`, `rainBatteryStatus`, `lightning_Batt`, `pm25_Batt1`)
 - cached WU/TWC forecast integration (dashboard + dedicated forecast page)
@@ -89,6 +91,7 @@ Open `http://127.0.0.1:8080`.
 10. Drop Plotly into `public/assets/vendor` if you want the Plotly-based wind rose.
 11. Optionally mirror the recommended security headers in Apache using `docs/reference/apache-pws-live-site.conf`.
 12. Open the dashboard and verify cards, charts, MQTT, and forecast cache behavior.
+13. Confirm the wind row shows the extra 1h / 3h wind+gust average cards and the separate wind-averages graph renders.
 
 ## Configuration model
 
