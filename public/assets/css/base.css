@@ -714,6 +714,12 @@ a:visited {
     gap: 0.7rem;
 }
 
+.prediction-section + .prediction-section {
+    margin-top: 1rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--border);
+}
+
 .prediction-hour-card {
     border: 1px solid var(--border);
     border-radius: 0.75rem;
@@ -742,6 +748,10 @@ a:visited {
     background: color-mix(in srgb, var(--card) 86%, var(--accent-soft) 14%);
     flex: 1 1 136px;
     min-width: 136px;
+}
+
+.prediction-mini-muted {
+    opacity: 0.72;
 }
 
 .prediction-mini-bg {

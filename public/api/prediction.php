@@ -79,6 +79,15 @@ function clamp_confidence(float $value): float
     return max(0.1, min(0.98, $value));
 }
 
+function confidence_tier(float $value): string
+{
+    return match (true) {
+        $value >= 0.75 => 'high',
+        $value >= 0.5 => 'moderate',
+        default => 'low',
+    };
+}
+
 function unit_tolerance(string $metric, string $unit): float
 {
     return match ($metric) {
@@ -153,6 +162,70 @@ function augment_prediction_confidence(array $row, ?array $forecastRow): array
     return $row;
 }
 
+function prediction_should_display(array $row): bool
+{
+    $metric = (string) ($row['metric'] ?? '');
+    $horizon = (int) (($row['details']['horizon_hours'] ?? 0));
+
+    return match ($metric) {
+        'barometer', 'outTemp' => in_array($horizon, [1, 3, 6, 12, 24], true),
+        'outHumidity' => in_array($horizon, [1, 3, 6, 12], true),
+        'windSpeed' => in_array($horizon, [1, 3, 6], true),
+        'rainRate' => in_array($horizon, [1, 3], true),
+        default => false,
+    };
+}
+
+function rain_phrase(array $row): string
+{
+    $predicted = (float) ($row['value_num'] ?? 0.0);
+    $support = (array) ($row['forecast_support'] ?? []);
+    $note = (string) ($support['note'] ?? '');
+    $chance = null;
+    if (preg_match('/(\d+(?:\.\d+)?)%/', $note, $m) === 1) {
+        $chance = (float) $m[1];
+    }
+
+    if (($chance ?? 0.0) >= 65.0 || $predicted >= 0.25) {
+        return 'Likely';
+    }
+    if (($chance ?? 0.0) >= 30.0 || $predicted >= 0.05) {
+        return 'Possible';
+    }
+    return 'Unlikely';
+}
+
+function presentation_for_prediction(array $row): array
+{
+    $metric = (string) ($row['metric'] ?? '');
+    $displayConfidence = (float) ($row['display_confidence'] ?? $row['confidence'] ?? 0.0);
+    $tier = confidence_tier($displayConfidence);
+    $details = (array) ($row['details'] ?? []);
+    $support = (array) ($row['forecast_support'] ?? []);
+    $unit = (string) ($row['unit'] ?? '');
+    $valueNum = $row['value_num'] !== null ? (float) $row['value_num'] : null;
+
+    $displayValue = $valueNum !== null ? sprintf('%.2f %s', $valueNum, $unit) : '-';
+    $forecastText = '';
+    if (($support['source'] ?? null) !== null && ($support['note'] ?? '') !== '') {
+        $forecastText = (string) $support['note'];
+    }
+
+    if ($metric === 'rainRate') {
+        $displayValue = rain_phrase($row);
+    }
+
+    return [
+        'tier' => $tier,
+        'display_value' => trim($displayValue),
+        'forecast_text' => $forecastText,
+        'current_value' => isset($details['current']) ? sprintf('Now %.2f %s', (float) $details['current'], $unit) : '',
+        'seasonal_text' => isset($details['seasonal_mean']) ? sprintf('Baseline %.2f %s', (float) $details['seasonal_mean'], $unit) : '',
+        'is_extended' => ((int) ($details['horizon_hours'] ?? 0)) > 6,
+        'muted' => $displayConfidence < 0.5,
+    ];
+}
+
 try {
     $config = app_config();
     $pdo = pdo_from_config($config);
@@ -187,7 +260,12 @@ try {
     $augmentedRows = [];
     foreach ($rows as $row) {
         $forecastRow = nearest_hourly_row($hourlyForecastRows, (string) ($row['target_time'] ?? ''));
-        $augmentedRows[] = augment_prediction_confidence($row, $forecastRow);
+        $augmented = augment_prediction_confidence($row, $forecastRow);
+        if (!prediction_should_display($augmented)) {
+            continue;
+        }
+        $augmented['presentation'] = presentation_for_prediction($augmented);
+        $augmentedRows[] = $augmented;
     }
 
     json_response([

@@ -46,7 +46,9 @@ render_site_header('Prediction', default_nav_links(), [
 
     <article class="card">
         <h2 class="chart-title">Prediction By Hour</h2>
-        <section id="prediction-hours" class="prediction-hours"></section>
+        <p class="muted">Short-horizon nowcasts are emphasized. Longer horizons are shown only for metrics that currently have usable signal.</p>
+        <section id="prediction-nowcast" class="prediction-section"></section>
+        <section id="prediction-extended" class="prediction-section"></section>
     </article>
 </div>
 
@@ -226,12 +228,11 @@ function groupByHour(items) {
     return [...map.entries()].sort((a, b) => String(a[0]).localeCompare(String(b[0])));
 }
 
-function renderHourWidgets(items) {
-    const host = document.getElementById('prediction-hours');
+function renderHourWidgets(host, items, emptyText) {
     if (!host) return;
     host.innerHTML = '';
     if (!Array.isArray(items) || items.length === 0) {
-        host.innerHTML = '<div class="muted">No prediction rows available.</div>';
+        host.innerHTML = `<div class="muted">${escapeHtml(emptyText)}</div>`;
         return;
     }
 
@@ -251,7 +252,8 @@ function renderHourWidgets(items) {
         for (const item of rows) {
             const band = confidenceBand(item?.confidence);
             const metric = document.createElement('article');
-            metric.className = `prediction-mini ${band}`;
+            const presentation = item?.presentation || {};
+            metric.className = `prediction-mini ${band}${presentation.muted ? ' prediction-mini-muted' : ''}`;
             metric.style.setProperty('--prediction-svg', confidenceSvgDataUrl(item?.confidence));
             const metricLabel = String(item?.details?.label || item?.metric || 'metric');
             const metricIcon = iconForMetric(item?.metric);
@@ -260,16 +262,25 @@ function renderHourWidgets(items) {
             const arrow = arrowForSlope(slope);
             const trendLine = Number.isFinite(horizon) ? `${horizon}h, ${arrow} ${fmtNumber(Math.abs(slope), 2)}` : `${arrow} ${fmtNumber(Math.abs(slope), 2)}`;
             const displayConfidence = Number(item?.display_confidence ?? item?.confidence ?? 0);
+            const tier = String(presentation.tier || '').trim();
+            const tierLabel = tier !== '' ? `${tier.charAt(0).toUpperCase()}${tier.slice(1)} confidence` : `${fmtNumber(displayConfidence * 100, 0)}% confidence`;
+            const displayValue = String(presentation.display_value || `${fmtNumber(item?.value_num, 2)} ${String(item?.unit || '')}`.trim());
+            const forecastText = String(presentation.forecast_text || '');
+            const currentValue = String(presentation.current_value || '');
+            const seasonalText = String(presentation.seasonal_text || '');
             metric.innerHTML = `
                 <div class="prediction-mini-bg" aria-hidden="true"></div>
                 <div class="prediction-mini-content">
                     <div class="prediction-mini-label"><img class="prediction-mini-icon" src="${escapeHtml(metricIcon)}" alt="${escapeHtml(metricLabel)}" title="${escapeHtml(metricLabel)}"></div>
-                    <div class="prediction-mini-value">${fmtNumber(item?.value_num, 2)} ${escapeHtml(item?.unit || '')}</div>
+                    <div class="prediction-mini-value">${escapeHtml(displayValue)}</div>
                     <div class="prediction-mini-meta">${escapeHtml(trendLine)}</div>
-                    <div class="prediction-mini-confidence">${fmtNumber(displayConfidence * 100, 0)}% confidence</div>
+                    <div class="prediction-mini-confidence">${escapeHtml(tierLabel)} (${fmtNumber(displayConfidence * 100, 0)}%)</div>
+                    ${currentValue !== '' ? `<div class="prediction-mini-support">${escapeHtml(currentValue)}</div>` : ''}
+                    ${forecastText !== '' ? `<div class="prediction-mini-support">${escapeHtml(forecastText)}</div>` : ''}
+                    ${seasonalText !== '' ? `<div class="prediction-mini-support">${escapeHtml(seasonalText)}</div>` : ''}
                 </div>
             `;
-            metric.className = `prediction-mini ${confidenceBand(displayConfidence)}`;
+            metric.className = `prediction-mini ${confidenceBand(displayConfidence)}${presentation.muted ? ' prediction-mini-muted' : ''}`;
             metric.style.setProperty('--prediction-svg', confidenceSvgDataUrl(displayConfidence));
             grid.appendChild(metric);
         }
@@ -289,7 +300,26 @@ async function loadPrediction() {
     document.getElementById('pred-run').textContent = payload.run_id || '-';
     document.getElementById('pred-generated').textContent = fmtTs(payload.generated_at);
     PRED_STATE.items = Array.isArray(payload.items) ? payload.items : [];
-    renderHourWidgets(PRED_STATE.items);
+    const nowcast = PRED_STATE.items.filter((item) => !(item?.presentation?.is_extended));
+    const extended = PRED_STATE.items.filter((item) => !!(item?.presentation?.is_extended));
+    renderPredictionSections(nowcast, extended);
+}
+
+function renderPredictionSections(nowcast, extended) {
+    const nowcastHost = document.getElementById('prediction-nowcast');
+    const extendedHost = document.getElementById('prediction-extended');
+    if (nowcastHost) {
+        nowcastHost.innerHTML = '<h3 class="chart-title">Nowcast (1h to 6h)</h3>';
+        const content = document.createElement('div');
+        nowcastHost.appendChild(content);
+        renderHourWidgets(content, nowcast, 'No short-horizon prediction rows available.');
+    }
+    if (extendedHost) {
+        extendedHost.innerHTML = '<h3 class="chart-title">Extended (12h to 24h)</h3>';
+        const content = document.createElement('div');
+        extendedHost.appendChild(content);
+        renderHourWidgets(content, extended, 'No extended prediction rows available.');
+    }
 }
 
 (async function init() {
@@ -297,7 +327,7 @@ async function loadPrediction() {
     try {
         await loadPrediction();
     } catch (err) {
-        const host = document.getElementById('prediction-hours');
+        const host = document.getElementById('prediction-nowcast');
         if (host) {
             host.innerHTML = `<div class="muted">${String(err.message || err)}</div>`;
         }
