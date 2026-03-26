@@ -317,6 +317,11 @@ a:visited {
     color: var(--text);
 }
 
+.wind-stat-sub {
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
 .wind-compass-title {
     font-size: 0.8rem;
     color: var(--muted);

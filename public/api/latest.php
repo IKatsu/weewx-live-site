@@ -156,7 +156,9 @@ try {
         $windSummarySql = sprintf(
             'SELECT
                 AVG(CASE WHEN %1$s >= :avg_one_hour_start THEN %2$s END) AS wind_avg_1h,
+                AVG(CASE WHEN %1$s >= :gust_avg_one_hour_start THEN %3$s END) AS gust_avg_1h,
                 AVG(CASE WHEN %1$s >= :avg_three_hour_start THEN %2$s END) AS wind_avg_3h,
+                AVG(CASE WHEN %1$s >= :gust_avg_three_hour_start THEN %3$s END) AS gust_avg_3h,
                 MAX(CASE WHEN %1$s >= :top_one_hour_start THEN %2$s END) AS wind_top_1h,
                 MAX(CASE WHEN %1$s >= :top_three_hour_start THEN %2$s END) AS wind_top_3h,
                 MAX(CASE WHEN %1$s >= :gust_one_hour_start THEN %3$s END) AS gust_top_1h,
@@ -171,6 +173,8 @@ try {
         $windSummaryStmt->execute([
             ':avg_one_hour_start' => $latestTs - 3600,
             ':avg_three_hour_start' => $latestTs - 10800,
+            ':gust_avg_one_hour_start' => $latestTs - 3600,
+            ':gust_avg_three_hour_start' => $latestTs - 10800,
             ':top_one_hour_start' => $latestTs - 3600,
             ':top_three_hour_start' => $latestTs - 10800,
             ':gust_one_hour_start' => $latestTs - 3600,
@@ -182,6 +186,8 @@ try {
         $windSummary = [
             'avg1h' => isset($windSummaryRow['wind_avg_1h']) ? (float) $windSummaryRow['wind_avg_1h'] : null,
             'avg3h' => isset($windSummaryRow['wind_avg_3h']) ? (float) $windSummaryRow['wind_avg_3h'] : null,
+            'gustAvg1h' => isset($windSummaryRow['gust_avg_1h']) ? (float) $windSummaryRow['gust_avg_1h'] : null,
+            'gustAvg3h' => isset($windSummaryRow['gust_avg_3h']) ? (float) $windSummaryRow['gust_avg_3h'] : null,
             'top1h' => isset($windSummaryRow['wind_top_1h']) ? (float) $windSummaryRow['wind_top_1h'] : null,
             'top3h' => isset($windSummaryRow['wind_top_3h']) ? (float) $windSummaryRow['wind_top_3h'] : null,
             'gustTop1h' => isset($windSummaryRow['gust_top_1h']) ? (float) $windSummaryRow['gust_top_1h'] : null,
