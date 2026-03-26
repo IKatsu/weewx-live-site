@@ -16,6 +16,10 @@ The format is intentionally simple:
 - Split rain metrics into `Rain Today` and `Rain 24h` so live MQTT values and derived archive totals no longer conflict
 - Updated the dashboard to prefer live MQTT loop payload values and reduced background API refresh to a slow fallback interval
 - Fixed `latest.php` placeholder binding issues that caused dashboard bootstrap failures
+- Disabled the archive dump API by default and kept token-based access as an optional local override
+- Disabled the debug page by default and added a separate config toggle for showing the debug nav link
+- Moved duplicate-sensor suppression such as `pm25_1` into local config instead of hard-coding it in shared code
+- Fixed bucketed wind-direction history by using vector averaging instead of plain scalar averages
 - Updated README and install documentation to reflect the wind summary and rain metric changes
 
 ## v1.0.0 - 2026-03-10
