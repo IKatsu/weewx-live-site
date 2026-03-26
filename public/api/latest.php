@@ -155,22 +155,27 @@ try {
     if ($windSpeedColumn !== null && $windGustColumn !== null) {
         $windSummarySql = sprintf(
             'SELECT
-                AVG(CASE WHEN %1$s >= :one_hour_start THEN %2$s END) AS wind_avg_1h,
-                AVG(CASE WHEN %1$s >= :three_hour_start THEN %2$s END) AS wind_avg_3h,
-                MAX(CASE WHEN %1$s >= :one_hour_start THEN %2$s END) AS wind_top_1h,
-                MAX(CASE WHEN %1$s >= :three_hour_start THEN %2$s END) AS wind_top_3h,
-                MAX(CASE WHEN %1$s >= :one_hour_start THEN %3$s END) AS gust_top_1h,
-                MAX(CASE WHEN %1$s >= :three_hour_start THEN %3$s END) AS gust_top_3h
+                AVG(CASE WHEN %1$s >= :avg_one_hour_start THEN %2$s END) AS wind_avg_1h,
+                AVG(CASE WHEN %1$s >= :avg_three_hour_start THEN %2$s END) AS wind_avg_3h,
+                MAX(CASE WHEN %1$s >= :top_one_hour_start THEN %2$s END) AS wind_top_1h,
+                MAX(CASE WHEN %1$s >= :top_three_hour_start THEN %2$s END) AS wind_top_3h,
+                MAX(CASE WHEN %1$s >= :gust_one_hour_start THEN %3$s END) AS gust_top_1h,
+                MAX(CASE WHEN %1$s >= :gust_three_hour_start THEN %3$s END) AS gust_top_3h
              FROM archive
-             WHERE %1$s <= :latest_ts AND %1$s >= :three_hour_start',
+             WHERE %1$s <= :latest_ts AND %1$s >= :where_three_hour_start',
             $dateTimeCol,
             $windSpeedColumn,
             $windGustColumn
         );
         $windSummaryStmt = $pdo->prepare($windSummarySql);
         $windSummaryStmt->execute([
-            ':one_hour_start' => $latestTs - 3600,
-            ':three_hour_start' => $latestTs - 10800,
+            ':avg_one_hour_start' => $latestTs - 3600,
+            ':avg_three_hour_start' => $latestTs - 10800,
+            ':top_one_hour_start' => $latestTs - 3600,
+            ':top_three_hour_start' => $latestTs - 10800,
+            ':gust_one_hour_start' => $latestTs - 3600,
+            ':gust_three_hour_start' => $latestTs - 10800,
+            ':where_three_hour_start' => $latestTs - 10800,
             ':latest_ts' => $latestTs,
         ]);
         $windSummaryRow = $windSummaryStmt->fetch() ?: [];
@@ -195,17 +200,18 @@ try {
         $window24hTs = $latestTs - 86400;
         $rainSumSql = sprintf(
             'SELECT
-                COALESCE(SUM(CASE WHEN %2$s >= :day_start_ts THEN %1$s ELSE 0 END), 0) AS rain_today,
-                COALESCE(SUM(CASE WHEN %2$s >= :window_24h_ts THEN %1$s ELSE 0 END), 0) AS rain_24h
+                COALESCE(SUM(CASE WHEN %2$s >= :day_start_case THEN %1$s ELSE 0 END), 0) AS rain_today,
+                COALESCE(SUM(CASE WHEN %2$s >= :window_24h_case THEN %1$s ELSE 0 END), 0) AS rain_24h
              FROM archive
-             WHERE %2$s <= :latest_ts AND %2$s >= :window_24h_ts',
+             WHERE %2$s <= :latest_ts AND %2$s >= :window_24h_where',
             $rainColumn,
-            $dateTimeCol,
+            $dateTimeCol
         );
         $rainSumStmt = $pdo->prepare($rainSumSql);
         $rainSumStmt->execute([
-            ':day_start_ts' => $dayStartTs,
-            ':window_24h_ts' => $window24hTs,
+            ':day_start_case' => $dayStartTs,
+            ':window_24h_case' => $window24hTs,
+            ':window_24h_where' => $window24hTs,
             ':latest_ts' => $latestTs,
         ]);
         $rainSums = $rainSumStmt->fetch() ?: [];
