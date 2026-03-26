@@ -31,14 +31,14 @@ $config = app_config();
 
 $allowedFields = array_values(array_unique(array_merge(
     array_keys($config['field_map'] ?? []),
-    ['rainHourly', 'windAvgHourly', 'windGustAvgHourly']
+    ['rainHourly', 'rainRolling24h', 'windAvgHourly', 'windGustAvgHourly']
 )));
 
 $defaultFields = [
     'outTemp', 'dewpoint', 'appTemp', 'inTemp', 'inDewpoint',
     'outHumidity', 'inHumidity', 'windSpeed', 'windGust', 'windDir',
     'barometer', 'pressure', 'rainRate', 'rainHourly',
-    'rain', 'rainDur', 'heatindex', 'windchill', 'humidex',
+    'rain', 'rainRolling24h', 'rainDur', 'heatindex', 'windchill', 'humidex',
     'UV', 'radiation', 'solarAltitude', 'cloudbase', 'ET',
     'sunshineDur', 'windrun', 'pm2_5', 'lightning_strike_count',
     'windBatteryStatus', 'rainBatteryStatus', 'lightning_Batt', 'pm25_Batt1', 'inTempBatteryStatus',
@@ -62,10 +62,11 @@ if (isset($_GET['fields'])) {
 }
 
 $includeRainHourly = in_array('rainHourly', $fields, true);
+$includeRainRolling24h = in_array('rainRolling24h', $fields, true);
 $includeWindAvgHourly = in_array('windAvgHourly', $fields, true);
 $includeWindGustAvgHourly = in_array('windGustAvgHourly', $fields, true);
 // Derived helper series do not directly map to DB columns.
-$dbFields = array_values(array_filter($fields, static fn (string $field): bool => !in_array($field, ['rainHourly', 'windAvgHourly', 'windGustAvgHourly', 'dateTime', 'usUnits'], true)));
+$dbFields = array_values(array_filter($fields, static fn (string $field): bool => !in_array($field, ['rainHourly', 'rainRolling24h', 'windAvgHourly', 'windGustAvgHourly', 'dateTime', 'usUnits'], true)));
 
 $aggregateMap = [
     // Totals/count-like fields should be summed per bucket; others use AVG.
@@ -197,6 +198,54 @@ try {
                 ];
                 if ($usUnits === null && $hourRow['usUnits'] !== null) {
                     $usUnits = (int) $hourRow['usUnits'];
+                }
+            }
+        }
+    }
+
+    if ($includeRainRolling24h) {
+        $rainColumn = mapped_archive_column($config, $columns, 'rain');
+        if ($rainColumn !== null) {
+            $rollingBucketMinutes = $bucketMinutes > 0 ? $bucketMinutes : 5;
+            $rollingStartTs = max(0, $startTs - 86400);
+            $rainRollingSql = sprintf(
+                'SELECT FLOOR(%1$s / (? * 60)) * (? * 60) AS bucket_ts, SUM(%2$s) AS rain_sum, MIN(%3$s) AS usUnits
+                 FROM archive
+                 WHERE %1$s >= ? AND %1$s < ?
+                 GROUP BY bucket_ts
+                 ORDER BY bucket_ts ASC',
+                $dateTimeCol,
+                $rainColumn,
+                $usUnitsCol
+            );
+            $rainRollingStmt = $pdo->prepare($rainRollingSql);
+            $rainRollingStmt->execute([$rollingBucketMinutes, $rollingBucketMinutes, $rollingStartTs, $endTs]);
+            $rollingRows = $rainRollingStmt->fetchAll();
+
+            $window = [];
+            $windowSum = 0.0;
+            foreach ($rollingRows as $rollingRow) {
+                $bucketTs = (int) ($rollingRow['bucket_ts'] ?? 0);
+                $bucketRain = (float) ($rollingRow['rain_sum'] ?? 0);
+                $window[] = ['ts' => $bucketTs, 'rain' => $bucketRain];
+                $windowSum += $bucketRain;
+
+                $windowMinTs = $bucketTs - 86400;
+                while ($window !== [] && $window[0]['ts'] < $windowMinTs) {
+                    $windowSum -= (float) $window[0]['rain'];
+                    array_shift($window);
+                }
+
+                if ($bucketTs < $startTs) {
+                    continue;
+                }
+
+                $series['rainRolling24h'][] = [
+                    'x' => $bucketTs * 1000,
+                    'y' => $windowSum,
+                ];
+                if ($usUnits === null && $rollingRow['usUnits'] !== null) {
+                    $usUnits = (int) $rollingRow['usUnits'];
                 }
             }
         }

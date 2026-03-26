@@ -346,7 +346,7 @@ const graphFieldRequirements = {
     wind_direction: ['windDir'],
     pressure: ['barometer', 'pressure'],
     rain_rate_hourly: ['rainRate', 'rainHourly'],
-    rain_total_duration: ['rain', 'rainDur'],
+    rain_total_duration: ['rainRolling24h', 'rainDur'],
     feels_like: ['heatindex', 'windchill', 'humidex'],
     solar: ['radiation', 'UV', 'solarAltitude'],
     cloudbase: ['cloudbase'],
@@ -1953,7 +1953,7 @@ function buildCharts(history) {
     const rainTotal = lineOptions(xMin, xMax);
     rainTotal.data = {
         datasets: [
-            { label: `Accumulated Rain (${units.rain || ''})`, data: s.rain || [], borderColor: '#0f5fa8', backgroundColor: '#0f5fa8', yAxisID: 'y' },
+            { label: `Rain 24h Total (${units.rain || ''})`, data: s.rainRolling24h || [], borderColor: '#0f5fa8', backgroundColor: '#0f5fa8', yAxisID: 'y' },
             { label: 'Rain Duration (s)', data: s.rainDur || [], borderColor: '#4d7db8', backgroundColor: 'rgba(77,125,184,0.25)', type: 'bar', yAxisID: 'y1' },
         ],
     };
