@@ -97,31 +97,6 @@ render_site_header('PWS Live Dashboard', default_nav_links(), [
                         <div id="wind-speed-ms" class="wind-compass-sub">-- m/s</div>
                         <div id="wind-gust-ms" class="wind-compass-sub">Gust -- m/s</div>
                     </div>
-                    <div class="wind-stats-card" aria-label="Wind summary">
-                        <div class="wind-compass-title">Wind Stats</div>
-                        <div class="wind-stats-grid">
-                            <div class="wind-stat-item">
-                                <span class="wind-stat-label">Avg 1h</span>
-                                <strong id="wind-avg-1h">--</strong>
-                                <span class="wind-stat-sub" id="wind-gust-avg-1h">Gust --</span>
-                            </div>
-                            <div class="wind-stat-item">
-                                <span class="wind-stat-label">Avg 3h</span>
-                                <strong id="wind-avg-3h">--</strong>
-                                <span class="wind-stat-sub" id="wind-gust-avg-3h">Gust --</span>
-                            </div>
-                            <div class="wind-stat-item">
-                                <span class="wind-stat-label">Top 1h</span>
-                                <strong id="wind-top-1h">--</strong>
-                                <span class="wind-stat-sub" id="wind-gust-top-1h">Gust --</span>
-                            </div>
-                            <div class="wind-stat-item">
-                                <span class="wind-stat-label">Top 3h</span>
-                                <strong id="wind-top-3h">--</strong>
-                                <span class="wind-stat-sub" id="wind-gust-top-3h">Gust --</span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
                 <div class="forecast-now-col">
                     <h3>Next 5 Hours</h3>
@@ -1138,6 +1113,19 @@ function renderCards() {
         return card;
     }
 
+    function buildWindSummaryCard(title, windValue, gustValue, unit) {
+        const card = document.createElement('article');
+        card.className = 'card wind-summary-card';
+        const windMs = Number.isFinite(Number(windValue)) ? toMetersPerSecond(Number(windValue), unit || 'm/s') : NaN;
+        const gustMs = Number.isFinite(Number(gustValue)) ? toMetersPerSecond(Number(gustValue), unit || 'm/s') : NaN;
+        card.innerHTML = `
+            <div class="label">${title}</div>
+            <div class="value">${Number.isFinite(windMs) ? `${windMs.toFixed(1)} m/s` : '--'}</div>
+            <div class="wind-summary-sub">Gust ${Number.isFinite(gustMs) ? `${gustMs.toFixed(1)} m/s` : '--'}</div>
+        `;
+        return card;
+    }
+
     const topGroups = new Set(['Temp', 'Humidity', 'Rain', 'Sun / Sky']);
     const rendered = new Set();
     // Render the top summary as labeled sensor rows rather than one large flat
@@ -1158,6 +1146,12 @@ function renderCards() {
         for (const key of groupKeys) {
             rendered.add(key);
             grid.appendChild(buildCard(key, metrics[key]));
+        }
+        if (group.title === 'Wind' && state.latest?.windSummary) {
+            const summary = state.latest.windSummary;
+            const unit = metrics.windSpeed?.unit || 'm/s';
+            grid.appendChild(buildWindSummaryCard('Avg 1h', summary.avg1h, summary.gustAvg1h, unit));
+            grid.appendChild(buildWindSummaryCard('Avg 3h', summary.avg3h, summary.gustAvg3h, unit));
         }
         section.appendChild(grid);
         if (topGroups.has(group.title)) {
@@ -1279,33 +1273,6 @@ function renderWindCompass(metrics) {
     needle.style.transform = Number.isFinite(dir) ? `translateX(-50%) rotate(${dir}deg)` : 'translateX(-50%) rotate(0deg)';
 }
 
-function renderWindStats(summary, metrics) {
-    const windUnit = metrics?.windSpeed?.unit || 'm/s';
-    const targets = {
-        avg1h: { main: document.getElementById('wind-avg-1h'), sub: document.getElementById('wind-gust-avg-1h') },
-        avg3h: { main: document.getElementById('wind-avg-3h'), sub: document.getElementById('wind-gust-avg-3h') },
-        top1h: { main: document.getElementById('wind-top-1h'), sub: document.getElementById('wind-gust-top-1h') },
-        top3h: { main: document.getElementById('wind-top-3h'), sub: document.getElementById('wind-gust-top-3h') },
-    };
-
-    const values = {
-        avg1h: { main: summary?.avg1h, sub: summary?.gustAvg1h },
-        avg3h: { main: summary?.avg3h, sub: summary?.gustAvg3h },
-        top1h: { main: summary?.top1h, sub: summary?.gustTop1h },
-        top3h: { main: summary?.top3h, sub: summary?.gustTop3h },
-    };
-
-    for (const [key, nodes] of Object.entries(targets)) {
-        if (!nodes.main || !nodes.sub) continue;
-        const mainRaw = Number(values[key]?.main);
-        const subRaw = Number(values[key]?.sub);
-        const mainSpeed = Number.isFinite(mainRaw) ? toMetersPerSecond(mainRaw, windUnit) : NaN;
-        const subSpeed = Number.isFinite(subRaw) ? toMetersPerSecond(subRaw, windUnit) : NaN;
-        nodes.main.textContent = Number.isFinite(mainSpeed) ? `${mainSpeed.toFixed(1)} m/s` : '--';
-        nodes.sub.textContent = Number.isFinite(subSpeed) ? `Gust ${subSpeed.toFixed(1)} m/s` : 'Gust --';
-    }
-}
-
 function renderAstroInfo(metrics) {
     const host = document.getElementById('astro-times');
     if (!host || !window.SunCalc) return;
@@ -1382,7 +1349,6 @@ function renderCurrentVisual(metrics) {
         }
     }
     renderWindCompass(metrics || {});
-    renderWindStats(state.latest?.windSummary || null, metrics || {});
 }
 
 function renderForecastCacheStatus(cache) {
