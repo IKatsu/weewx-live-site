@@ -42,7 +42,7 @@ $metricSpec = [
     'windDir' => ['label' => 'Wind Direction', 'unit' => 'degree'],
     'windrun' => ['label' => 'Wind Run', 'unit' => 'wind'],
     'rainRate' => ['label' => 'Rain Rate', 'unit' => 'rain_rate'],
-    'rain' => ['label' => 'Rain Total', 'unit' => 'rain'],
+    'rain' => ['label' => 'Rain Today', 'unit' => 'rain'],
     'radiation' => ['label' => 'Solar Radiation', 'unit' => 'radiation'],
     'UV' => ['label' => 'UV Index', 'unit' => 'uv'],
     'dewpoint' => ['label' => 'Dewpoint', 'unit' => 'temperature'],
@@ -187,24 +187,30 @@ try {
     $rainColumn = mapped_archive_column($config, $columns, 'rain');
     if ($rainColumn !== null) {
         // WeeWX archive.rain is the amount for that archive interval, not a
-        // sticky total. Derive a local-midnight accumulation so the summary
-        // card matches the live MQTT dayRain_* values from the WeeWX loop feed.
+        // sticky total. Expose both local-midnight and trailing-24h totals so
+        // the dashboard can show an MQTT-aligned "Rain Today" card while still
+        // making a true 24-hour accumulation available separately.
         $latestLocal = (new DateTimeImmutable('@' . $latestTs))->setTimezone(new DateTimeZone($timezone));
-        $windowStartTs = $latestLocal->setTime(0, 0, 0)->getTimestamp();
+        $dayStartTs = $latestLocal->setTime(0, 0, 0)->getTimestamp();
+        $window24hTs = $latestTs - 86400;
         $rainSumSql = sprintf(
-            'SELECT COALESCE(SUM(%s), 0) AS rain_today
+            'SELECT
+                COALESCE(SUM(CASE WHEN %2$s >= :day_start_ts THEN %1$s ELSE 0 END), 0) AS rain_today,
+                COALESCE(SUM(CASE WHEN %2$s >= :window_24h_ts THEN %1$s ELSE 0 END), 0) AS rain_24h
              FROM archive
-             WHERE %s >= :window_start_ts AND %s <= :latest_ts',
+             WHERE %2$s <= :latest_ts AND %2$s >= :window_24h_ts',
             $rainColumn,
             $dateTimeCol,
-            $dateTimeCol
         );
         $rainSumStmt = $pdo->prepare($rainSumSql);
         $rainSumStmt->execute([
-            ':window_start_ts' => $windowStartTs,
+            ':day_start_ts' => $dayStartTs,
+            ':window_24h_ts' => $window24hTs,
             ':latest_ts' => $latestTs,
         ]);
-        $derivedValues['rain'] = (float) (($rainSumStmt->fetch()['rain_today'] ?? 0.0));
+        $rainSums = $rainSumStmt->fetch() ?: [];
+        $derivedValues['rain'] = (float) (($rainSums['rain_today'] ?? 0.0));
+        $derivedValues['rain24h'] = (float) (($rainSums['rain_24h'] ?? 0.0));
     }
 
     $units = unit_map((int) $row['usUnits']);
@@ -213,14 +219,19 @@ try {
         $spec = $metricSpec[$field];
         $unit = $unitOverride[$spec['unit']] ?? ($units[$spec['unit']] ?? '');
         $value = $derivedValues[$field] ?? ($row[$field] ?? null);
-        $label = $spec['label'];
-        if ($field === 'rain' && array_key_exists('rain', $derivedValues)) {
-            $label = 'Rain Today';
-        }
         $metrics[$field] = [
-            'label' => $label,
+            'label' => $spec['label'],
             'value' => $value,
             'unit' => $unit,
+            'missingColumn' => false,
+        ];
+    }
+
+    if (array_key_exists('rain24h', $derivedValues)) {
+        $metrics['rain24h'] = [
+            'label' => 'Rain 24h',
+            'value' => $derivedValues['rain24h'],
+            'unit' => $unitOverride['mm'] ?? ($units['rain'] ?? ''),
             'missingColumn' => false,
         ];
     }

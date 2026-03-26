@@ -310,7 +310,7 @@ const historyRanges = {
 const metricOrder = [
     'outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'appTemp', 'heatindex', 'windchill', 'humidex',
     'outHumidity', 'inHumidity', 'barometer', 'pressure', 'windSpeed', 'windGust', 'windDir', 'windrun',
-    'rainRate', 'rain', 'UV', 'radiation', 'cloudbase', 'ET', 'solarAltitude', 'solarAzimuth', 'solarTime',
+    'rainRate', 'rain', 'rain24h', 'UV', 'radiation', 'cloudbase', 'ET', 'solarAltitude', 'solarAzimuth', 'solarTime',
     'lunarAltitude', 'lunarAzimuth', 'lunarTime',
     'pm2_5', 'lightning_strike_count', 'windBatteryStatus', 'rainBatteryStatus', 'lightning_Batt',
     'pm25_Batt1', 'inTempBatteryStatus'
@@ -319,7 +319,7 @@ const metricOrder = [
 const metricGroups = [
     { title: 'Temp', keys: ['outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'appTemp', 'heatindex', 'windchill', 'humidex'] },
     { title: 'Humidity', keys: ['outHumidity', 'inHumidity'] },
-    { title: 'Rain', keys: ['rainRate', 'rain', 'ET'] },
+    { title: 'Rain', keys: ['rainRate', 'rain', 'rain24h', 'ET'] },
     { title: 'Sun / Sky', keys: ['UV', 'radiation', 'cloudbase', 'solarAltitude', 'solarAzimuth', 'solarTime', 'lunarAltitude', 'lunarAzimuth', 'lunarTime'] },
     { title: 'Wind', keys: ['windSpeed', 'windGust', 'windDir', 'windrun'] },
     { title: 'Pressure', keys: ['barometer', 'pressure'] },
@@ -1961,7 +1961,7 @@ function buildCharts(history) {
     const rainTotal = lineOptions(xMin, xMax);
     rainTotal.data = {
         datasets: [
-            { label: `Rain Total (${units.rain || ''})`, data: s.rain || [], borderColor: '#0f5fa8', backgroundColor: '#0f5fa8', yAxisID: 'y' },
+            { label: `Accumulated Rain (${units.rain || ''})`, data: s.rain || [], borderColor: '#0f5fa8', backgroundColor: '#0f5fa8', yAxisID: 'y' },
             { label: 'Rain Duration (s)', data: s.rainDur || [], borderColor: '#4d7db8', backgroundColor: 'rgba(77,125,184,0.25)', type: 'bar', yAxisID: 'y1' },
         ],
     };
