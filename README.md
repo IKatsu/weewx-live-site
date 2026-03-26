@@ -58,6 +58,11 @@ Open `http://127.0.0.1:8080`.
 - Apache or another PHP-capable web server
 - Optional (for live browser updates): WeeWX MQTT extension [`matthewwall/weewx-mqtt`](https://github.com/matthewwall/weewx-mqtt)
 
+## License
+
+This project is licensed under the GNU Affero General Public License v3.0 or later (`AGPL-3.0-or-later`).
+See [LICENSE](LICENSE) for the full license text.
+
 ## Reference projects used during development
 
 - [WeeWX](https://github.com/weewx/weewx) for the archive layout, extension model, and MQTT/custom observation integration points
