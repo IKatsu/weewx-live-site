@@ -74,13 +74,20 @@ function render_site_header(string $title, array $navLinks, array $statusHtml = 
 /**
  * @return array<int, array{href:string,label:string}>
  */
-function default_nav_links(): array
+function default_nav_links(?array $config = null): array
 {
-    return [
+    $links = [
         ['href' => 'index.php', 'label' => 'Dashboard'],
         ['href' => 'trends.php', 'label' => 'Trends'],
         ['href' => 'history.php', 'label' => 'History'],
         ['href' => 'prediction.php', 'label' => 'Prediction'],
-        ['href' => 'debug.php', 'label' => 'Debug'],
     ];
+
+    $cfg = $config ?? app_config();
+    $debug = (array) ($cfg['debug'] ?? []);
+    if (($debug['enabled'] ?? false) === true && ($debug['show_nav'] ?? false) === true) {
+        $links[] = ['href' => 'debug.php', 'label' => 'Debug'];
+    }
+
+    return $links;
 }

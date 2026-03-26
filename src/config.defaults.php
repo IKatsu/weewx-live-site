@@ -23,6 +23,8 @@ return [
         // Keep MQTT reconnects calm during transient broker/network outages.
         'mqtt_reconnect_delay_ms' => 10000,
         'css_custom' => '',
+        // Installation-specific latest-metric suppressions for duplicate sensors.
+        'suppress_latest_metrics' => [],
         // "auto" selects the highest plotly-*.min.js found in public/assets/vendor.
         'plotly_js' => 'auto',
         'plotly_wind_rose' => true,
@@ -602,16 +604,18 @@ return [
         'topic' => 'weewx/#',
     ],
     'api' => [
-        // Harden dump endpoint by default while keeping it available.
-        'dump_enabled' => true,
+        // Keep archive dump export opt-in for reusable installs.
+        'dump_enabled' => false,
         'dump_default_rows' => 1000,
         'dump_max_rows' => 10000,
         // If set, /api/dump.php requires this token (GET token= or X-Api-Token header).
         'dump_token' => '',
     ],
     'debug' => [
-        // Keep the debug page LAN-only by default.
-        'enabled' => true,
+        // Keep the debug page fully opt-in by default.
+        'enabled' => false,
+        // Operators can expose the page without advertising it in the header nav.
+        'show_nav' => false,
         'allowed_cidrs' => [
             '127.0.0.1/32',
             '::1/128',

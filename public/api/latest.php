@@ -83,10 +83,13 @@ foreach ((array) ($config['optional_metric_groups'] ?? []) as $groupCfg) {
     }
 }
 
-// Local installation note: this site's `pm25_1` column mirrors the primary
-// `pm2_5` value. Suppress it here so the top-level latest metrics do not show
-// the same physical PM2.5 sensor twice.
-unset($metricSpec['pm25_1']);
+    // Local installs can suppress duplicate logical metrics (for example when
+    // pm25_1 mirrors the primary pm2_5 sensor on a specific station setup).
+    foreach ((array) ($config['ui']['suppress_latest_metrics'] ?? []) as $metricKey) {
+        if (is_string($metricKey) && $metricKey !== '') {
+            unset($metricSpec[$metricKey]);
+        }
+    }
 
 $unitOverride = [
     'degree' => '°',

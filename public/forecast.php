@@ -39,7 +39,7 @@ $timeFormat = (string) ($timeConfig['format'] ?? '24h');
 <body>
 <div class="forecast-wrap">
 <?php
-render_site_header('Forecast', default_nav_links(), [
+render_site_header('Forecast', default_nav_links($config), [
     '<div class="status-pill"><span>Provider:</span> <strong id="provider">-</strong></div>',
     '<div class="status-pill"><span>Hourly cache:</span> <strong id="cache-hourly">-</strong></div>',
     '<div class="status-pill"><span>Daily cache:</span> <strong id="cache-daily">-</strong></div>',

@@ -56,6 +56,20 @@ return [
     'ui' => [
         // API polling fallback/refresh rate for latest values.
         'poll_interval_seconds' => 15,
+        // Example: suppress duplicate PM2.5 aliases in latest metric cards.
+        'suppress_latest_metrics' => ['pm25_1'],
+    ],
+    'api' => [
+        // Leave disabled unless you explicitly want archive export.
+        'dump_enabled' => false,
+        // Optional when enabled for internet-facing installs.
+        'dump_token' => '',
+    ],
+    'debug' => [
+        // Enable only when you want the debug page reachable.
+        'enabled' => false,
+        // Show the Debug link in the header nav.
+        'show_nav' => false,
     ],
     'optional_metric_groups' => [
         // Temporarily enable all optional groups for field discovery/review.

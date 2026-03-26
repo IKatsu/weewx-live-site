@@ -139,7 +139,7 @@ try {
 <body>
 <div class="forecast-wrap">
 <?php
-render_site_header('Debug / Admin', default_nav_links(), [
+render_site_header('Debug / Admin', default_nav_links($config), [
     '<div class="status-pill"><span>PHP:</span> <strong>' . debug_h($runtime['php_version']) . '</strong></div>',
     '<div class="status-pill"><span>Headers:</span> <strong>' . debug_h(debug_bool((bool) ($config['security']['enable_headers'] ?? false))) . '</strong></div>',
 ]);

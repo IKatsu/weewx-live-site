@@ -115,6 +115,14 @@ try {
             // For long windows we aggregate server-side so response size stays manageable.
             $expressions = [];
             foreach ($mapped as $field => $column) {
+                if ($field === 'windDir') {
+                    // Wind direction wraps at 360°, so plain AVG() can turn
+                    // north-ish samples such as 359° and 1° into a bogus 180°.
+                    // Aggregate via vector components and reconstruct later.
+                    $expressions[] = sprintf('SUM(SIN(RADIANS(%s))) AS windDir_sin_sum', $column);
+                    $expressions[] = sprintf('SUM(COS(RADIANS(%s))) AS windDir_cos_sum', $column);
+                    continue;
+                }
                 $fn = $aggregateMap[$field] ?? 'AVG';
                 $expressions[] = sprintf('%s(%s) AS %s', $fn, $column, $field);
             }
@@ -158,14 +166,27 @@ try {
 
     $usUnits = null;
     if ($rows !== []) {
-        $usUnits = (int) $rows[0]['usUnits'];
-        foreach ($rows as $row) {
-            $x = (int) $row['dateTime'] * 1000;
-            foreach (array_keys($mapped) as $field) {
-                $value = $row[$field] ?? null;
-                if ($value === null) {
-                    continue;
-                }
+            $usUnits = (int) $rows[0]['usUnits'];
+            foreach ($rows as $row) {
+                $x = (int) $row['dateTime'] * 1000;
+                foreach (array_keys($mapped) as $field) {
+                    if ($field === 'windDir') {
+                        $sinSum = isset($row['windDir_sin_sum']) ? (float) $row['windDir_sin_sum'] : null;
+                        $cosSum = isset($row['windDir_cos_sum']) ? (float) $row['windDir_cos_sum'] : null;
+                        if ($sinSum === null || $cosSum === null || (abs($sinSum) < 0.000001 && abs($cosSum) < 0.000001)) {
+                            continue;
+                        }
+                        $degrees = rad2deg(atan2($sinSum, $cosSum));
+                        if ($degrees < 0) {
+                            $degrees += 360.0;
+                        }
+                        $series[$field][] = ['x' => $x, 'y' => $degrees];
+                        continue;
+                    }
+                    $value = $row[$field] ?? null;
+                    if ($value === null) {
+                        continue;
+                    }
                 $series[$field][] = ['x' => $x, 'y' => (float) $value];
             }
         }

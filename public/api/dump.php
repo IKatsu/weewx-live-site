@@ -28,7 +28,7 @@ require_once $bootstrapPath;
 
 $config = app_config();
 $apiConfig = (array) ($config['api'] ?? []);
-$dumpEnabled = (bool) ($apiConfig['dump_enabled'] ?? true);
+$dumpEnabled = (bool) ($apiConfig['dump_enabled'] ?? false);
 $defaultRows = max(1, (int) ($apiConfig['dump_default_rows'] ?? 1000));
 $maxRows = max(1, (int) ($apiConfig['dump_max_rows'] ?? 10000));
 $expectedToken = trim((string) ($apiConfig['dump_token'] ?? ''));

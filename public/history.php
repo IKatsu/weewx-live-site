@@ -371,7 +371,7 @@ try {
 <?php render_page_head('Monthly History', $view); ?>
 <body>
 <div class="history-wrap">
-<?php render_site_header('Monthly History', default_nav_links()); ?>
+<?php render_site_header('Monthly History', default_nav_links($config)); ?>
     <h1 class="title">Monthly High / Average / Low History</h1>
     <p class="muted">Monthly high/average/low by metric (Jan-Dec columns, last <?= (int) ($config['history']['lookback_years'] ?? 3) ?> years) using cached closed months plus live <code>archive_day_*</code> data for the current month.</p>
 

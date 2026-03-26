@@ -38,7 +38,7 @@ $timeFormat = (string) ($timeConfig['format'] ?? '24h');
 <body>
 <div class="forecast-wrap">
 <?php
-render_site_header('Prediction', default_nav_links(), [
+render_site_header('Prediction', default_nav_links($config), [
     '<div class="status-pill"><span>Run:</span> <strong id="pred-run">-</strong></div>',
     '<div class="status-pill"><span>Generated:</span> <strong id="pred-generated">-</strong></div>',
 ]);

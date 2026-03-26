@@ -38,7 +38,7 @@ $timeFormat = (string) ($timeConfig['format'] ?? '24h');
 <body>
 <div class="forecast-wrap">
 <?php
-render_site_header('Trend Nowcast', default_nav_links(), [
+render_site_header('Trend Nowcast', default_nav_links($config), [
     '<div class="status-pill"><span>Window:</span> <strong id="window-hours">-</strong></div>',
     '<div class="status-pill"><span>Updated:</span> <strong id="trend-updated">-</strong></div>',
 ]);

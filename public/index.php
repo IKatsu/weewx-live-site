@@ -53,7 +53,7 @@ $forecastConfig = $config['forecast'] ?? ['provider' => 'none'];
 <body>
 <div class="container">
 <?php
-render_site_header('PWS Live Dashboard', default_nav_links(), [
+render_site_header('PWS Live Dashboard', default_nav_links($config), [
     '<div class="status-pill"><span>Last update:</span> <strong id="db-updated">-</strong></div>',
     '<div class="status-pill"><span>Range:</span> <strong id="range-label">Today</strong></div>',
     '<button type="button" class="status-pill status-pill-button" id="mqtt-pill" aria-expanded="false" aria-controls="diag-popup"><span class="dot" id="mqtt-dot"></span><span id="mqtt-status">MQTT: idle</span></button>',

@@ -177,13 +177,14 @@ function app_config(): array
             'topic' => env_value('PWS_MQTT_TOPIC', (string) ($mqttCfg['topic'] ?? 'weewx/#')),
         ],
         'api' => [
-            'dump_enabled' => env_bool('PWS_API_DUMP_ENABLED', (bool) ($apiCfg['dump_enabled'] ?? true)),
+            'dump_enabled' => env_bool('PWS_API_DUMP_ENABLED', (bool) ($apiCfg['dump_enabled'] ?? false)),
             'dump_default_rows' => max(1, (int) env_value('PWS_API_DUMP_DEFAULT_ROWS', (string) ($apiCfg['dump_default_rows'] ?? 1000))),
             'dump_max_rows' => max(1, (int) env_value('PWS_API_DUMP_MAX_ROWS', (string) ($apiCfg['dump_max_rows'] ?? 10000))),
             'dump_token' => env_value('PWS_API_DUMP_TOKEN', (string) ($apiCfg['dump_token'] ?? '')),
         ],
         'debug' => [
-            'enabled' => env_bool('PWS_DEBUG_ENABLED', (bool) ($debugCfg['enabled'] ?? true)),
+            'enabled' => env_bool('PWS_DEBUG_ENABLED', (bool) ($debugCfg['enabled'] ?? false)),
+            'show_nav' => env_bool('PWS_DEBUG_SHOW_NAV', (bool) ($debugCfg['show_nav'] ?? false)),
             'allowed_cidrs' => array_values(array_filter(array_map(
                 static fn($cidr) => trim((string) $cidr),
                 (array) ($debugCfg['allowed_cidrs'] ?? [])
@@ -211,6 +212,10 @@ function app_config(): array
             'graphs' => (array) ($uiCfg['graphs'] ?? []),
             'battery_status_labels' => (array) ($uiCfg['battery_status_labels'] ?? []),
             'sensor_thresholds' => (array) ($uiCfg['sensor_thresholds'] ?? []),
+            'suppress_latest_metrics' => array_values(array_filter(array_map(
+                static fn($metric) => trim((string) $metric),
+                (array) ($uiCfg['suppress_latest_metrics'] ?? [])
+            ), static fn($metric) => $metric !== '')),
         ],
         'field_map' => (array) ($local['field_map'] ?? []),
         'location' => [
