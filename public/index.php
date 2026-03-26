@@ -97,6 +97,17 @@ render_site_header('PWS Live Dashboard', default_nav_links(), [
                         <div id="wind-speed-ms" class="wind-compass-sub">-- m/s</div>
                         <div id="wind-gust-ms" class="wind-compass-sub">Gust -- m/s</div>
                     </div>
+                    <div class="wind-stats-card" aria-label="Wind summary">
+                        <div class="wind-compass-title">Wind Stats</div>
+                        <div class="wind-stats-grid">
+                            <div class="wind-stat-item"><span class="wind-stat-label">Avg 1h</span><strong id="wind-avg-1h">--</strong></div>
+                            <div class="wind-stat-item"><span class="wind-stat-label">Avg 3h</span><strong id="wind-avg-3h">--</strong></div>
+                            <div class="wind-stat-item"><span class="wind-stat-label">Top Wind 1h</span><strong id="wind-top-1h">--</strong></div>
+                            <div class="wind-stat-item"><span class="wind-stat-label">Top Wind 3h</span><strong id="wind-top-3h">--</strong></div>
+                            <div class="wind-stat-item"><span class="wind-stat-label">Top Gust 1h</span><strong id="wind-gust-top-1h">--</strong></div>
+                            <div class="wind-stat-item"><span class="wind-stat-label">Top Gust 3h</span><strong id="wind-gust-top-3h">--</strong></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="forecast-now-col">
                     <h3>Next 5 Hours</h3>
@@ -337,7 +348,7 @@ const graphFieldRequirements = {
     temp_inside: ['inTemp', 'inDewpoint'],
     humidity_outside: ['outHumidity'],
     humidity_inside: ['inHumidity'],
-    wind_speed: ['windSpeed', 'windGust'],
+    wind_speed: ['windSpeed', 'windGust', 'windAvgHourly'],
     wind_direction: ['windDir'],
     pressure: ['barometer', 'pressure'],
     rain_rate_hourly: ['rainRate', 'rainHourly'],
@@ -1249,6 +1260,34 @@ function renderWindCompass(metrics) {
     needle.style.transform = Number.isFinite(dir) ? `translateX(-50%) rotate(${dir}deg)` : 'translateX(-50%) rotate(0deg)';
 }
 
+function renderWindStats(summary, metrics) {
+    const windUnit = metrics?.windSpeed?.unit || 'm/s';
+    const targets = {
+        avg1h: document.getElementById('wind-avg-1h'),
+        avg3h: document.getElementById('wind-avg-3h'),
+        top1h: document.getElementById('wind-top-1h'),
+        top3h: document.getElementById('wind-top-3h'),
+        gustTop1h: document.getElementById('wind-gust-top-1h'),
+        gustTop3h: document.getElementById('wind-gust-top-3h'),
+    };
+
+    const values = {
+        avg1h: summary?.avg1h,
+        avg3h: summary?.avg3h,
+        top1h: summary?.top1h,
+        top3h: summary?.top3h,
+        gustTop1h: summary?.gustTop1h,
+        gustTop3h: summary?.gustTop3h,
+    };
+
+    for (const [key, node] of Object.entries(targets)) {
+        if (!node) continue;
+        const raw = Number(values[key]);
+        const speedMs = Number.isFinite(raw) ? toMetersPerSecond(raw, windUnit) : NaN;
+        node.textContent = Number.isFinite(speedMs) ? `${speedMs.toFixed(1)} m/s` : '--';
+    }
+}
+
 function renderAstroInfo(metrics) {
     const host = document.getElementById('astro-times');
     if (!host || !window.SunCalc) return;
@@ -1325,6 +1364,7 @@ function renderCurrentVisual(metrics) {
         }
     }
     renderWindCompass(metrics || {});
+    renderWindStats(state.latest?.windSummary || null, metrics || {});
 }
 
 function renderForecastCacheStatus(cache) {
@@ -1879,6 +1919,7 @@ function buildCharts(history) {
         datasets: [
             { label: `Wind Speed (${units.wind || ''})`, data: s.windSpeed || [], borderColor: '#7c5cff', backgroundColor: '#7c5cff' },
             { label: `Wind Gust (${units.wind || ''})`, data: s.windGust || [], borderColor: '#9e7f09', backgroundColor: '#9e7f09' },
+            { label: `Hourly Avg Wind (${units.wind || ''})`, data: s.windAvgHourly || [], borderColor: '#1f8a8a', backgroundColor: '#1f8a8a', borderDash: [7, 5] },
         ],
     };
     state.charts.wind = new Chart(document.getElementById('chart-wind'), wind);

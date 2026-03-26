@@ -31,7 +31,7 @@ $config = app_config();
 
 $allowedFields = array_values(array_unique(array_merge(
     array_keys($config['field_map'] ?? []),
-    ['rainHourly']
+    ['rainHourly', 'windAvgHourly']
 )));
 
 $defaultFields = [
@@ -62,8 +62,9 @@ if (isset($_GET['fields'])) {
 }
 
 $includeRainHourly = in_array('rainHourly', $fields, true);
-// `rainHourly` is derived from `rain` and does not directly map to a DB column.
-$dbFields = array_values(array_filter($fields, static fn (string $field): bool => $field !== 'rainHourly' && $field !== 'dateTime' && $field !== 'usUnits'));
+$includeWindAvgHourly = in_array('windAvgHourly', $fields, true);
+// Derived helper series do not directly map to DB columns.
+$dbFields = array_values(array_filter($fields, static fn (string $field): bool => !in_array($field, ['rainHourly', 'windAvgHourly', 'dateTime', 'usUnits'], true)));
 
 $aggregateMap = [
     // Totals/count-like fields should be summed per bucket; others use AVG.
@@ -195,6 +196,37 @@ try {
                 ];
                 if ($usUnits === null && $hourRow['usUnits'] !== null) {
                     $usUnits = (int) $hourRow['usUnits'];
+                }
+            }
+        }
+    }
+
+    if ($includeWindAvgHourly) {
+        $windSpeedColumn = mapped_archive_column($config, $columns, 'windSpeed');
+        if ($windSpeedColumn !== null) {
+            $windAvgSql = sprintf(
+                'SELECT FLOOR(%s / 3600) * 3600 AS hour_ts, AVG(%s) AS wind_avg, MIN(%s) AS usUnits
+                 FROM archive
+                 WHERE %s >= ? AND %s < ?
+                 GROUP BY hour_ts
+                 ORDER BY hour_ts ASC',
+                $dateTimeCol,
+                $windSpeedColumn,
+                $usUnitsCol,
+                $dateTimeCol,
+                $dateTimeCol
+            );
+            $windAvgStmt = $pdo->prepare($windAvgSql);
+            $windAvgStmt->execute([$startTs, $endTs]);
+            $windRows = $windAvgStmt->fetchAll();
+
+            foreach ($windRows as $windRow) {
+                $series['windAvgHourly'][] = [
+                    'x' => (int) $windRow['hour_ts'] * 1000,
+                    'y' => (float) ($windRow['wind_avg'] ?? 0),
+                ];
+                if ($usUnits === null && $windRow['usUnits'] !== null) {
+                    $usUnits = (int) $windRow['usUnits'];
                 }
             }
         }

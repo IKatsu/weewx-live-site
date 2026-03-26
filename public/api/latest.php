@@ -147,8 +147,43 @@ try {
     }
 
     $derivedValues = [];
+    $windSummary = null;
     $timezone = (string) (($config['location']['timezone'] ?? 'UTC') ?: 'UTC');
     $latestTs = (int) $row['dateTime'];
+    $windSpeedColumn = mapped_archive_column($config, $columns, 'windSpeed');
+    $windGustColumn = mapped_archive_column($config, $columns, 'windGust');
+    if ($windSpeedColumn !== null && $windGustColumn !== null) {
+        $windSummarySql = sprintf(
+            'SELECT
+                AVG(CASE WHEN %1$s >= :one_hour_start THEN %2$s END) AS wind_avg_1h,
+                AVG(CASE WHEN %1$s >= :three_hour_start THEN %2$s END) AS wind_avg_3h,
+                MAX(CASE WHEN %1$s >= :one_hour_start THEN %2$s END) AS wind_top_1h,
+                MAX(CASE WHEN %1$s >= :three_hour_start THEN %2$s END) AS wind_top_3h,
+                MAX(CASE WHEN %1$s >= :one_hour_start THEN %3$s END) AS gust_top_1h,
+                MAX(CASE WHEN %1$s >= :three_hour_start THEN %3$s END) AS gust_top_3h
+             FROM archive
+             WHERE %1$s <= :latest_ts AND %1$s >= :three_hour_start',
+            $dateTimeCol,
+            $windSpeedColumn,
+            $windGustColumn
+        );
+        $windSummaryStmt = $pdo->prepare($windSummarySql);
+        $windSummaryStmt->execute([
+            ':one_hour_start' => $latestTs - 3600,
+            ':three_hour_start' => $latestTs - 10800,
+            ':latest_ts' => $latestTs,
+        ]);
+        $windSummaryRow = $windSummaryStmt->fetch() ?: [];
+        $windSummary = [
+            'avg1h' => isset($windSummaryRow['wind_avg_1h']) ? (float) $windSummaryRow['wind_avg_1h'] : null,
+            'avg3h' => isset($windSummaryRow['wind_avg_3h']) ? (float) $windSummaryRow['wind_avg_3h'] : null,
+            'top1h' => isset($windSummaryRow['wind_top_1h']) ? (float) $windSummaryRow['wind_top_1h'] : null,
+            'top3h' => isset($windSummaryRow['wind_top_3h']) ? (float) $windSummaryRow['wind_top_3h'] : null,
+            'gustTop1h' => isset($windSummaryRow['gust_top_1h']) ? (float) $windSummaryRow['gust_top_1h'] : null,
+            'gustTop3h' => isset($windSummaryRow['gust_top_3h']) ? (float) $windSummaryRow['gust_top_3h'] : null,
+        ];
+    }
+
     $rainColumn = mapped_archive_column($config, $columns, 'rain');
     if ($rainColumn !== null) {
         // WeeWX archive.rain is the amount for that archive interval, not a
@@ -195,6 +230,7 @@ try {
         'updatedAtIso' => gmdate('c', (int) $row['dateTime']),
         'usUnits' => (int) $row['usUnits'],
         'metrics' => $metrics,
+        'windSummary' => $windSummary,
         'availableFields' => $included,
         // Keep missing configured fields visible to debug/admin consumers without
         // exposing them as fake values in the normal latest metric payload.

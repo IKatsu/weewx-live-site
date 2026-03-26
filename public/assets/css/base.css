@@ -281,6 +281,42 @@ a:visited {
     background: color-mix(in srgb, var(--card) 88%, var(--accent-soft) 12%);
 }
 
+.wind-stats-card {
+    border: 1px solid var(--border);
+    border-radius: 0.7rem;
+    padding: 0.5rem 0.6rem;
+    min-width: 250px;
+    background: color-mix(in srgb, var(--card) 92%, var(--accent-soft) 8%);
+}
+
+.wind-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(90px, 1fr));
+    gap: 0.45rem 0.65rem;
+}
+
+.wind-stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.08rem;
+    padding: 0.28rem 0;
+    border-top: 1px solid color-mix(in srgb, var(--border) 72%, transparent 28%);
+}
+
+.wind-stat-item:nth-child(-n+2) {
+    border-top: 0;
+}
+
+.wind-stat-label {
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
+.wind-stat-item strong {
+    font-size: 0.95rem;
+    color: var(--text);
+}
+
 .wind-compass-title {
     font-size: 0.8rem;
     color: var(--muted);
@@ -930,10 +966,15 @@ a:visited {
         grid-template-columns: 1fr;
     }
     .current-main {
+        flex-wrap: wrap;
         align-items: stretch;
     }
     .wind-compass-card {
         margin-left: 0;
+    }
+    .wind-stats-card {
+        min-width: 0;
+        width: 100%;
     }
     .forecast-5day-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
