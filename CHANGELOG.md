@@ -8,6 +8,16 @@ The format is intentionally simple:
 - release date
 - short list of user-visible changes
 
+## Unreleased
+
+- Added wind summary cards in the `Wind` row for 1-hour and 3-hour wind/gust averages
+- Added a separate `Wind Averages / Gust Averages` chart and kept the main wind chart focused on raw speed/gust values
+- Added backend wind summary derivation and hourly average series support in `latest.php` and `history.php`
+- Split rain metrics into `Rain Today` and `Rain 24h` so live MQTT values and derived archive totals no longer conflict
+- Updated the dashboard to prefer live MQTT loop payload values and reduced background API refresh to a slow fallback interval
+- Fixed `latest.php` placeholder binding issues that caused dashboard bootstrap failures
+- Updated README and install documentation to reflect the wind summary and rain metric changes
+
 ## v1.0.0 - 2026-03-10
 
 - Initial stable release of the PHP live dashboard
