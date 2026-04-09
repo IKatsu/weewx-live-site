@@ -20,6 +20,7 @@ The format is intentionally simple:
 - Disabled the debug page by default and added a separate config toggle for showing the debug nav link
 - Moved duplicate-sensor suppression such as `pm25_1` into local config instead of hard-coding it in shared code
 - Fixed bucketed wind-direction history by using vector averaging instead of plain scalar averages
+- Reworked the sky widget to draw sampled SunCalc sun and moon paths instead of placeholder arcs
 - Updated README and install documentation to reflect the wind summary and rain metric changes
 
 ## v1.0.0 - 2026-03-10
