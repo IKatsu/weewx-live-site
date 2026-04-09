@@ -119,6 +119,9 @@ Optional metric group note:
 - History charts for optional metrics only appear when there are non-`NULL` samples in the selected range.
 Set `ui.time_format` to `24h` (default) or `12h` for all displayed times.
 Set `ui.mqtt_reconnect_delay_ms` if you want slower MQTT reconnect attempts during outages (`10000` default).
+Set `ui.history_range_buckets` to match WeeWX `[StdArchive] archive_interval` in `weewx.conf`.
+- Example: `archive_interval = 120` seconds means `today` / `yesterday` should use `2` minute buckets.
+- Longer ranges can stay coarser (`week = 15`, `month = 60`, `year = 360`) to keep chart payloads reasonable.
 Set `ui.plotly_js` to:
 - `auto` (default): highest `plotly-*.min.js` in `public/assets/vendor`
 - explicit file path to pin a specific Plotly build

@@ -56,6 +56,15 @@ return [
     'ui' => [
         // API polling fallback/refresh rate for latest values.
         'poll_interval_seconds' => 15,
+        // Keep this aligned with WeeWX [StdArchive] archive_interval in weewx.conf.
+        // Example: archive_interval = 120 seconds -> bucket_minutes = 2.
+        'history_range_buckets' => [
+            'today' => 2,
+            'yesterday' => 2,
+            'week' => 15,
+            'month' => 60,
+            'year' => 360,
+        ],
         // Example: suppress duplicate PM2.5 aliases in latest metric cards.
         'suppress_latest_metrics' => ['pm25_1'],
     ],

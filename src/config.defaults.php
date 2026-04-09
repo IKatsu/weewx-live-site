@@ -22,6 +22,15 @@ return [
         'poll_interval_seconds' => 1800,
         // Keep MQTT reconnects calm during transient broker/network outages.
         'mqtt_reconnect_delay_ms' => 10000,
+        // These history buckets should follow WeeWX [StdArchive] archive_interval.
+        // Example: archive_interval = 120 seconds -> bucket_minutes = 2.
+        'history_range_buckets' => [
+            'today' => 5,
+            'yesterday' => 5,
+            'week' => 15,
+            'month' => 60,
+            'year' => 360,
+        ],
         'css_custom' => '',
         // Installation-specific latest-metric suppressions for duplicate sensors.
         'suppress_latest_metrics' => [],

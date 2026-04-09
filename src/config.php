@@ -204,6 +204,7 @@ function app_config(): array
             ],
             'poll_interval_seconds' => max(5, (int) env_value('PWS_UI_POLL_INTERVAL_SECONDS', (string) ($uiCfg['poll_interval_seconds'] ?? 15))),
             'mqtt_reconnect_delay_ms' => max(1000, (int) ($uiCfg['mqtt_reconnect_delay_ms'] ?? 10000)),
+            'history_range_buckets' => (array) ($uiCfg['history_range_buckets'] ?? []),
             'plotly' => [
                 'js' => resolve_plotly_js_asset($uiCfg, $baseDir),
                 'wind_rose' => (bool) ($uiCfg['plotly_wind_rose'] ?? false),

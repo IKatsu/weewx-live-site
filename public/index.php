@@ -284,6 +284,7 @@ const APP = {
     timeFormat: <?= json_encode($timeFormat) ?>,
     pollIntervalMs: <?= max(60000, ((int) ($config['ui']['poll_interval_seconds'] ?? 1800)) * 1000) ?>,
     mqttReconnectDelayMs: <?= max(1000, (int) ($config['ui']['mqtt_reconnect_delay_ms'] ?? 10000)) ?>,
+    historyRangeBuckets: <?= json_encode((array) ($config['ui']['history_range_buckets'] ?? [])) ?>,
     layout: {
         maxColumns: <?= max(1, $graphMaxColumns) ?>,
         minWidthPx: <?= max(220, $graphMinWidthPx) ?>,
@@ -292,12 +293,13 @@ const APP = {
     },
 };
 
+const historyBuckets = APP.historyRangeBuckets || {};
 const historyRanges = {
-    today: { label: 'Today', hours: 24, endOffsetHours: 0, bucketMinutes: 5 },
-    yesterday: { label: 'Yesterday', hours: 24, endOffsetHours: 24, bucketMinutes: 5 },
-    week: { label: 'Last Week', hours: 24 * 7, endOffsetHours: 0, bucketMinutes: 15 },
-    month: { label: 'Last Month', hours: 24 * 30, endOffsetHours: 0, bucketMinutes: 60 },
-    year: { label: 'Last Year', hours: 24 * 365, endOffsetHours: 0, bucketMinutes: 6 * 60 },
+    today: { label: 'Today', hours: 24, endOffsetHours: 0, bucketMinutes: Number(historyBuckets.today || 5) },
+    yesterday: { label: 'Yesterday', hours: 24, endOffsetHours: 24, bucketMinutes: Number(historyBuckets.yesterday || 5) },
+    week: { label: 'Last Week', hours: 24 * 7, endOffsetHours: 0, bucketMinutes: Number(historyBuckets.week || 15) },
+    month: { label: 'Last Month', hours: 24 * 30, endOffsetHours: 0, bucketMinutes: Number(historyBuckets.month || 60) },
+    year: { label: 'Last Year', hours: 24 * 365, endOffsetHours: 0, bucketMinutes: Number(historyBuckets.year || (6 * 60)) },
 };
 
 const metricOrder = [
