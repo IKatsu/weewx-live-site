@@ -789,11 +789,62 @@ function renderSkyWidget(metrics) {
         return left + (chartWidth * clamp((ms - start.getTime()) / (end.getTime() - start.getTime()), 0, 1));
     }
 
-    function yFromArc(x, amplitude) {
-        const mid = (left + right) / 2;
-        const half = chartWidth / 2;
-        const nx = clamp((x - mid) / half, -1, 1);
-        return baseY - (Math.sqrt(Math.max(0, 1 - (nx * nx))) * amplitude);
+    function altitudeToY(altDeg) {
+        const maxAlt = 85;
+        const usable = baseY - top;
+        return baseY - (clamp(altDeg, 0, maxAlt) / maxAlt) * usable;
+    }
+
+    function projectSkyPoint(azDeg, altDeg) {
+        if (!Number.isFinite(azDeg) || !Number.isFinite(altDeg) || altDeg < 0) return null;
+        const x = left + (chartWidth * clamp(azDeg / 360, 0, 1));
+        const y = altitudeToY(altDeg);
+        return { x, y };
+    }
+
+    function sampleBodyPath(kind) {
+        const start = new Date(now);
+        start.setHours(0, 0, 0, 0);
+        const samples = [];
+        for (let minutes = 0; minutes <= 24 * 60; minutes += 5) {
+            const t = new Date(start.getTime() + (minutes * 60 * 1000));
+            const pos = kind === 'sun'
+                ? SunCalc.getPosition(t, lat, lon)
+                : SunCalc.getMoonPosition(t, lat, lon);
+            const azDeg = ((Number(pos.azimuth) * 180 / Math.PI) + 180 + 360) % 360;
+            const altDeg = Number(pos.altitude) * 180 / Math.PI;
+            const pt = projectSkyPoint(azDeg, altDeg);
+            if (pt) {
+                samples.push(pt);
+            }
+        }
+        return samples;
+    }
+
+    function drawPath(points, strokeStyle, lineWidth, dashed = false, fillStyle = '') {
+        if (!Array.isArray(points) || points.length < 2) return;
+        ctx.save();
+        ctx.strokeStyle = strokeStyle;
+        ctx.lineWidth = lineWidth * dpr;
+        if (dashed) {
+            ctx.setLineDash([4 * dpr, 5 * dpr]);
+        }
+        if (fillStyle !== '') {
+            ctx.fillStyle = fillStyle;
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, baseY);
+            for (const pt of points) ctx.lineTo(pt.x, pt.y);
+            ctx.lineTo(points[points.length - 1].x, baseY);
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+            ctx.lineTo(points[i].x, points[i].y);
+        }
+        ctx.stroke();
+        ctx.restore();
     }
 
     function drawGuideLine(x, label, value, topLabel = true) {
@@ -813,44 +864,15 @@ function renderSkyWidget(metrics) {
         }
     }
 
-    // Daytime dome under the main sun trajectory.
-    const dome = ctx.createLinearGradient(0, peakY, 0, baseY);
+    const sunPath = sampleBodyPath('sun');
+    const moonPath = sampleBodyPath('moon');
+
+    // Daytime dome under the sampled sun trajectory.
+    const dome = ctx.createLinearGradient(0, top, 0, baseY);
     dome.addColorStop(0, 'rgba(148, 206, 255, 0.9)');
     dome.addColorStop(1, 'rgba(92, 118, 210, 0.62)');
-    ctx.fillStyle = dome;
-    ctx.beginPath();
-    ctx.moveTo(left, baseY);
-    for (let x = left; x <= right; x += (2 * dpr)) {
-        ctx.lineTo(x, yFromArc(x, baseY - peakY));
-    }
-    ctx.lineTo(right, baseY);
-    ctx.closePath();
-    ctx.fill();
-
-    // Main sun trajectory line.
-    ctx.strokeStyle = 'rgba(168,214,255,0.92)';
-    ctx.lineWidth = 2.2 * dpr;
-    ctx.beginPath();
-    for (let x = left; x <= right; x += (2 * dpr)) {
-        const y = yFromArc(x, baseY - peakY);
-        if (x === left) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-
-    // Moon trajectory is a lower, dashed arc.
-    ctx.strokeStyle = 'rgba(150, 164, 202, 0.58)';
-    ctx.setLineDash([4 * dpr, 5 * dpr]);
-    ctx.lineWidth = 1.2 * dpr;
-    ctx.beginPath();
-    const moonAmp = (baseY - peakY) * 0.72;
-    for (let x = left; x <= right; x += (2 * dpr)) {
-        const y = baseY + (14 * dpr) - (Math.sqrt(Math.max(0, 1 - Math.pow((x - ((left + right) / 2)) / (chartWidth / 2), 2))) * moonAmp);
-        if (x === left) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-    ctx.setLineDash([]);
+    drawPath(sunPath, 'rgba(168,214,255,0.92)', 2.2, false, dome);
+    drawPath(moonPath, 'rgba(150, 164, 202, 0.58)', 1.2, true);
 
     const sunrise = sunTimes.sunrise;
     const sunset = sunTimes.sunset;
@@ -873,15 +895,19 @@ function renderSkyWidget(metrics) {
     const sunIcon = getSkyIcon('assets/weathericons-filled/clear-day.svg');
     const moonSymbol = moonPhaseIcon(moonIll.phase);
 
-    // Current sun marker follows real solar altitude if available, else time-based progression.
+    // Current sun marker uses the actual archived azimuth/altitude when available.
     if (!Number.isNaN(solarAlt) && solarAlt > -12) {
         let sunX = xFromTime(now) ?? ((left + right) / 2);
+        let sunY = Math.min(bottomY - (4 * dpr), baseY + (8 * dpr) + Math.abs(solarAlt * 0.7 * dpr));
         if (!Number.isNaN(solarAz)) {
-            sunX = left + (chartWidth * clamp(solarAz / 360, 0, 1));
+            const pt = projectSkyPoint(solarAz, solarAlt);
+            if (pt) {
+                sunX = pt.x;
+                sunY = pt.y;
+            } else {
+                sunX = left + (chartWidth * clamp(solarAz / 360, 0, 1));
+            }
         }
-        const sunY = solarAlt > 0
-            ? yFromArc(sunX, baseY - peakY)
-            : Math.min(bottomY - (4 * dpr), baseY + (8 * dpr) + Math.abs(solarAlt * 0.7 * dpr));
         if (!drawIcon(sunIcon, sunX, sunY, 84)) {
             drawDot(sunX, sunY, 12.6, 'rgba(255,173,88,0.95)');
             drawDot(sunX, sunY, 6.9, 'rgba(255,228,188,0.92)');
@@ -890,12 +916,16 @@ function renderSkyWidget(metrics) {
 
     if (!Number.isNaN(lunarAlt) && lunarAlt > -12) {
         let moonX = xFromTime(now) ?? ((left + right) / 2);
+        let moonY = Math.min(bottomY - (3 * dpr), baseY + (14 * dpr) + Math.abs(lunarAlt * 0.55 * dpr));
         if (!Number.isNaN(lunarAz)) {
-            moonX = left + (chartWidth * clamp(lunarAz / 360, 0, 1));
+            const pt = projectSkyPoint(lunarAz, lunarAlt);
+            if (pt) {
+                moonX = pt.x;
+                moonY = pt.y;
+            } else {
+                moonX = left + (chartWidth * clamp(lunarAz / 360, 0, 1));
+            }
         }
-        const moonY = lunarAlt > 0
-            ? baseY + (14 * dpr) - (Math.sqrt(Math.max(0, 1 - Math.pow((moonX - ((left + right) / 2)) / (chartWidth / 2), 2))) * moonAmp)
-            : Math.min(bottomY - (3 * dpr), baseY + (14 * dpr) + Math.abs(lunarAlt * 0.55 * dpr));
         drawPhaseSymbol(moonSymbol, moonX, moonY, 28, 0.98);
     }
 
