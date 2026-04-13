@@ -10,6 +10,8 @@ The format is intentionally simple:
 
 ## Unreleased
 
+## v1.0.4 - 2026-04-13
+
 - Reworked the sky widget to draw sampled SunCalc sun and moon paths instead of placeholder arcs
 - Added configurable history bucket sizes so dashboard aggregation can match the WeeWX archive interval
 - Added lightning summary cards that switch between recent-storm windows and last-strike fallback details
