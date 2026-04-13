@@ -22,6 +22,7 @@ The format is intentionally simple:
 - Fixed bucketed wind-direction history by using vector averaging instead of plain scalar averages
 - Reworked the sky widget to draw sampled SunCalc sun and moon paths instead of placeholder arcs
 - Updated README and install documentation to reflect the wind summary and rain metric changes
+- Added lightning summary cards that switch between recent-storm windows and last-strike fallback details
 
 ## v1.0.0 - 2026-03-10
 

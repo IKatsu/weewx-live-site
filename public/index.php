@@ -307,7 +307,9 @@ const metricOrder = [
     'outHumidity', 'inHumidity', 'barometer', 'pressure', 'windSpeed', 'windGust', 'windDir', 'windrun',
     'rainRate', 'rain', 'rain24h', 'UV', 'radiation', 'cloudbase', 'ET', 'solarAltitude', 'solarAzimuth', 'solarTime',
     'lunarAltitude', 'lunarAzimuth', 'lunarTime',
-    'pm2_5', 'lightning_strike_count', 'windBatteryStatus', 'rainBatteryStatus', 'lightning_Batt',
+    'pm2_5', 'lightning_strikes_5m', 'lightning_strikes_24h', 'lightning_closest_5m', 'lightning_furthest_5m',
+    'lightning_average_5m', 'lightning_last_distance', 'lightning_last_age', 'lightning_strike_count',
+    'windBatteryStatus', 'rainBatteryStatus', 'lightning_Batt',
     'pm25_Batt1', 'inTempBatteryStatus'
 ];
 
@@ -319,7 +321,7 @@ const metricGroups = [
     { title: 'Wind', keys: ['windSpeed', 'windGust', 'windDir', 'windrun'] },
     { title: 'Pressure', keys: ['barometer', 'pressure'] },
     { title: 'Air Quality', keys: ['pm2_5', 'pm1_0', 'pm4_0', 'pm10_0', 'pm25_2', 'pm25_3', 'pm25_4', 'co2', 'co2in', 'co2_Temp', 'co2_Hum'] },
-    { title: 'Lightning', keys: ['lightning_strike_count'] },
+    { title: 'Lightning', keys: ['lightning_strikes_5m', 'lightning_strikes_24h', 'lightning_closest_5m', 'lightning_furthest_5m', 'lightning_average_5m', 'lightning_last_distance', 'lightning_last_age'] },
     { title: 'Power / Battery', keys: ['windBatteryStatus', 'rainBatteryStatus', 'lightning_Batt', 'pm25_Batt1', 'inTempBatteryStatus'] },
 ];
 
@@ -436,6 +438,9 @@ function batteryStatusLabel(code) {
 }
 
 function formatMetricValue(metricKey, value, unit) {
+    if (typeof value === 'string' && value.trim() !== '') {
+        return value;
+    }
     if (isBatteryMetric(metricKey) && isLikelyBatteryStatusValue(value)) {
         const code = Math.round(Number(value));
         const label = batteryStatusLabel(code);
@@ -1594,9 +1599,29 @@ function mergeMqttUpdate(payload) {
         document.getElementById('db-updated').textContent = formatTimestamp(ts);
     }
 
+    const lightningStrikeDelta = choose(payload, ['lightning_strike_count', 'lightning_strike_count_count', 'lightning_num_count']);
+    const lightningDistance = choose(payload, ['lightning_distance']);
+    if ((lightningStrikeDelta !== null && lightningStrikeDelta > 0) || (lightningDistance !== null && lightningDistance > 0)) {
+        scheduleLightningLatestRefresh();
+    }
+
     renderCurrentVisual(state.latest.metrics);
     renderAstroInfo(state.latest.metrics);
     renderSkyWidget(state.latest.metrics);
+}
+
+let lightningLatestRefreshTimer = null;
+
+function scheduleLightningLatestRefresh() {
+    if (lightningLatestRefreshTimer) return;
+    lightningLatestRefreshTimer = window.setTimeout(async () => {
+        lightningLatestRefreshTimer = null;
+        try {
+            await loadLatest();
+        } catch (error) {
+            console.warn('lightning latest refresh failed', error);
+        }
+    }, 2500);
 }
 
 function lineOptions(xMin, xMax) {
