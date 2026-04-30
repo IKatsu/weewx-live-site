@@ -10,6 +10,8 @@ The format is intentionally simple:
 
 ## Unreleased
 
+- Added a dedicated celestial almanac page with a sky map, sun/moon details, twilight table, moon phase view, and visibility timeline
+
 ## v1.0.4 - 2026-04-13
 
 - Reworked the sky widget to draw sampled SunCalc sun and moon paths instead of placeholder arcs

@@ -81,6 +81,7 @@ function default_nav_links(?array $config = null): array
         ['href' => 'trends.php', 'label' => 'Trends'],
         ['href' => 'history.php', 'label' => 'History'],
         ['href' => 'prediction.php', 'label' => 'Prediction'],
+        ['href' => 'celestial.php', 'label' => 'Celestial'],
     ];
 
     $cfg = $config ?? app_config();

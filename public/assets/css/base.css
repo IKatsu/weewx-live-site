@@ -933,6 +933,85 @@ a:visited {
     line-height: 1.45;
 }
 
+.celestial-page {
+    display: grid;
+    gap: 1rem;
+}
+
+.celestial-layout {
+    display: grid;
+    grid-template-columns: minmax(360px, 1.4fr) minmax(280px, 0.8fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.celestial-sky-card {
+    min-width: 0;
+}
+
+#celestial-sky {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-height: min(72vh, 760px);
+    display: block;
+}
+
+.celestial-side {
+    display: grid;
+    gap: 1rem;
+}
+
+.celestial-charts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#celestial-visibility,
+#celestial-moon {
+    width: 100%;
+    display: block;
+}
+
+#celestial-visibility {
+    height: 260px;
+}
+
+#celestial-moon {
+    height: 230px;
+}
+
+.celestial-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+.celestial-detail {
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: 0.55rem;
+    padding: 0.5rem 0.6rem;
+    background: color-mix(in srgb, var(--card) 88%, var(--accent-soft) 12%);
+}
+
+.celestial-detail span {
+    display: block;
+    color: var(--muted);
+    font-size: 0.82rem;
+    margin-bottom: 0.12rem;
+}
+
+.celestial-detail strong {
+    display: block;
+    color: var(--text);
+    font-size: 1rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+.celestial-phase-grid {
+    margin-top: 0.7rem;
+}
+
 @media (max-width: 700px) {
     .container {
         width: calc(100% - 1rem);
@@ -974,5 +1053,13 @@ a:visited {
     }
     .debug-grid {
         grid-template-columns: 1fr;
+    }
+    .celestial-layout,
+    .celestial-charts,
+    .celestial-detail-grid {
+        grid-template-columns: 1fr;
+    }
+    #celestial-sky {
+        max-height: none;
     }
 }

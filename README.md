@@ -31,6 +31,7 @@ Live weather dashboard for weewx data with:
 - cached WU/TWC forecast integration (dashboard + dedicated forecast page)
 - archive-based trend page (`trends.php`)
 - hybrid prediction cache and page (`prediction.php`)
+- detailed celestial almanac page (`celestial.php`) with sky map, twilight, moon phase, and visibility timeline
 - optional WeeWX `custom_obs` extension package for solar/lunar custom field registration
 
 Compatibility note:
@@ -68,6 +69,7 @@ See [LICENSE](LICENSE) for the full license text.
 - [WeeWX](https://github.com/weewx/weewx) for the archive layout, extension model, and MQTT/custom observation integration points
 - [`Ecowitt-or-DAVIS-stations-and-Season-skin`](https://github.com/WernerKr/Ecowitt-or-DAVIS-stations-and-Season-skin) for the Ecowitt driver field names and custom observation mapping
 - [`weewx-skyfield-almanac`](https://github.com/roe-dl/weewx-skyfield-almanac) for the live solar/lunar values archived by this project
+- [`weewx-skymap-almanac`](https://github.com/roe-dl/weewx-skymap-almanac) as a reference for the dedicated celestial/almanac page concepts
 - [`weathericons`](https://github.com/roe-dl/weathericons) for the dashboard icon set
 
 ## Screenshots
@@ -118,7 +120,7 @@ Environment variables (optional overrides):
 - `PWS_MQTT_USER` (default from local config)
 - `PWS_MQTT_PASS` (default from local config)
 - `PWS_MQTT_TOPIC` (default `weewx/#`)
-- `PWS_API_DUMP_ENABLED` (default `true`)
+- `PWS_API_DUMP_ENABLED` (default `false`)
 - `PWS_API_DUMP_DEFAULT_ROWS` (default `1000`)
 - `PWS_API_DUMP_MAX_ROWS` (default `10000`)
 - `PWS_API_DUMP_TOKEN` (optional)
