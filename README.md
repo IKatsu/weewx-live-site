@@ -24,6 +24,7 @@ Live weather dashboard for weewx data with:
 - live value updates via MQTT WebSocket (`weewx/#`)
 - history presets: `Today`, `Yesterday`, `Last Week`, `Last Month`, `Last Year`
 - wind rose + wind direction point chart
+- comfort indication based on wind, outside temperature, and outside humidity
 - wind row summary cards for 1h and 3h average wind/gust values
 - dedicated wind averages chart (hourly average wind + hourly average gust)
 - separate rain chart with rain rate and hourly rain totals
@@ -106,6 +107,7 @@ See [LICENSE](LICENSE) for the full license text.
 - Local secrets: `src/config.local.php` (gitignored)
 - Runtime override: environment variables
 - Security checklist: `docs/SECURITY_NOTES.md`
+- Android alerting design notes: `docs/ANDROID_ALERTING.md`
 
 Environment variables (optional overrides):
 

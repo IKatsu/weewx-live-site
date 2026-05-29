@@ -10,6 +10,8 @@ The format is intentionally simple:
 
 ## Unreleased
 
+- Added a dashboard comfort indicator based on outside temperature, outside humidity, and wind speed
+- Added Android alerting design notes for future phone notifications
 - Added a dedicated celestial almanac page with a sky map, sun/moon details, twilight table, moon phase view, and visibility timeline
 
 ## v1.0.4 - 2026-04-13

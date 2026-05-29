@@ -305,7 +305,7 @@ const historyRanges = {
 const metricOrder = [
     'outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'appTemp', 'heatindex', 'windchill', 'humidex',
     'outHumidity', 'inHumidity', 'barometer', 'pressure', 'windSpeed', 'windGust', 'windDir', 'windrun',
-    'rainRate', 'rain', 'rain24h', 'UV', 'radiation', 'cloudbase', 'ET', 'solarAltitude', 'solarAzimuth', 'solarTime',
+    'comfort', 'rainRate', 'rain', 'rain24h', 'UV', 'radiation', 'cloudbase', 'ET', 'solarAltitude', 'solarAzimuth', 'solarTime',
     'lunarAltitude', 'lunarAzimuth', 'lunarTime',
     'pm2_5', 'lightning_strikes_5m', 'lightning_strikes_24h', 'lightning_closest_5m', 'lightning_furthest_5m',
     'lightning_average_5m', 'lightning_last_distance', 'lightning_last_age', 'lightning_strike_count',
@@ -316,6 +316,7 @@ const metricOrder = [
 const metricGroups = [
     { title: 'Temp', keys: ['outTemp', 'inTemp', 'dewpoint', 'inDewpoint', 'appTemp', 'heatindex', 'windchill', 'humidex'] },
     { title: 'Humidity', keys: ['outHumidity', 'inHumidity'] },
+    { title: 'Comfort', keys: ['comfort'] },
     { title: 'Rain', keys: ['rainRate', 'rain', 'rain24h', 'ET'] },
     { title: 'Sun / Sky', keys: ['UV', 'radiation', 'cloudbase', 'solarAltitude', 'solarAzimuth', 'solarTime', 'lunarAltitude', 'lunarAzimuth', 'lunarTime'] },
     { title: 'Wind', keys: ['windSpeed', 'windGust', 'windDir', 'windrun'] },
@@ -449,6 +450,36 @@ function formatMetricValue(metricKey, value, unit) {
     return formatValue(value, unit);
 }
 
+function comfortLabel(tempValue, humidityValue, windValue, tempUnit = '°C', windUnit = 'm/s') {
+    const tempC = tempToCelsius(tempValue, tempUnit);
+    const humidity = Number(humidityValue);
+    const windMs = toMetersPerSecond(Number(windValue), windUnit);
+    if (!Number.isFinite(tempC) || !Number.isFinite(humidity) || !Number.isFinite(windMs)) return null;
+
+    let score = 100;
+    score -= Math.abs(tempC - 20) * 3.1;
+    if (tempC < 5) score -= (5 - tempC) * 2.0;
+    else if (tempC > 28) score -= (tempC - 28) * 2.4;
+
+    if (humidity < 35) score -= (35 - humidity) * 0.7;
+    else if (humidity > 65) score -= (humidity - 65) * 0.75;
+
+    let windPenalty = Math.max(0, windMs - 3) * 4;
+    if (tempC < 10) {
+        windPenalty += Math.max(0, windMs - 1.5) * (10 - tempC) * 0.5;
+    } else if (tempC > 24 && windMs >= 1 && windMs <= 4.5) {
+        windPenalty -= Math.min(8, (tempC - 24) * 1.5);
+    }
+    score = Math.max(0, Math.min(100, score - windPenalty));
+
+    let label = 'Harsh';
+    if (score >= 85) label = 'Excellent';
+    else if (score >= 70) label = 'Comfortable';
+    else if (score >= 55) label = 'Fair';
+    else if (score >= 40) label = 'Uncomfortable';
+    return `${label} (${Math.round(score)})`;
+}
+
 function tempToCelsius(value, unit) {
     const n = Number(value);
     if (!Number.isFinite(n)) return NaN;
@@ -527,6 +558,7 @@ function tempChipHtml(value, unit = '°C', decimals = 0) {
 
 function metricPalette(metricKey) {
     if (isTemperatureMetric(metricKey)) return 'temperature';
+    if (metricKey === 'comfort') return 'comfort';
     if (isPm25Metric(metricKey)) return 'air_quality_pm25';
     if (['rain', 'rainRate', 'ET', 'rainDur'].includes(metricKey)) return 'rain';
     if (['windSpeed', 'windGust', 'windrun'].includes(metricKey)) return 'wind';
@@ -583,6 +615,7 @@ function pm25BandInfo(value) {
 }
 
 function colorStops(palette) {
+    if (palette === 'comfort') return [[201, 66, 56], [237, 149, 62], [240, 211, 82], [96, 187, 120], [42, 148, 82]];
     if (palette === 'temperature') return [[43, 92, 168], [54, 172, 214], [96, 187, 120], [240, 211, 82], [237, 149, 62], [201, 66, 56]];
     if (palette === 'rain') return [[236, 244, 252], [189, 220, 246], [120, 179, 231], [61, 131, 200], [30, 78, 156]];
     if (palette === 'wind') return [[52, 120, 204], [54, 172, 114], [235, 208, 78], [219, 111, 60], [138, 74, 171]];
@@ -607,7 +640,9 @@ function colorForRatio(palette, ratio) {
 
 function applyMetricCardColor(cardNode, metricKey, value, unit = '') {
     if (!cardNode) return;
-    const numeric = Number(value);
+    const numeric = metricKey === 'comfort'
+        ? Number(String(value || '').match(/\((\d+)\)/)?.[1] ?? NaN)
+        : Number(value);
     cardNode.classList.remove('metric-tone-card');
     cardNode.classList.remove('metric-alert-card', 'metric-alert-low', 'metric-alert-high');
     if (!Number.isFinite(numeric)) {
@@ -629,7 +664,7 @@ function applyMetricCardColor(cardNode, metricKey, value, unit = '') {
         return;
     }
     const scale = metricScale(metricKey);
-    if (!scale) {
+    if (!scale && metricKey !== 'comfort') {
         cardNode.style.background = '';
         cardNode.style.borderColor = '';
         cardNode.style.removeProperty('--metric-rgb');
@@ -644,7 +679,9 @@ function applyMetricCardColor(cardNode, metricKey, value, unit = '') {
             return;
         }
     }
-    const ratio = (numeric - scale.min) / Math.max(0.00001, scale.max - scale.min);
+    const ratio = metricKey === 'comfort'
+        ? numeric / 100
+        : (numeric - scale.min) / Math.max(0.00001, scale.max - scale.min);
     const [r, g, b] = colorForRatio(metricPalette(metricKey), ratio);
     cardNode.classList.add('metric-tone-card');
     cardNode.style.setProperty('--metric-rgb', `${r},${g},${b}`);
@@ -1163,7 +1200,7 @@ function renderCards() {
         return card;
     }
 
-    const topGroups = new Set(['Temp', 'Humidity', 'Rain', 'Sun / Sky']);
+    const topGroups = new Set(['Temp', 'Humidity', 'Comfort', 'Rain', 'Sun / Sky']);
     const rendered = new Set();
     // Render the top summary as labeled sensor rows rather than one large flat
     // grid. Anything not explicitly grouped falls through to "Other Sensors".
@@ -1594,6 +1631,8 @@ function mergeMqttUpdate(payload) {
         updateMetricValue(metricKey, value, state.latest.metrics[metricKey].unit);
     }
 
+    updateComfortMetric();
+
     const ts = choose(payload, ['dateTime']);
     if (ts !== null) {
         document.getElementById('db-updated').textContent = formatTimestamp(ts);
@@ -1611,6 +1650,21 @@ function mergeMqttUpdate(payload) {
 }
 
 let lightningLatestRefreshTimer = null;
+
+function updateComfortMetric() {
+    if (!state.latest?.metrics?.comfort) return;
+    const metrics = state.latest.metrics;
+    const comfort = comfortLabel(
+        metrics.outTemp?.value,
+        metrics.outHumidity?.value,
+        metrics.windSpeed?.value,
+        metrics.outTemp?.unit || '°C',
+        metrics.windSpeed?.unit || 'm/s'
+    );
+    if (!comfort) return;
+    metrics.comfort.value = comfort;
+    updateMetricValue('comfort', comfort, '');
+}
 
 function scheduleLightningLatestRefresh() {
     if (lightningLatestRefreshTimer) return;

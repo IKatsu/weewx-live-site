@@ -41,6 +41,7 @@ $metricSpec = [
     'windGust' => ['label' => 'Wind Gust', 'unit' => 'wind'],
     'windDir' => ['label' => 'Wind Direction', 'unit' => 'degree'],
     'windrun' => ['label' => 'Wind Run', 'unit' => 'wind'],
+    'comfort' => ['label' => 'Comfort', 'unit' => ''],
     'rainRate' => ['label' => 'Rain Rate', 'unit' => 'rain_rate'],
     'rain' => ['label' => 'Rain Today', 'unit' => 'rain'],
     'radiation' => ['label' => 'Solar Radiation', 'unit' => 'radiation'],
@@ -117,6 +118,7 @@ $unitOverride = [
 ];
 
 $dynamicDerivedMetricKeys = [
+    'comfort',
     'rain24h',
     'lightning_strikes_5m',
     'lightning_strikes_24h',
@@ -174,6 +176,7 @@ try {
     $windSummary = null;
     $timezone = (string) (($config['location']['timezone'] ?? 'UTC') ?: 'UTC');
     $latestTs = (int) $row['dateTime'];
+    $units = unit_map((int) $row['usUnits']);
     $windSpeedColumn = mapped_archive_column($config, $columns, 'windSpeed');
     $windGustColumn = mapped_archive_column($config, $columns, 'windGust');
     if ($windSpeedColumn !== null && $windGustColumn !== null) {
@@ -320,7 +323,24 @@ try {
         }
     }
 
-    $units = unit_map((int) $row['usUnits']);
+    if (
+        isset($row['outTemp'], $row['outHumidity'], $row['windSpeed'])
+        && $row['outTemp'] !== null
+        && $row['outHumidity'] !== null
+        && $row['windSpeed'] !== null
+    ) {
+        $comfort = comfort_label(
+            (float) $row['outTemp'],
+            (float) $row['outHumidity'],
+            (float) $row['windSpeed'],
+            (string) ($units['temperature'] ?? '°C'),
+            (string) ($units['wind'] ?? 'm/s')
+        );
+        if ($comfort !== null) {
+            $derivedValues['comfort'] = $comfort;
+        }
+    }
+
     $metrics = [];
     foreach ($included as $field) {
         $spec = $metricSpec[$field];
@@ -339,6 +359,15 @@ try {
             'label' => 'Rain 24h',
             'value' => $derivedValues['rain24h'],
             'unit' => $unitOverride['mm'] ?? ($units['rain'] ?? ''),
+            'missingColumn' => false,
+        ];
+    }
+
+    if (array_key_exists('comfort', $derivedValues)) {
+        $metrics['comfort'] = [
+            'label' => 'Comfort',
+            'value' => $derivedValues['comfort'],
+            'unit' => '',
             'missingColumn' => false,
         ];
     }
@@ -408,4 +437,61 @@ function lightning_age_label(int $seconds): string
     return $hoursRemainder > 0
         ? sprintf('%dd %dh ago', $days, $hoursRemainder)
         : sprintf('%dd ago', $days);
+}
+
+function comfort_label(float $tempValue, float $humidity, float $windValue, string $tempUnit, string $windUnit): ?string
+{
+    $tempC = comfort_temp_celsius($tempValue, $tempUnit);
+    $windMs = comfort_wind_mps($windValue, $windUnit);
+    if (!is_finite($tempC) || !is_finite($humidity) || !is_finite($windMs)) {
+        return null;
+    }
+
+    $score = 100.0;
+    $score -= abs($tempC - 20.0) * 3.1;
+
+    if ($tempC < 5.0) {
+        $score -= (5.0 - $tempC) * 2.0;
+    } elseif ($tempC > 28.0) {
+        $score -= ($tempC - 28.0) * 2.4;
+    }
+
+    if ($humidity < 35.0) {
+        $score -= (35.0 - $humidity) * 0.7;
+    } elseif ($humidity > 65.0) {
+        $score -= ($humidity - 65.0) * 0.75;
+    }
+
+    $windPenalty = max(0.0, $windMs - 3.0) * 4.0;
+    if ($tempC < 10.0) {
+        $windPenalty += max(0.0, $windMs - 1.5) * (10.0 - $tempC) * 0.5;
+    } elseif ($tempC > 24.0 && $windMs >= 1.0 && $windMs <= 4.5) {
+        $windPenalty -= min(8.0, ($tempC - 24.0) * 1.5);
+    }
+    $score -= $windPenalty;
+
+    $score = max(0.0, min(100.0, $score));
+    $label = match (true) {
+        $score >= 85.0 => 'Excellent',
+        $score >= 70.0 => 'Comfortable',
+        $score >= 55.0 => 'Fair',
+        $score >= 40.0 => 'Uncomfortable',
+        default => 'Harsh',
+    };
+
+    return sprintf('%s (%d)', $label, (int) round($score));
+}
+
+function comfort_temp_celsius(float $value, string $unit): float
+{
+    return str_contains($unit, '°F') ? (($value - 32.0) * (5.0 / 9.0)) : $value;
+}
+
+function comfort_wind_mps(float $value, string $unit): float
+{
+    return match ($unit) {
+        'km/h' => $value / 3.6,
+        'mph' => $value * 0.44704,
+        default => $value,
+    };
 }
