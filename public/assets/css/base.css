@@ -625,6 +625,7 @@ a:visited {
     padding: 0.55rem 0.7rem;
     color: var(--text);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    overflow: visible;
 }
 
 .forecast-alert-item strong {
@@ -639,6 +640,9 @@ a:visited {
 .forecast-alert-item div {
     margin-top: 0.16rem;
     font-size: 0.86rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
 }
 
 .forecast-row {

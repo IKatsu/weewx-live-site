@@ -10,6 +10,10 @@ The format is intentionally simple:
 
 ## Unreleased
 
+- Let forecast alert descriptions render in full on the dashboard
+- Added a current-temperature trend arrow based on recent archive values
+- Expanded lightning summary counts to rolling 5-minute, 1-hour, 24-hour, and 7-day windows
+- Removed the forecast-provider suffix from the current weather heading
 - Added a dashboard comfort indicator based on outside temperature, outside humidity, and wind speed
 - Added Android alerting design notes for future phone notifications
 - Added a dedicated celestial almanac page with a sky map, sun/moon details, twilight table, moon phase view, and visibility timeline

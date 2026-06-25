@@ -63,7 +63,9 @@ $metricSpec = [
     'pm2_5' => ['label' => 'PM2.5', 'unit' => 'ugm3'],
     'lightning_strike_count' => ['label' => 'Lightning Strikes', 'unit' => 'count'],
     'lightning_strikes_5m' => ['label' => 'Strikes 5m', 'unit' => 'count'],
+    'lightning_strikes_1h' => ['label' => 'Strikes 1h', 'unit' => 'count'],
     'lightning_strikes_24h' => ['label' => 'Strikes 24h', 'unit' => 'count'],
+    'lightning_strikes_7d' => ['label' => 'Strikes 7d', 'unit' => 'count'],
     'lightning_closest_5m' => ['label' => 'Closest Strike 5m', 'unit' => 'km'],
     'lightning_furthest_5m' => ['label' => 'Furthest Strike 5m', 'unit' => 'km'],
     'lightning_average_5m' => ['label' => 'Average Strike 5m', 'unit' => 'km'],
@@ -121,7 +123,9 @@ $dynamicDerivedMetricKeys = [
     'comfort',
     'rain24h',
     'lightning_strikes_5m',
+    'lightning_strikes_1h',
     'lightning_strikes_24h',
+    'lightning_strikes_7d',
     'lightning_closest_5m',
     'lightning_furthest_5m',
     'lightning_average_5m',
@@ -177,6 +181,7 @@ try {
     $timezone = (string) (($config['location']['timezone'] ?? 'UTC') ?: 'UTC');
     $latestTs = (int) $row['dateTime'];
     $units = unit_map((int) $row['usUnits']);
+    $temperatureTrend = null;
     $windSpeedColumn = mapped_archive_column($config, $columns, 'windSpeed');
     $windGustColumn = mapped_archive_column($config, $columns, 'windGust');
     if ($windSpeedColumn !== null && $windGustColumn !== null) {
@@ -252,6 +257,35 @@ try {
         $derivedValues['rain24h'] = (float) (($rainSums['rain_24h'] ?? 0.0));
     }
 
+    $outTempColumn = mapped_archive_column($config, $columns, 'outTemp');
+    if ($outTempColumn !== null && isset($row['outTemp']) && $row['outTemp'] !== null) {
+        $trendStmt = $pdo->prepare(sprintf(
+            'SELECT %1$s AS previous_temp, %2$s AS previous_ts
+             FROM archive
+             WHERE %2$s <= :trend_start AND %1$s IS NOT NULL
+             ORDER BY %2$s DESC
+             LIMIT 1',
+            $outTempColumn,
+            $dateTimeCol
+        ));
+        $trendStmt->execute([':trend_start' => $latestTs - 600]);
+        $trendRow = $trendStmt->fetch() ?: null;
+        if ($trendRow && $trendRow['previous_temp'] !== null) {
+            $delta = (float) $row['outTemp'] - (float) $trendRow['previous_temp'];
+            $arrow = '→';
+            if ($delta > 0.05) {
+                $arrow = '↗';
+            } elseif ($delta < -0.05) {
+                $arrow = '↘';
+            }
+            $temperatureTrend = [
+                'arrow' => $arrow,
+                'delta' => $delta,
+                'minutes' => max(1, (int) round(($latestTs - (int) $trendRow['previous_ts']) / 60)),
+            ];
+        }
+    }
+
     $lightningDistanceColumn = mapped_archive_column($config, $columns, 'lightning_distance');
     $lightningStrikeCountColumn = mapped_archive_column($config, $columns, 'lightning_strike_count');
     if ($lightningDistanceColumn !== null || $lightningStrikeCountColumn !== null) {
@@ -259,18 +293,22 @@ try {
         // dashboard summary should be based on actual strike rows and recent
         // distances instead of that raw flag.
         $window5mTs = $latestTs - 300;
+        $window1hTs = $latestTs - 3600;
         $window24hTs = $latestTs - 86400;
+        $window7dTs = $latestTs - 604800;
         $strikeExpr = $lightningStrikeCountColumn !== null ? $lightningStrikeCountColumn : '0';
         $distanceExpr = $lightningDistanceColumn !== null ? $lightningDistanceColumn : 'NULL';
         $lightningSummarySql = sprintf(
             'SELECT
                 COALESCE(SUM(CASE WHEN %1$s >= :five_min_start_case THEN %2$s ELSE 0 END), 0) AS strikes_5m,
+                COALESCE(SUM(CASE WHEN %1$s >= :one_hour_start_case THEN %2$s ELSE 0 END), 0) AS strikes_1h,
                 COALESCE(SUM(CASE WHEN %1$s >= :day_start_case THEN %2$s ELSE 0 END), 0) AS strikes_24h,
+                COALESCE(SUM(CASE WHEN %1$s >= :week_start_case THEN %2$s ELSE 0 END), 0) AS strikes_7d,
                 MIN(CASE WHEN %1$s >= :distance_five_min_start AND %3$s IS NOT NULL THEN %3$s END) AS closest_5m,
                 MAX(CASE WHEN %1$s >= :distance_five_min_start_max AND %3$s IS NOT NULL THEN %3$s END) AS furthest_5m,
                 AVG(CASE WHEN %1$s >= :distance_five_min_start_avg AND %3$s IS NOT NULL THEN %3$s END) AS average_5m
              FROM archive
-             WHERE %1$s <= :latest_ts AND %1$s >= :where_start_24h',
+             WHERE %1$s <= :latest_ts AND %1$s >= :where_start_7d',
             $dateTimeCol,
             $strikeExpr,
             $distanceExpr
@@ -278,18 +316,25 @@ try {
         $lightningSummaryStmt = $pdo->prepare($lightningSummarySql);
         $lightningSummaryStmt->execute([
             ':five_min_start_case' => $window5mTs,
+            ':one_hour_start_case' => $window1hTs,
             ':day_start_case' => $window24hTs,
+            ':week_start_case' => $window7dTs,
             ':distance_five_min_start' => $window5mTs,
             ':distance_five_min_start_max' => $window5mTs,
             ':distance_five_min_start_avg' => $window5mTs,
-            ':where_start_24h' => $window24hTs,
+            ':where_start_7d' => $window7dTs,
             ':latest_ts' => $latestTs,
         ]);
         $lightningSummary = $lightningSummaryStmt->fetch() ?: [];
         $strikes24h = (int) round((float) ($lightningSummary['strikes_24h'] ?? 0));
-        if ($strikes24h > 0) {
+        $strikes7d = (int) round((float) ($lightningSummary['strikes_7d'] ?? 0));
+        if ($strikes7d > 0) {
             $derivedValues['lightning_strikes_5m'] = (string) ((int) round((float) ($lightningSummary['strikes_5m'] ?? 0)));
+            $derivedValues['lightning_strikes_1h'] = (string) ((int) round((float) ($lightningSummary['strikes_1h'] ?? 0)));
             $derivedValues['lightning_strikes_24h'] = (string) $strikes24h;
+            $derivedValues['lightning_strikes_7d'] = (string) $strikes7d;
+        }
+        if ($strikes24h > 0) {
             if (isset($lightningSummary['closest_5m']) && $lightningSummary['closest_5m'] !== null) {
                 $derivedValues['lightning_closest_5m'] = (float) $lightningSummary['closest_5m'];
             }
@@ -374,7 +419,9 @@ try {
 
     foreach ([
         'lightning_strikes_5m',
+        'lightning_strikes_1h',
         'lightning_strikes_24h',
+        'lightning_strikes_7d',
         'lightning_closest_5m',
         'lightning_furthest_5m',
         'lightning_average_5m',
@@ -400,6 +447,7 @@ try {
         'usUnits' => (int) $row['usUnits'],
         'metrics' => $metrics,
         'windSummary' => $windSummary,
+        'temperatureTrend' => $temperatureTrend,
         'availableFields' => $included,
         // Keep missing configured fields visible to debug/admin consumers without
         // exposing them as fake values in the normal latest metric payload.

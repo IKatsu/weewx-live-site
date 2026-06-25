@@ -307,7 +307,8 @@ const metricOrder = [
     'outHumidity', 'inHumidity', 'barometer', 'pressure', 'windSpeed', 'windGust', 'windDir', 'windrun',
     'comfort', 'rainRate', 'rain', 'rain24h', 'UV', 'radiation', 'cloudbase', 'ET', 'solarAltitude', 'solarAzimuth', 'solarTime',
     'lunarAltitude', 'lunarAzimuth', 'lunarTime',
-    'pm2_5', 'lightning_strikes_5m', 'lightning_strikes_24h', 'lightning_closest_5m', 'lightning_furthest_5m',
+    'pm2_5', 'lightning_strikes_5m', 'lightning_strikes_1h', 'lightning_strikes_24h', 'lightning_strikes_7d',
+    'lightning_closest_5m', 'lightning_furthest_5m',
     'lightning_average_5m', 'lightning_last_distance', 'lightning_last_age', 'lightning_strike_count',
     'windBatteryStatus', 'rainBatteryStatus', 'lightning_Batt',
     'pm25_Batt1', 'inTempBatteryStatus'
@@ -322,7 +323,7 @@ const metricGroups = [
     { title: 'Wind', keys: ['windSpeed', 'windGust', 'windDir', 'windrun'] },
     { title: 'Pressure', keys: ['barometer', 'pressure'] },
     { title: 'Air Quality', keys: ['pm2_5', 'pm1_0', 'pm4_0', 'pm10_0', 'pm25_2', 'pm25_3', 'pm25_4', 'co2', 'co2in', 'co2_Temp', 'co2_Hum'] },
-    { title: 'Lightning', keys: ['lightning_strikes_5m', 'lightning_strikes_24h', 'lightning_closest_5m', 'lightning_furthest_5m', 'lightning_average_5m', 'lightning_last_distance', 'lightning_last_age'] },
+    { title: 'Lightning', keys: ['lightning_strikes_5m', 'lightning_strikes_1h', 'lightning_strikes_24h', 'lightning_strikes_7d', 'lightning_closest_5m', 'lightning_furthest_5m', 'lightning_average_5m', 'lightning_last_distance', 'lightning_last_age'] },
     { title: 'Power / Battery', keys: ['windBatteryStatus', 'rainBatteryStatus', 'lightning_Batt', 'pm25_Batt1', 'inTempBatteryStatus'] },
 ];
 
@@ -1385,7 +1386,8 @@ function renderCurrentVisual(metrics) {
     if (tempNode) {
         const out = metrics?.outTemp?.value;
         const unit = metrics?.outTemp?.unit || '';
-        tempNode.textContent = out !== undefined && out !== null ? `${Number(out).toFixed(1)} ${unit}` : '--';
+        const trend = state.latest?.temperatureTrend?.arrow || '';
+        tempNode.textContent = out !== undefined && out !== null ? `${Number(out).toFixed(1)} ${unit} ${trend}`.trim() : '--';
         const tStyle = temperatureGradientStyle(out, unit);
         if (tStyle) {
             tempNode.classList.add('temp-gradient-text');
@@ -1399,7 +1401,7 @@ function renderCurrentVisual(metrics) {
         }
     }
     if (condNode) {
-        condNode.textContent = `Current Weather (${APP.forecast?.provider || 'local'})`;
+        condNode.textContent = 'Current Weather';
     }
     if (subNode) {
         subNode.textContent = `Humidity ${formatValue(metrics?.outHumidity?.value, metrics?.outHumidity?.unit)}`;
@@ -1465,10 +1467,10 @@ function renderForecastAlerts(alertsPayload) {
         return;
     }
     host.hidden = false;
-    host.innerHTML = rows.slice(0, 4).map((a) => {
+    host.innerHTML = rows.map((a) => {
         const title = escapeHtml(String(a?.event || 'Weather alert'));
         const sender = escapeHtml(String(a?.sender_name || 'Unknown source'));
-        const description = escapeHtml(String(a?.description || '')).slice(0, 320);
+        const description = escapeHtml(String(a?.description || ''));
         const start = escapeHtml(String(a?.start_local || ''));
         const end = escapeHtml(String(a?.end_local || ''));
         return `<article class=\"forecast-alert-item\"><strong>${title}</strong> <span>(${sender})</span><div>${start !== '' || end !== '' ? `${start} - ${end}` : ''}</div><div>${description}</div></article>`;
