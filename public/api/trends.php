@@ -141,11 +141,11 @@ function estimate_rain_likelihood(array $latestMetrics, array $metricTrends, arr
 $config = app_config();
 
 $trendFields = [
-    'outTemp' => ['label' => 'Outside Temperature', 'unitType' => 'temperature', 'deadband' => 0.2, 'predictHours' => 3],
-    'barometer' => ['label' => 'Barometer', 'unitType' => 'pressure', 'deadband' => 0.2, 'predictHours' => 3],
-    'windSpeed' => ['label' => 'Wind Speed', 'unitType' => 'wind', 'deadband' => 0.15, 'predictHours' => 3],
-    'outHumidity' => ['label' => 'Outside Humidity', 'unitType' => 'humidity', 'deadband' => 1.0, 'predictHours' => 3],
-    'rainRate' => ['label' => 'Rain Rate', 'unitType' => 'rain_rate', 'deadband' => 0.1, 'predictHours' => 1],
+    'outTemp' => ['label' => 'Outside Temperature', 'unitType' => 'temperature', 'deadband' => 0.2, 'predictHours' => 1, 'windowHours' => 1],
+    'barometer' => ['label' => 'Barometer', 'unitType' => 'pressure', 'deadband' => 0.2, 'predictHours' => 3, 'windowHours' => 12],
+    'windSpeed' => ['label' => 'Wind Speed', 'unitType' => 'wind', 'deadband' => 0.15, 'predictHours' => 3, 'windowHours' => 3],
+    'outHumidity' => ['label' => 'Outside Humidity', 'unitType' => 'humidity', 'deadband' => 1.0, 'predictHours' => 3, 'windowHours' => 3],
+    'rainRate' => ['label' => 'Rain Rate', 'unitType' => 'rain_rate', 'deadband' => 0.1, 'predictHours' => 1, 'windowHours' => 1],
 ];
 
 try {
@@ -193,16 +193,27 @@ try {
         $historySelect[] = sprintf('%s AS %s', $col, $field);
     }
 
+    $latestTs = (int) $latest['dateTime'];
+    $maxWindowHours = 0;
+    foreach (array_keys($mapped) as $field) {
+        $maxWindowHours = max($maxWindowHours, (int) ($trendFields[$field]['windowHours'] ?? 12));
+    }
+    $maxWindowHours = max(1, $maxWindowHours);
+
     $historySql = sprintf(
-        'SELECT %s
+        'SELECT %1$s
          FROM archive
-         WHERE %s >= UNIX_TIMESTAMP(DATE_SUB(UTC_TIMESTAMP(), INTERVAL 12 HOUR))
-         ORDER BY %s ASC',
+         WHERE %2$s >= :window_start AND %2$s <= :latest_ts
+         ORDER BY %2$s ASC',
         implode(', ', $historySelect),
-        $dateTimeCol,
         $dateTimeCol
     );
-    $rows = $pdo->query($historySql)->fetchAll();
+    $historyStmt = $pdo->prepare($historySql);
+    $historyStmt->execute([
+        ':window_start' => $latestTs - ($maxWindowHours * 3600),
+        ':latest_ts' => $latestTs,
+    ]);
+    $rows = $historyStmt->fetchAll();
 
     $units = unit_map((int) $latest['usUnits']);
     $metrics = [];
@@ -210,15 +221,21 @@ try {
 
     foreach ($mapped as $field => $_col) {
         $spec = $trendFields[$field];
+        $windowHours = max(1, (int) ($spec['windowHours'] ?? $maxWindowHours));
+        $windowStart = $latestTs - ($windowHours * 3600);
 
         $points = [];
         foreach ($rows as $row) {
+            $rowTs = (int) $row['dateTime'];
+            if ($rowTs < $windowStart || $rowTs > $latestTs) {
+                continue;
+            }
             $v = $row[$field] ?? null;
             if ($v === null || !is_numeric($v)) {
                 continue;
             }
             $points[] = [
-                't' => (float) $row['dateTime'],
+                't' => (float) $rowTs,
                 'v' => (float) $v,
             ];
         }
@@ -244,6 +261,7 @@ try {
             'current' => $current,
             'slope_per_hour' => (float) $trend['slope_per_hour'],
             'direction' => $direction,
+            'window_hours' => $windowHours,
             'prediction_hours' => $predictHours,
             'predicted_value' => $predicted,
             'confidence' => (float) $trend['r2'],
@@ -279,7 +297,8 @@ try {
         'generatedAtIso' => gmdate('c'),
         'latestTimestamp' => (int) $latest['dateTime'],
         'latestTimestampIso' => gmdate('c', (int) $latest['dateTime']),
-        'windowHours' => 12,
+        'windowHours' => $maxWindowHours,
+        'windowLabel' => 'metric-specific',
         'metrics' => $metrics,
         'rainNowcast' => $rainNowcast,
         'summary' => $summary,

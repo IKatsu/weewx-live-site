@@ -10,6 +10,8 @@ The format is intentionally simple:
 
 ## Unreleased
 
+- Changed trend calculations to use metric-specific recent windows so fast temperature drops are not hidden by the 12-hour trend
+
 ## v1.0.5 - 2026-06-26
 
 - Let forecast alert descriptions render in full on the dashboard

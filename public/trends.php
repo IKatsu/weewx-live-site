@@ -155,6 +155,7 @@ function renderMetricCards(metrics) {
             <div class="label">${metric.label}</div>
             <div class="value">${fmt(metric.current, 2)} ${metric.unit || ''}</div>
             <div class="muted ${directionClass(metric.direction)}">${metric.direction}</div>
+            <div class="muted">Window ${fmt(metric.window_hours, 0)}h</div>
             <div class="muted">Slope ${fmt(metric.slope_per_hour, 3)} ${metric.unit || ''}/h</div>
             <div class="muted">${metric.prediction_hours}h: ${fmt(metric.predicted_value, 2)} ${metric.unit || ''}</div>
         `;
@@ -222,7 +223,7 @@ async function loadTrends() {
     if (!response.ok) throw new Error(`trends ${response.status}`);
     const payload = await response.json();
 
-    document.getElementById('window-hours').textContent = `${payload.windowHours || '-'}h`;
+    document.getElementById('window-hours').textContent = payload.windowLabel || `${payload.windowHours || '-'}h`;
     document.getElementById('trend-updated').textContent = fmtTime(payload.generatedAtIso);
 
     const metrics = Array.isArray(payload.metrics) ? payload.metrics : [];
