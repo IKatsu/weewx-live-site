@@ -859,6 +859,15 @@ a:visited {
     box-shadow: 0 2px 12px rgba(16, 33, 55, 0.05);
 }
 
+.chart-card-detailable {
+    cursor: zoom-in;
+}
+
+.chart-card-detailable:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 3px;
+}
+
 .chart-title {
     margin: 0 0 0.4rem;
     font-size: 1rem;
@@ -881,6 +890,75 @@ a:visited {
 #chart-wind-rose-plotly {
     width: 100%;
     height: 100%;
+}
+
+.chart-modal {
+    width: min(1180px, calc(100vw - 2rem));
+    max-width: none;
+    border: 0;
+    border-radius: 1rem;
+    padding: 0;
+    background: transparent;
+    color: var(--text);
+}
+
+.chart-modal::backdrop {
+    background: rgba(5, 12, 22, 0.68);
+    backdrop-filter: blur(3px);
+}
+
+.chart-modal-shell {
+    margin: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.34);
+    overflow: hidden;
+}
+
+.chart-modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.1rem 0.65rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.chart-modal-head h2 {
+    margin: 0;
+    font-size: clamp(1.1rem, 2vw, 1.55rem);
+}
+
+.chart-modal-head p {
+    margin: 0.25rem 0 0;
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+
+.chart-modal-close {
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--card);
+    color: var(--text);
+    cursor: pointer;
+    font: inherit;
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.chart-modal-body {
+    position: relative;
+    height: min(72vh, 720px);
+    min-height: 360px;
+    padding: 1rem;
+}
+
+.chart-modal-body canvas {
+    width: 100% !important;
+    height: 100% !important;
 }
 
 @media (max-width: 1080px) {

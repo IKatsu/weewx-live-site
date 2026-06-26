@@ -253,6 +253,21 @@ render_site_header('PWS Live Dashboard', default_nav_links($config), [
     </section>
 </div>
 
+<dialog class="chart-modal" id="chart-detail-modal">
+    <form method="dialog" class="chart-modal-shell">
+        <header class="chart-modal-head">
+            <div>
+                <h2 id="chart-modal-title">Detailed Graph</h2>
+                <p id="chart-modal-meta">Loading detail data...</p>
+            </div>
+            <button type="button" class="chart-modal-close" id="chart-modal-close" aria-label="Close detailed graph">×</button>
+        </header>
+        <div class="chart-modal-body">
+            <canvas id="chart-modal-canvas"></canvas>
+        </div>
+    </form>
+</dialog>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/date-fns@3.6.0/cdn.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -331,6 +346,7 @@ const state = {
     latest: null,
     history: null,
     charts: {},
+    detailChart: null,
     windRosePlotly: false,
     diagnostics: {
         apiPollState: 'idle',
@@ -367,6 +383,124 @@ const graphFieldRequirements = {
     battery_lightning: ['lightning_Batt'],
     battery_pm25: ['pm25_Batt1'],
     battery_indoor: ['inTempBatteryStatus'],
+};
+
+const chartDetailRegistry = {
+    temp_outside: {
+        title: 'Outside Temperature / Dewpoint / Apparent',
+        chartKey: 'temp',
+        fields: ['outTemp', 'dewpoint', 'appTemp'],
+    },
+    temp_inside: {
+        title: 'Inside Temperature / Dewpoint',
+        chartKey: 'tempIn',
+        fields: ['inTemp', 'inDewpoint'],
+    },
+    humidity_outside: {
+        title: 'Outside Humidity',
+        chartKey: 'humidity',
+        fields: ['outHumidity'],
+    },
+    humidity_inside: {
+        title: 'Inside Humidity',
+        chartKey: 'humidityIn',
+        fields: ['inHumidity'],
+    },
+    wind_speed: {
+        title: 'Wind Speed / Gust',
+        chartKey: 'wind',
+        fields: ['windSpeed', 'windGust'],
+    },
+    wind_averages: {
+        title: 'Wind Averages / Gust Averages',
+        chartKey: 'windAvg',
+        fields: ['windAvgHourly', 'windGustAvgHourly'],
+    },
+    wind_direction: {
+        title: 'Wind Direction',
+        chartKey: 'windDir',
+        fields: ['windDir'],
+    },
+    pressure: {
+        title: 'Pressure',
+        chartKey: 'pressure',
+        fields: ['barometer', 'pressure'],
+    },
+    rain_rate_hourly: {
+        title: 'Rain Rate + Hourly Rain Sum',
+        chartKey: 'rain',
+        fields: ['rainRate', 'rainHourly'],
+    },
+    rain_total_duration: {
+        title: 'Rain 24h Total / Rain Duration',
+        chartKey: 'rainTotal',
+        fields: ['rainRolling24h', 'rainDur'],
+    },
+    feels_like: {
+        title: 'Feels Like Indicators',
+        chartKey: 'feels',
+        fields: ['heatindex', 'windchill', 'humidex'],
+    },
+    solar: {
+        title: 'Solar Radiation / UV / Solar Altitude',
+        chartKey: 'solar',
+        fields: ['radiation', 'UV', 'solarAltitude'],
+    },
+    cloudbase: {
+        title: 'Cloudbase',
+        chartKey: 'cloudbase',
+        fields: ['cloudbase'],
+    },
+    et: {
+        title: 'Evapotranspiration',
+        chartKey: 'et',
+        fields: ['ET'],
+    },
+    sunshine: {
+        title: 'Sunshine Duration',
+        chartKey: 'sunshine',
+        fields: ['sunshineDur'],
+    },
+    windrun: {
+        title: 'Wind Run',
+        chartKey: 'windrun',
+        fields: ['windrun'],
+    },
+    pm25: {
+        title: 'PM2.5',
+        chartKey: 'pm25',
+        fields: ['pm2_5'],
+    },
+    lightning: {
+        title: 'Lightning Strike Count',
+        chartKey: 'lightning',
+        fields: ['lightning_strike_count'],
+    },
+    battery_wind: {
+        title: 'Wind Battery',
+        chartKey: 'chart-batt-wind',
+        fields: ['windBatteryStatus'],
+    },
+    battery_rain: {
+        title: 'Rain Battery',
+        chartKey: 'chart-batt-rain',
+        fields: ['rainBatteryStatus'],
+    },
+    battery_lightning: {
+        title: 'Lightning Battery',
+        chartKey: 'chart-batt-lightning',
+        fields: ['lightning_Batt'],
+    },
+    battery_pm25: {
+        title: 'PM2.5 Battery',
+        chartKey: 'chart-batt-pm25',
+        fields: ['pm25_Batt1'],
+    },
+    battery_indoor: {
+        title: 'Indoor Temp Battery',
+        chartKey: 'chart-batt-indoor',
+        fields: ['inTempBatteryStatus'],
+    },
 };
 
 const batteryMetricKeys = ['windBatteryStatus', 'rainBatteryStatus', 'lightning_Batt', 'pm25_Batt1', 'inTempBatteryStatus'];
@@ -1706,6 +1840,144 @@ function lineOptions(xMin, xMax) {
     };
 }
 
+function cloneChartConfig(sourceChart) {
+    if (!sourceChart?.config) return null;
+    const cloneValue = (value) => {
+        if (typeof value === 'function' || value === null || typeof value !== 'object') return value;
+        if (Array.isArray(value)) return value.map(cloneValue);
+        const out = {};
+        for (const [key, child] of Object.entries(value)) {
+            out[key] = cloneValue(child);
+        }
+        return out;
+    };
+    return {
+        type: sourceChart.config.type,
+        data: {
+            labels: Array.isArray(sourceChart.data?.labels) ? [...sourceChart.data.labels] : sourceChart.data?.labels,
+            datasets: (sourceChart.data?.datasets || []).map((dataset) => ({
+                ...dataset,
+                data: Array.isArray(dataset.data) ? dataset.data.map((point) => ({ ...point })) : dataset.data,
+            })),
+        },
+        options: cloneValue(sourceChart.options || {}),
+    };
+}
+
+function detailBucketMinutes(rangeKey) {
+    const selected = historyRanges[rangeKey] || historyRanges.today;
+    if (rangeKey === 'today' || rangeKey === 'yesterday') {
+        return Math.max(1, Math.min(2, Number(selected.bucketMinutes || 2)));
+    }
+    if (rangeKey === 'week') return 5;
+    if (rangeKey === 'month') return 30;
+    return Number(selected.bucketMinutes || 360);
+}
+
+function buildDetailUrl(rangeKey, fields) {
+    const selected = historyRanges[rangeKey] || historyRanges.today;
+    const query = new URLSearchParams({
+        hours: String(selected.hours),
+        endOffsetHours: String(selected.endOffsetHours),
+        bucketMinutes: String(detailBucketMinutes(rangeKey)),
+        fields: fields.join(','),
+    });
+    return `api/history.php?${query.toString()}`;
+}
+
+function destroyDetailChart() {
+    if (state.detailChart) {
+        state.detailChart.destroy();
+        state.detailChart = null;
+    }
+}
+
+function setDetailMeta(message) {
+    const node = document.getElementById('chart-modal-meta');
+    if (node) node.textContent = message;
+}
+
+function renderDetailChartFromConfig(config) {
+    const canvas = document.getElementById('chart-modal-canvas');
+    if (!canvas || !config) return;
+    destroyDetailChart();
+    config.options = config.options || {};
+    config.options.responsive = true;
+    config.options.maintainAspectRatio = false;
+    config.options.plugins = config.options.plugins || {};
+    config.options.plugins.legend = config.options.plugins.legend || { position: 'bottom' };
+    state.detailChart = new Chart(canvas, config);
+}
+
+function renderDetailChartFromHistory(def, sourceConfig, history) {
+    const config = cloneChartConfig({ config: sourceConfig, data: sourceConfig.data, options: sourceConfig.options });
+    const series = history?.series || {};
+    config.data.datasets = (config.data.datasets || []).map((dataset, index) => ({
+        ...dataset,
+        data: series[def.fields[index]] || [],
+    }));
+    renderDetailChartFromConfig(config);
+}
+
+async function openChartDetail(graphKey) {
+    const def = chartDetailRegistry[graphKey];
+    if (!def) return;
+
+    const sourceChart = state.charts[def.chartKey];
+    const dialog = document.getElementById('chart-detail-modal');
+    const title = document.getElementById('chart-modal-title');
+    if (!sourceChart || !dialog || !title) return;
+
+    const sourceConfig = cloneChartConfig(sourceChart);
+    title.textContent = def.title;
+    setDetailMeta('Showing current chart data while detailed history loads...');
+    renderDetailChartFromConfig(cloneChartConfig({ config: sourceConfig, data: sourceConfig.data, options: sourceConfig.options }));
+
+    if (typeof dialog.showModal === 'function' && !dialog.open) {
+        dialog.showModal();
+    } else {
+        dialog.setAttribute('open', 'open');
+    }
+
+    try {
+        const response = await fetch(buildDetailUrl(APP.historyRange, def.fields), { cache: 'no-store' });
+        if (!response.ok) throw new Error(`history ${response.status}`);
+        const detailHistory = await response.json();
+        renderDetailChartFromHistory(def, sourceConfig, detailHistory);
+        setDetailMeta(`${(historyRanges[APP.historyRange] || historyRanges.today).label} detail, ${detailBucketMinutes(APP.historyRange)} minute buckets`);
+    } catch (err) {
+        const message = err && err.message ? String(err.message) : 'request failed';
+        setDetailMeta(`Could not load detail history; showing dashboard chart data. ${message}`);
+    }
+}
+
+function initChartDetailModal() {
+    const dialog = document.getElementById('chart-detail-modal');
+    const close = document.getElementById('chart-modal-close');
+    if (!dialog || !close) return;
+
+    for (const card of document.querySelectorAll('.chart-card[data-graph]')) {
+        const graphKey = card.dataset.graph || '';
+        if (!chartDetailRegistry[graphKey]) continue;
+        card.classList.add('chart-card-detailable');
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('aria-label', `Open larger ${chartDetailRegistry[graphKey].title} chart`);
+        card.addEventListener('click', () => openChartDetail(graphKey));
+        card.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            openChartDetail(graphKey);
+        });
+    }
+
+    close.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', (event) => {
+        if (event.target === dialog) dialog.close();
+    });
+    dialog.addEventListener('close', destroyDetailChart);
+}
+
 function windSpeedClasses() {
     return [
         { min: 0, max: 2, label: '0-2 m/s (Bft 0-2)' },
@@ -2424,6 +2696,7 @@ function connectMqtt() {
     applyGraphVisibility();
     initThemeSelector();
     initDiagnosticsPopup();
+    initChartDetailModal();
     renderDiagnostics();
     renderForecastPlaceholders('Loading cached forecast...');
     applyLayoutConfig();
