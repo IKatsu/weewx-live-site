@@ -10,6 +10,8 @@ The format is intentionally simple:
 
 ## Unreleased
 
+## v1.0.5 - 2026-06-26
+
 - Let forecast alert descriptions render in full on the dashboard
 - Added a current-temperature trend arrow based on recent archive values
 - Expanded lightning summary counts to rolling 5-minute, 1-hour, 24-hour, and 7-day windows
