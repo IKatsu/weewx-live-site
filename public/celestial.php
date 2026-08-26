@@ -55,16 +55,21 @@ render_site_header('Celestial Almanac', default_nav_links($config), [
     </section>
 
     <section class="charts celestial-charts">
-        <aside class="celestial-side">
-            <article class="card">
-                <h2 class="chart-title">Sun</h2>
-                <div id="sun-details" class="celestial-detail-grid"></div>
-            </article>
-            <article class="card">
-                <h2 class="chart-title">Moon</h2>
-                <div id="moon-details" class="celestial-detail-grid"></div>
-            </article>
-        </aside>
+        <article class="card">
+            <h2 class="chart-title">Sun</h2>
+            <div id="sun-details" class="celestial-detail-grid"></div>
+        </article>
+        <article class="card">
+            <h2 class="chart-title">Moon</h2>
+            <div id="moon-details" class="celestial-detail-grid"></div>
+        </article>
+    </section>
+
+    <section class="charts celestial-charts celestial-full">
+        <article class="chart-card">
+            <h2 class="chart-title">Lunar Month</h2>
+            <canvas id="celestial-lunation" width="760" height="240"></canvas>
+        </article>
     </section>
 
     <section class="charts celestial-charts celestial-full">
@@ -80,6 +85,10 @@ render_site_header('Celestial Almanac', default_nav_links($config), [
             <canvas id="celestial-moon" width="520" height="320"></canvas>
             <div id="phase-details" class="celestial-detail-grid celestial-phase-grid"></div>
         </article>
+        <article class="chart-card">
+            <h2 class="chart-title">Solar System - Today</h2>
+            <canvas id="celestial-solar-system" width="760" height="620"></canvas>
+        </article>
     </section>
 
     <section class="charts celestial-charts celestial-full">
@@ -93,20 +102,6 @@ render_site_header('Celestial Almanac', default_nav_links($config), [
         <article class="chart-card">
             <h2 class="chart-title">Solar Year - Daylight Week By Week</h2>
             <canvas id="celestial-daylight-year" width="1200" height="420"></canvas>
-        </article>
-    </section>
-
-    <section class="charts celestial-charts">
-        <article class="chart-card">
-            <h2 class="chart-title">Solar System - Today</h2>
-            <canvas id="celestial-solar-system" width="760" height="620"></canvas>
-        </article>
-    </section>
-
-    <section class="charts celestial-charts celestial-full">
-        <article class="chart-card">
-            <h2 class="chart-title">Lunar Month</h2>
-            <canvas id="celestial-lunation" width="760" height="240"></canvas>
         </article>
     </section>
 
