@@ -10,6 +10,8 @@ The format is intentionally simple:
 
 ## Unreleased
 
+## v1.0.6 - 2026-08-26
+
 - Changed trend calculations to use metric-specific recent windows so fast temperature drops are not hidden by the 12-hour trend
 - Converted WeeWX `usUnits=16` rain-like archive values from centimeters to millimeters in API output
 - Changed the dashboard history `Yesterday` preset into a rolling `48 Hours` range that includes current data
