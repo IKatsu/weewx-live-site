@@ -6,7 +6,7 @@ The celestial page can use a precomputed Skyfield cache instead of asking WeeWX 
 
 This project does **not** use the WeeWX skin output from `weewx-skyfield`. Instead, `src/cli/build_celestial_cache.py` uses Skyfield directly, emits derived JSON, and `src/cli/build_celestial_cache.php` stores that JSON in MySQL for `public/celestial.php`.
 
-The current daily cache includes sampled paths for the configured sun, moon, and planet bodies. The browser uses those paths for live marker interpolation, rise/set ribbons, the sun-path panel, the solar-system map, and the lunar-month strip.
+The current daily cache includes sampled paths plus apparent visual magnitude for the configured sun, moon, and planet bodies. The browser uses those paths for live marker interpolation, rise/set ribbons, the sun-path panel, the solar-system map, the lunar-month strip, and the almanac table.
 
 The yearly cache includes weekly daylight/twilight samples for the "daylight week by week" graph. Rebuild the yearly cache after changing station location or timezone.
 

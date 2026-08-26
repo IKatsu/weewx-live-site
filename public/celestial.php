@@ -47,14 +47,14 @@ render_site_header('Celestial Almanac', default_nav_links($config), [
 ]);
 ?>
 
-    <section class="charts celestial-charts celestial-full">
+    <section class="charts celestial-charts">
         <article class="chart-card celestial-sky-card">
             <h2 class="chart-title">Sky Map</h2>
             <canvas id="celestial-sky" width="900" height="900"></canvas>
         </article>
     </section>
 
-    <section class="charts celestial-charts">
+    <section class="charts celestial-charts celestial-full">
         <article class="card">
             <h2 class="chart-title">Sun</h2>
             <div id="sun-details" class="celestial-detail-grid"></div>
@@ -123,11 +123,7 @@ render_site_header('Celestial Almanac', default_nav_links($config), [
         </article>
     </section>
 
-    <section class="charts celestial-charts">
-        <article class="card">
-            <h2 class="chart-title">Planets</h2>
-            <div id="planet-details" class="celestial-chip-grid"></div>
-        </article>
+    <section class="charts celestial-charts celestial-full">
         <article class="card">
             <h2 class="chart-title">Skyfield Cache</h2>
             <div id="cache-details" class="celestial-detail-grid"></div>
@@ -1044,9 +1040,9 @@ function drawDaylightYear(now) {
     ctx.lineWidth = 1;
     ctx.strokeRect(left, top, plotW, bottom - top);
     ctx.font = '11px Source Sans 3, Segoe UI, sans-serif';
-    for (const hour of [0, 6, 12, 18, 24]) {
+    for (const hour of [0, 3, 6, 9, 12, 15, 18, 21, 24]) {
         const y = yForHour(hour);
-        ctx.strokeStyle = hour === 12 ? colorMix(border, text, 0.35) : border;
+        ctx.strokeStyle = hour % 6 === 0 ? colorMix(border, text, 0.35) : colorMix(border, card, 0.45);
         ctx.beginPath();
         ctx.moveTo(left, y);
         ctx.lineTo(right, y);
@@ -1366,27 +1362,8 @@ function renderDetails(now) {
         ['Coordinates', `${lat.toFixed(5)}, ${lon.toFixed(5)}`],
     ]);
 
-    renderPlanetDetails();
     renderAlmanacTable();
     renderCacheDetails();
-}
-
-function renderPlanetDetails() {
-    const bodies = CELESTIAL_CACHE.daily?.payload?.bodies || {};
-    const events = CELESTIAL_CACHE.daily?.payload?.events || {};
-    const planetNames = ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune'];
-    const rows = planetNames.filter((name) => bodies[name]).map((name) => ({
-        title: name.charAt(0).toUpperCase() + name.slice(1),
-        line1: `${Number(bodies[name].altitude).toFixed(1)}° alt · ${compassLabel(Number(bodies[name].azimuth))}`,
-        line2: `Rise ${events[name]?.rise ? formatDateTime(new Date(events[name].rise)) : 'n/a'}`,
-        line3: `Set ${events[name]?.set ? formatDateTime(new Date(events[name].set)) : 'n/a'}`,
-    }));
-    chipRows('planet-details', rows.length > 0 ? rows : [{
-        title: 'No cached planets',
-        line1: 'Run the celestial cache builder',
-        line2: 'src/cli/build_celestial_cache.php',
-        line3: '',
-    }]);
 }
 
 function renderAlmanacTable() {
@@ -1405,6 +1382,7 @@ function renderAlmanacTable() {
         const distance = name === 'moon' && Number.isFinite(distanceAu)
             ? `${(distanceAu * 149597870.7).toLocaleString(undefined, { maximumFractionDigits: 0 })} km`
             : (Number.isFinite(distanceAu) ? `${distanceAu.toFixed(3)} au` : 'n/a');
+        const magnitude = Number(body.magnitude);
         return `
             <tr>
                 <td class="celestial-table-name">
@@ -1417,7 +1395,7 @@ function renderAlmanacTable() {
                 <td>${escapeHtml(formatDuration(visibleMs))}</td>
                 <td>${Number.isFinite(Number(body.altitude)) ? `${Number(body.altitude).toFixed(1)}°` : 'n/a'}</td>
                 <td>${Number.isFinite(Number(body.azimuth)) ? `${Number(body.azimuth).toFixed(1)}° ${escapeHtml(compassLabel(Number(body.azimuth)))}` : 'n/a'}</td>
-                <td>n/a</td>
+                <td>${Number.isFinite(magnitude) ? magnitude.toFixed(2) : 'n/a'}</td>
                 <td>${escapeHtml(distance)}</td>
             </tr>
         `;

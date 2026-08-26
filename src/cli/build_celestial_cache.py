@@ -20,6 +20,7 @@ from zoneinfo import ZoneInfo
 from skyfield import almanac
 from skyfield.api import Loader, load, wgs84
 from skyfield.framelib import ecliptic_frame
+from skyfield.magnitudelib import planetary_magnitude
 
 
 BODY_MAP = {
@@ -84,11 +85,28 @@ def body_altaz(eph, observer, body_name: str, ts, when):
     body = eph[BODY_MAP[body_name]]
     apparent = observer.at(when).observe(body).apparent()
     alt, az, distance = apparent.altaz()
+    magnitude = None
+    if body_name == "sun":
+        magnitude = -26.74 + 5.0 * math.log10(float(distance.au))
+    elif body_name == "moon":
+        phase_angle = abs(float(apparent.phase_angle(eph["sun"]).degrees))
+        magnitude = (
+            -12.73
+            + 0.026 * phase_angle
+            + 4e-9 * phase_angle ** 4
+            + 5.0 * math.log10(float(distance.km) / 385000.0)
+        )
+    else:
+        try:
+            magnitude = float(planetary_magnitude(observer.at(when).observe(body)))
+        except Exception:
+            magnitude = None
     return {
         "body": body_name,
         "altitude": safe_float(alt.degrees, 3),
         "azimuth": safe_float(az.degrees, 3),
         "distanceAu": safe_float(distance.au, 6),
+        "magnitude": safe_float(magnitude, 2),
     }
 
 
