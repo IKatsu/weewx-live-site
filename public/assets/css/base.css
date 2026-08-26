@@ -1049,11 +1049,23 @@ a:visited {
     min-width: 0;
 }
 
-#celestial-sky {
+#celestial-sky,
+#celestial-visibility,
+#celestial-moon,
+#celestial-sunpath,
+#celestial-daylight-year,
+#celestial-solar-system,
+#celestial-lunation {
+    box-sizing: border-box;
     width: 100%;
-    aspect-ratio: 1 / 1;
-    max-height: min(72vh, 760px);
+    max-width: 100%;
     display: block;
+}
+
+#celestial-sky {
+    aspect-ratio: 1 / 1;
+    height: auto;
+    max-height: none;
 }
 
 .celestial-side {
@@ -1069,25 +1081,16 @@ a:visited {
     grid-template-columns: minmax(0, 1fr);
 }
 
-#celestial-visibility,
-#celestial-moon {
-    width: 100%;
-    display: block;
-}
-
 #celestial-visibility {
     height: 300px;
 }
 
-#celestial-moon {
-    height: 230px;
+#celestial-sunpath {
+    height: 520px;
 }
 
-#celestial-daylight-year,
-#celestial-solar-system,
-#celestial-lunation {
-    width: 100%;
-    display: block;
+#celestial-moon {
+    height: 230px;
 }
 
 #celestial-daylight-year {
@@ -1276,12 +1279,8 @@ a:visited {
     .debug-grid {
         grid-template-columns: 1fr;
     }
-    .celestial-layout,
     .celestial-charts,
     .celestial-detail-grid {
         grid-template-columns: 1fr;
-    }
-    #celestial-sky {
-        max-height: none;
     }
 }
