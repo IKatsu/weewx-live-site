@@ -32,7 +32,7 @@ Live weather dashboard for weewx data with:
 - cached WU/TWC forecast integration (dashboard + dedicated forecast page)
 - archive-based trend page (`trends.php`)
 - hybrid prediction cache and page (`prediction.php`)
-- detailed celestial almanac page (`celestial.php`) with sky map, twilight, moon phase, and visibility timeline
+- detailed celestial almanac page (`celestial.php`) with cached Skyfield sun/moon paths, planet positions, twilight, moon phase, and visibility timeline
 - optional WeeWX `custom_obs` extension package for solar/lunar custom field registration
 
 Compatibility note:
@@ -57,6 +57,7 @@ Open `http://127.0.0.1:8080`.
 - MySQL/MariaDB server containing WeeWX archive data
 - [WeeWX 5.x](https://weewx.com/) with a MySQL/MariaDB-backed archive
 - [`weewx-skyfield-almanac`](https://github.com/roe-dl/weewx-skyfield-almanac) if you want the solar/lunar archive fields used by the sky widget
+- Optional for the detailed celestial cache: Python 3 with [`Skyfield`](https://rhodesmill.org/skyfield/) and `numpy`
 - Apache or another PHP-capable web server
 - Optional (for live browser updates): WeeWX MQTT extension [`matthewwall/weewx-mqtt`](https://github.com/matthewwall/weewx-mqtt)
 
@@ -71,6 +72,7 @@ See [LICENSE](LICENSE) for the full license text.
 - [`Ecowitt-or-DAVIS-stations-and-Season-skin`](https://github.com/WernerKr/Ecowitt-or-DAVIS-stations-and-Season-skin) for the Ecowitt driver field names and custom observation mapping
 - [`weewx-skyfield-almanac`](https://github.com/roe-dl/weewx-skyfield-almanac) for the live solar/lunar values archived by this project
 - [`weewx-skymap-almanac`](https://github.com/roe-dl/weewx-skymap-almanac) as a reference for the dedicated celestial/almanac page concepts
+- [`weewx-skyfield`](https://github.com/chaunceygardiner/weewx-skyfield) as a Skyfield almanac reference; this project uses its concepts directly through Skyfield cache scripts, not WeeWX skin output
 - [`weathericons`](https://github.com/roe-dl/weathericons) for the dashboard icon set
 
 ## Screenshots
@@ -95,11 +97,12 @@ See [LICENSE](LICENSE) for the full license text.
 6. Restart WeeWX after any archive schema changes.
 7. If using live updates, install/configure Mosquitto and the WeeWX MQTT publisher extension.
 8. If using forecast/prediction pages, create the cache tables and schedule the CLI cron jobs.
-9. If using the monthly history page long-term, create the monthly summary table and schedule the first-of-month rollup.
-10. Drop Plotly into `public/assets/vendor` if you want the Plotly-based wind rose.
-11. Optionally mirror the recommended security headers in Apache using `docs/reference/apache-pws-live-site.conf`.
-12. Open the dashboard and verify cards, charts, MQTT, and forecast cache behavior.
-13. Confirm the wind row shows the extra 1h / 3h wind+gust average cards and the separate wind-averages graph renders.
+9. If using the detailed celestial page, create the celestial cache table, install Skyfield/numpy for the CLI user, and schedule the celestial cache cron job.
+10. If using the monthly history page long-term, create the monthly summary table and schedule the first-of-month rollup.
+11. Drop Plotly into `public/assets/vendor` if you want the Plotly-based wind rose.
+12. Optionally mirror the recommended security headers in Apache using `docs/reference/apache-pws-live-site.conf`.
+13. Open the dashboard and verify cards, charts, MQTT, forecast cache behavior, and celestial cache behavior.
+14. Confirm the wind row shows the extra 1h / 3h wind+gust average cards and the separate wind-averages graph renders.
 
 ## Configuration model
 
@@ -207,6 +210,24 @@ Required archive fields for prediction:
 Optional for better hybrid behavior:
 - Daily forecast cache table (`pws_wu_forecast_cache`) populated by `fetch_forecast.php`
 
+## Celestial cache setup
+
+The celestial page can use precomputed Skyfield data for sun/moon paths, twilight, moon phase, and visible planet position details without running WeeWX skin generation.
+
+See full setup and dataset-license notes:
+
+- `docs/CELESTIAL_CACHE.md`
+
+Quick setup:
+
+```bash
+python3 -m pip install 'skyfield>=1.47' numpy
+mysql -u DB_USER -p DB_NAME < docs/sql/create_pws_celestial_cache.sql
+php src/cli/build_celestial_cache.php --force
+```
+
+Keep ephemeris, star catalog, constellation, TLE, and similar astronomy datasets outside this repository and outside release archives.
+
 ## Monthly history rollup setup
 
 1. Apply the SQL schema:
@@ -313,6 +334,7 @@ See:
 - `GET /api/forecast.php` (reads cached WU forecast from DB)
 - `GET /api/trends.php` (archive-based local trend nowcast)
 - `GET /api/prediction.php` (latest prediction cache run)
+- `GET /api/celestial.php?dataset=daily` (latest celestial cache row; also supports `monthly` and `yearly`)
 - `GET /api/dump.php` (default output: CSV, row-limited)
   - `GET /api/dump.php?type=csv` -> `text/csv`
   - `GET /api/dump.php?type=json` -> `application/json`

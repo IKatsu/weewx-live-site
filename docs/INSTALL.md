@@ -19,6 +19,7 @@ Notes:
 - Fedora 43 ships a PHP 8.x release, which satisfies the minimum requirement.
 - Frontend libraries (Chart.js + MQTT.js) are loaded from CDN by default.
 - Plotly is loaded from `public/assets/vendor` (auto-detected version by default).
+- The optional celestial cache requires Python 3 plus `skyfield` and `numpy` for the CLI builder.
 
 Optional WeeWX-side requirement (if installing the included WeeWX extension package):
 
@@ -30,6 +31,7 @@ Reference projects used during development:
 - [WeeWX](https://github.com/weewx/weewx)
 - [`Ecowitt-or-DAVIS-stations-and-Season-skin`](https://github.com/WernerKr/Ecowitt-or-DAVIS-stations-and-Season-skin) (Ecowitt driver field naming/mapping reference)
 - [`weewx-skyfield-almanac`](https://github.com/roe-dl/weewx-skyfield-almanac) (solar/lunar field source used by the sky widget)
+- [`weewx-skyfield`](https://github.com/chaunceygardiner/weewx-skyfield) (Skyfield almanac concepts and dataset notes; this project does not use its WeeWX skin output)
 - [`weathericons`](https://github.com/roe-dl/weathericons) (dashboard icon reference)
 
 ## 2. Recommended installation order
@@ -41,9 +43,10 @@ Reference projects used during development:
 5. If you need solar/lunar custom observations, install `weewx-skyfield-almanac`, then the included `custom_obs` extension, add archive columns with `weectl database add-column`, then restart WeeWX.
 6. If you want live browser updates, install/configure Mosquitto and the WeeWX MQTT publisher extension.
 7. If you want forecast and prediction pages, create the cache tables and schedule the CLI cron jobs.
-8. If you want monthly history to stop re-aggregating closed months, create the summary table and schedule the first-of-month rollup.
-9. Optionally mirror the recommended security headers in Apache.
-10. Verify the dashboard, charts, MQTT, forecast cache, and history page.
+8. If you want the detailed celestial page, create the celestial cache table, install Skyfield/numpy for the CLI user, and schedule the celestial cache cron job.
+9. If you want monthly history to stop re-aggregating closed months, create the summary table and schedule the first-of-month rollup.
+10. Optionally mirror the recommended security headers in Apache.
+11. Verify the dashboard, charts, MQTT, forecast cache, celestial cache, and history page.
 
 ## 3. Deploy the project
 
@@ -263,11 +266,12 @@ With `ui.plotly_js = 'auto'`, the site will automatically use the newest `plotly
 8. Confirm rain chart shows both rain rate and hourly rain sum in millimeters for metric installs.
 9. Confirm battery charts render for wind/rain/lightning/pm25 battery fields.
 10. Confirm the top-of-page metric rows are grouped logically and PM2.5 shows air-quality coloring.
-9. Confirm `php src/cli/fetch_forecast.php --force` succeeds and dashboard forecast panels fill.
+11. Confirm `php src/cli/fetch_forecast.php --force` succeeds and dashboard forecast panels fill.
+12. Confirm `php src/cli/build_celestial_cache.php --force` succeeds and `celestial.php` shows cached planet/cache details.
 
 API format check:
 
-10. Confirm archive export formats:
+13. Confirm archive export formats:
    - `/api/dump.php` (CSV default, limited rows)
    - `/api/dump.php?type=json&limit=500`
    - `/api/dump.php?type=xml&limit=500&offset=0`
@@ -432,6 +436,49 @@ Cron example (30 min):
 Full details:
 
 - `docs/WEEWX_CUSTOM_OBS_EXTENSION.md`
+
+## 14. Celestial cache
+
+The detailed celestial page can use a small MySQL cache generated from Skyfield. This keeps the almanac work out of WeeWX skin/report generation and lets the web page read derived JSON quickly.
+
+Install Python dependencies for the same user that will run cron:
+
+```bash
+python3 -m pip install 'skyfield>=1.47' numpy
+```
+
+Create the cache table:
+
+```bash
+mysql -u DB_USER -p DB_NAME < docs/sql/create_pws_celestial_cache.sql
+```
+
+Configure `src/config.local.php`:
+
+- `celestial.python` for the Python executable
+- `celestial.data_dir` for Skyfield downloads/cache data outside git
+- `celestial.ephemeris_path` if you want to point at a specific local `de421.bsp`
+- `celestial.sample_minutes` for sun/moon path sampling density
+- `celestial.enabled_bodies` for the bodies shown on the celestial page
+
+Manual build:
+
+```bash
+php src/cli/build_celestial_cache.php --force
+```
+
+Cron example:
+
+```cron
+10 0 * * * cd /path/to/pws-live-site && php src/cli/build_celestial_cache.php --dataset=daily --force >> /var/log/pws-celestial-cron.log 2>&1
+20 0 * * * cd /path/to/pws-live-site && php src/cli/build_celestial_cache.php --dataset=monthly --force >> /var/log/pws-celestial-cron.log 2>&1
+30 0 1 1 * cd /path/to/pws-live-site && php src/cli/build_celestial_cache.php --dataset=yearly --force >> /var/log/pws-celestial-cron.log 2>&1
+```
+
+Dataset rule:
+
+- Keep ephemeris, star catalog, constellation, TLE, comet, and similar astronomy datasets outside this repository and outside release archives.
+- See `docs/CELESTIAL_CACHE.md` for the reference-project and licensing notes.
 
 ---
 Author: Codex (GPT-5)

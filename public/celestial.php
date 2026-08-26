@@ -87,6 +87,17 @@ render_site_header('Celestial Almanac', default_nav_links($config), [
             <div id="time-details" class="celestial-detail-grid"></div>
         </article>
     </section>
+
+    <section class="charts celestial-charts">
+        <article class="card">
+            <h2 class="chart-title">Planets</h2>
+            <div id="planet-details" class="celestial-chip-grid"></div>
+        </article>
+        <article class="card">
+            <h2 class="chart-title">Skyfield Cache</h2>
+            <div id="cache-details" class="celestial-detail-grid"></div>
+        </article>
+    </section>
 </div>
 
 <!-- SunCalc reference: https://github.com/mourner/suncalc -->
@@ -104,6 +115,11 @@ const CELESTIAL = {
 };
 
 const SYNODIC_MONTH_DAYS = 29.530588853;
+const CELESTIAL_CACHE = {
+    daily: null,
+    monthly: null,
+    yearly: null,
+};
 
 function setTheme(theme) {
     if (!CELESTIAL.themes.includes(theme)) return;
@@ -188,6 +204,19 @@ function detailRows(targetId, rows) {
     `).join('');
 }
 
+function chipRows(targetId, rows) {
+    const host = document.getElementById(targetId);
+    if (!host) return;
+    host.innerHTML = rows.map((row) => `
+        <div class="celestial-chip">
+            <strong>${row.title}</strong>
+            <span>${row.line1}</span>
+            <span>${row.line2}</span>
+            <span>${row.line3}</span>
+        </div>
+    `).join('');
+}
+
 function localDayBounds(now) {
     const tz = CELESTIAL.location.timezone || 'UTC';
     const parts = new Intl.DateTimeFormat('en-CA', {
@@ -224,6 +253,9 @@ function timezoneOffsetMinutes(date, timeZone) {
 }
 
 function sampleBody(kind, start, end, stepMinutes = 5) {
+    const cached = cachedPath(kind);
+    if (cached.length > 0) return cached;
+
     const lat = CELESTIAL.location.latitude;
     const lon = CELESTIAL.location.longitude;
     const rows = [];
@@ -239,6 +271,16 @@ function sampleBody(kind, start, end, stepMinutes = 5) {
         });
     }
     return rows;
+}
+
+function cachedPath(kind) {
+    const path = CELESTIAL_CACHE.daily?.payload?.paths?.[kind];
+    if (!Array.isArray(path)) return [];
+    return path.map((row) => ({
+        date: new Date(String(row.time || '')),
+        alt: Number(row.altitude),
+        az: Number(row.azimuth),
+    })).filter((row) => !Number.isNaN(row.date.getTime()) && Number.isFinite(row.alt) && Number.isFinite(row.az));
 }
 
 function projectSky(az, alt, cx, cy, radius) {
@@ -520,31 +562,37 @@ function renderDetails(now) {
     const solarTime = ((12 + ((now - sunTimes.solarNoon) / 3600000)) % 24 + 24) % 24;
     const solarHours = Math.floor(solarTime);
     const solarMinutes = Math.floor((solarTime - solarHours) * 60);
+    const cached = CELESTIAL_CACHE.daily?.payload || null;
+    const cachedSun = cached?.bodies?.sun || null;
+    const cachedMoon = cached?.bodies?.moon || null;
+    const cachedMoonInfo = cached?.moon || null;
+    const cachedEvents = cached?.events || {};
+    const cachedTwilight = cached?.twilight || {};
 
     document.getElementById('celestial-location').textContent = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
     document.getElementById('celestial-now').textContent = formatClock(now);
 
     detailRows('sun-details', [
-        ['Altitude', `${degrees(sunPos.altitude).toFixed(1)}°`],
-        ['Azimuth', `${normalizeDegrees(degrees(sunPos.azimuth) + 180).toFixed(1)}° ${compassLabel(degrees(sunPos.azimuth) + 180)}`],
-        ['Sunrise', formatClock(sunTimes.sunrise)],
-        ['Solar noon', formatClock(sunTimes.solarNoon)],
-        ['Sunset', formatClock(sunTimes.sunset)],
+        ['Altitude', cachedSun ? `${Number(cachedSun.altitude).toFixed(1)}°` : `${degrees(sunPos.altitude).toFixed(1)}°`],
+        ['Azimuth', cachedSun ? `${Number(cachedSun.azimuth).toFixed(1)}° ${compassLabel(Number(cachedSun.azimuth))}` : `${normalizeDegrees(degrees(sunPos.azimuth) + 180).toFixed(1)}° ${compassLabel(degrees(sunPos.azimuth) + 180)}`],
+        ['Sunrise', cachedEvents.sun?.rise ? formatDateTime(new Date(cachedEvents.sun.rise)) : formatClock(sunTimes.sunrise)],
+        ['Solar noon', cachedEvents.sun?.transit ? formatDateTime(new Date(cachedEvents.sun.transit)) : formatClock(sunTimes.solarNoon)],
+        ['Sunset', cachedEvents.sun?.set ? formatDateTime(new Date(cachedEvents.sun.set)) : formatClock(sunTimes.sunset)],
         ['Day length', formatDuration(dayLength)],
     ]);
 
     detailRows('moon-details', [
-        ['Altitude', `${degrees(moonPos.altitude).toFixed(1)}°`],
-        ['Azimuth', `${normalizeDegrees(degrees(moonPos.azimuth) + 180).toFixed(1)}° ${compassLabel(degrees(moonPos.azimuth) + 180)}`],
-        ['Moonrise', moonTimes.alwaysUp ? 'Always up' : formatClock(moonTimes.rise)],
-        ['Transit', moonTransit ? formatClock(moonTransit.date) : 'n/a'],
-        ['Moonset', moonTimes.alwaysDown ? 'Always down' : formatClock(moonTimes.set)],
-        ['Illumination', `${(moonIll.fraction * 100).toFixed(1)}%`],
+        ['Altitude', cachedMoon ? `${Number(cachedMoon.altitude).toFixed(1)}°` : `${degrees(moonPos.altitude).toFixed(1)}°`],
+        ['Azimuth', cachedMoon ? `${Number(cachedMoon.azimuth).toFixed(1)}° ${compassLabel(Number(cachedMoon.azimuth))}` : `${normalizeDegrees(degrees(moonPos.azimuth) + 180).toFixed(1)}° ${compassLabel(degrees(moonPos.azimuth) + 180)}`],
+        ['Moonrise', cachedEvents.moon?.rise ? formatDateTime(new Date(cachedEvents.moon.rise)) : (moonTimes.alwaysUp ? 'Always up' : formatClock(moonTimes.rise))],
+        ['Transit', cachedEvents.moon?.transit ? formatDateTime(new Date(cachedEvents.moon.transit)) : (moonTransit ? formatClock(moonTransit.date) : 'n/a')],
+        ['Moonset', cachedEvents.moon?.set ? formatDateTime(new Date(cachedEvents.moon.set)) : (moonTimes.alwaysDown ? 'Always down' : formatClock(moonTimes.set))],
+        ['Illumination', cachedMoonInfo ? `${Number(cachedMoonInfo.illumination).toFixed(1)}%` : `${(moonIll.fraction * 100).toFixed(1)}%`],
     ]);
 
     detailRows('phase-details', [
-        ['Phase', moonPhaseName(moonIll.phase)],
-        ['Angle', `${degrees(moonIll.angle).toFixed(1)}°`],
+        ['Phase', cachedMoonInfo?.phaseName || moonPhaseName(moonIll.phase)],
+        ['Angle', cachedMoonInfo ? `${Number(cachedMoonInfo.phaseAngle).toFixed(1)}°` : `${degrees(moonIll.angle).toFixed(1)}°`],
         ['Next new', formatDateTime(nextPhaseDate(now, moonIll.phase, 0))],
         ['First quarter', formatDateTime(nextPhaseDate(now, moonIll.phase, 0.25))],
         ['Next full', formatDateTime(nextPhaseDate(now, moonIll.phase, 0.5))],
@@ -552,21 +600,56 @@ function renderDetails(now) {
     ]);
 
     detailRows('twilight-details', [
-        ['Dawn', formatClock(sunTimes.dawn)],
-        ['Dusk', formatClock(sunTimes.dusk)],
-        ['Nautical dawn', formatClock(sunTimes.nauticalDawn)],
-        ['Nautical dusk', formatClock(sunTimes.nauticalDusk)],
-        ['Night end', formatClock(sunTimes.nightEnd)],
-        ['Night', formatClock(sunTimes.night)],
+        ['Civil dawn', cachedTwilight.civil?.dawn ? formatDateTime(new Date(cachedTwilight.civil.dawn)) : formatClock(sunTimes.dawn)],
+        ['Civil dusk', cachedTwilight.civil?.dusk ? formatDateTime(new Date(cachedTwilight.civil.dusk)) : formatClock(sunTimes.dusk)],
+        ['Nautical dawn', cachedTwilight.nautical?.dawn ? formatDateTime(new Date(cachedTwilight.nautical.dawn)) : formatClock(sunTimes.nauticalDawn)],
+        ['Nautical dusk', cachedTwilight.nautical?.dusk ? formatDateTime(new Date(cachedTwilight.nautical.dusk)) : formatClock(sunTimes.nauticalDusk)],
+        ['Astronomical dawn', cachedTwilight.astronomical?.dawn ? formatDateTime(new Date(cachedTwilight.astronomical.dawn)) : formatClock(sunTimes.nightEnd)],
+        ['Astronomical dusk', cachedTwilight.astronomical?.dusk ? formatDateTime(new Date(cachedTwilight.astronomical.dusk)) : formatClock(sunTimes.night)],
     ]);
 
     detailRows('time-details', [
         ['Civil time', formatDateTime(now)],
         ['Solar time', `${String(solarHours).padStart(2, '0')}:${String(solarMinutes).padStart(2, '0')}`],
         ['Sidereal time', siderealTime(now)],
-        ['Equation of time', `${equationOfTimeMinutes(now).toFixed(1)} min`],
+        ['Equation of time', cached?.time?.equationOfTimeMinutes !== undefined ? `${Number(cached.time.equationOfTimeMinutes).toFixed(1)} min` : `${equationOfTimeMinutes(now).toFixed(1)} min`],
         ['Timezone', CELESTIAL.location.timezone || 'UTC'],
         ['Coordinates', `${lat.toFixed(5)}, ${lon.toFixed(5)}`],
+    ]);
+
+    renderPlanetDetails();
+    renderCacheDetails();
+}
+
+function renderPlanetDetails() {
+    const bodies = CELESTIAL_CACHE.daily?.payload?.bodies || {};
+    const events = CELESTIAL_CACHE.daily?.payload?.events || {};
+    const planetNames = ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune'];
+    const rows = planetNames.filter((name) => bodies[name]).map((name) => ({
+        title: name.charAt(0).toUpperCase() + name.slice(1),
+        line1: `${Number(bodies[name].altitude).toFixed(1)}° alt · ${compassLabel(Number(bodies[name].azimuth))}`,
+        line2: `Rise ${events[name]?.rise ? formatDateTime(new Date(events[name].rise)) : 'n/a'}`,
+        line3: `Set ${events[name]?.set ? formatDateTime(new Date(events[name].set)) : 'n/a'}`,
+    }));
+    chipRows('planet-details', rows.length > 0 ? rows : [{
+        title: 'No cached planets',
+        line1: 'Run the celestial cache builder',
+        line2: 'src/cli/build_celestial_cache.php',
+        line3: '',
+    }]);
+}
+
+function renderCacheDetails() {
+    const daily = CELESTIAL_CACHE.daily;
+    const monthly = CELESTIAL_CACHE.monthly;
+    const yearly = CELESTIAL_CACHE.yearly;
+    detailRows('cache-details', [
+        ['Daily', daily ? `${daily.periodKey} · cached` : 'not cached'],
+        ['Monthly', monthly ? `${monthly.periodKey} · cached` : 'not cached'],
+        ['Yearly', yearly ? `${yearly.periodKey} · cached` : 'not cached'],
+        ['Source', daily?.payload?.source?.engine || 'SunCalc fallback'],
+        ['Reference', daily?.payload?.source?.reference ? 'weewx-skyfield' : 'n/a'],
+        ['Dataset note', 'No external datasets stored in git'],
     ]);
 }
 
@@ -579,8 +662,23 @@ function renderCelestial() {
     renderDetails(now);
 }
 
+async function loadCelestialCache() {
+    await Promise.all(['daily', 'monthly', 'yearly'].map(async (dataset) => {
+        try {
+            const response = await fetch(`api/celestial.php?dataset=${dataset}&_=${Date.now()}`, { cache: 'no-store' });
+            if (!response.ok) return;
+            CELESTIAL_CACHE[dataset] = await response.json();
+        } catch {
+            // Keep the client-side SunCalc fallback if the cache is unavailable.
+        }
+    }));
+}
+
 initThemeSelector();
-renderCelestial();
+(async function initCelestial() {
+    await loadCelestialCache();
+    renderCelestial();
+})();
 window.addEventListener('resize', renderCelestial);
 window.setInterval(renderCelestial, 60000);
 </script>

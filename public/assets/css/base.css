@@ -1112,6 +1112,33 @@ a:visited {
     margin-top: 0.7rem;
 }
 
+.celestial-chip-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.6rem;
+}
+
+.celestial-chip {
+    display: grid;
+    gap: 0.2rem;
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: 0.7rem;
+    padding: 0.65rem 0.7rem;
+    background: color-mix(in srgb, var(--card) 82%, var(--accent-soft) 18%);
+}
+
+.celestial-chip strong {
+    color: var(--text);
+    font-size: 1.02rem;
+}
+
+.celestial-chip span {
+    color: var(--muted);
+    font-size: 0.86rem;
+    overflow-wrap: anywhere;
+}
+
 @media (max-width: 700px) {
     .container {
         width: calc(100% - 1rem);

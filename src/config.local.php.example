@@ -74,6 +74,20 @@ return [
         // Optional when enabled for internet-facing installs.
         'dump_token' => '',
     ],
+    'celestial' => [
+        // Requires Python packages: skyfield and numpy.
+        // Keep ephemerides/catalogs outside git. If you clone weewx-skyfield
+        // for reference, you may point ephemeris_path at its local de421.bsp.
+        'python' => 'python3',
+        'data_dir' => '/var/lib/pws-live-site/skyfield',
+        'ephemeris_path' => '',
+        'sample_minutes' => 10,
+        'enabled_bodies' => ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn'],
+        'iss' => [
+            'enabled' => false,
+            'tle_path' => '',
+        ],
+    ],
     'debug' => [
         // Enable only when you want the debug page reachable.
         'enabled' => false,

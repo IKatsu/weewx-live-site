@@ -1,1 +1,6 @@
 /src/config.local.php
+pws-live-site-v*.tar.gz
+*.bsp
+*.tle
+wxskyfield_stars.dat.gz
+wxskyfield_lines.dat

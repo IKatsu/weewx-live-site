@@ -135,6 +135,7 @@ function app_config(): array
     $locationCfg = (array) ($local['location'] ?? []);
     $forecastCfg = (array) ($local['forecast'] ?? []);
     $predictionCfg = (array) ($local['prediction'] ?? []);
+    $celestialCfg = (array) ($local['celestial'] ?? []);
     $forecastWriterDbCfg = (array) ($local['forecast_writer_db'] ?? []);
     $historyWriterDbCfg = (array) ($local['history_writer_db'] ?? []);
     $securityCfg = (array) ($local['security'] ?? []);
@@ -263,6 +264,21 @@ function app_config(): array
                 static fn($h) => (int) $h,
                 (array) ($predictionCfg['horizons_hours'] ?? [1, 3, 6, 12, 24])
             ), static fn($h) => $h > 0 && $h <= 72)),
+        ],
+        'celestial' => [
+            'cache_table' => (string) ($celestialCfg['cache_table'] ?? 'pws_celestial_cache'),
+            'python' => (string) ($celestialCfg['python'] ?? 'python3'),
+            'data_dir' => (string) ($celestialCfg['data_dir'] ?? ''),
+            'ephemeris_path' => (string) ($celestialCfg['ephemeris_path'] ?? ''),
+            'sample_minutes' => max(1, min(60, (int) ($celestialCfg['sample_minutes'] ?? 10))),
+            'enabled_bodies' => array_values(array_filter(array_map(
+                static fn($body) => strtolower(trim((string) $body)),
+                (array) ($celestialCfg['enabled_bodies'] ?? ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn'])
+            ), static fn($body) => preg_match('/^[a-z0-9_]+$/', $body) === 1)),
+            'iss' => [
+                'enabled' => (bool) (($celestialCfg['iss']['enabled'] ?? false)),
+                'tle_path' => (string) (($celestialCfg['iss']['tle_path'] ?? '')),
+            ],
         ],
         'history' => [
             'default_hours' => max(1, (int) env_value('PWS_HISTORY_DEFAULT_HOURS', (string) ($historyCfg['default_hours'] ?? '24'))),

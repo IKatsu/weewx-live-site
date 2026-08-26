@@ -13,6 +13,9 @@ The format is intentionally simple:
 - Changed trend calculations to use metric-specific recent windows so fast temperature drops are not hidden by the 12-hour trend
 - Converted WeeWX `usUnits=16` rain-like archive values from centimeters to millimeters in API output
 - Changed the dashboard history `Yesterday` preset into a rolling `48 Hours` range that includes current data
+- Added a standalone Skyfield celestial cache builder, cache table, and API endpoint for detailed celestial-page data without WeeWX skin generation
+- Added cached sun/moon paths, planet position details, and cache status panels to the celestial page
+- Documented celestial cache setup and astronomy dataset handling so ephemeris/catalog files stay outside git and release archives
 
 ## v1.0.5 - 2026-06-26
 
