@@ -44,7 +44,7 @@ Compatibility note:
 
 ```bash
 cd pws-live-site
-cp src/config.defaults.php src/config.local.php
+cp src/config.local.php.example src/config.local.php
 # edit src/config.local.php with your hostnames/credentials
 php -S 127.0.0.1:8080 -t public
 ```

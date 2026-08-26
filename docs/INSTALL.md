@@ -110,7 +110,7 @@ The application already sends matching headers from PHP, but mirroring them in A
 Create a local config file from template:
 
 ```bash
-cp src/config.defaults.php src/config.local.php
+cp src/config.local.php.example src/config.local.php
 ```
 
 Edit `src/config.local.php` with your DB/MQTT settings and optional field mappings/graph toggles/themes.
