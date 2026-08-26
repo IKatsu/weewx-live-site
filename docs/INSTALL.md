@@ -508,5 +508,7 @@ Expected dry-run shape with the `weewx-skyfield` reference files:
 
 Use `--dry-run` first if you want to validate the files without connecting to MySQL.
 
+After import, `celestial.php` should draw stars and constellation figures on the sky map. If payloads are too heavy for a small server, lower `celestial.catalog.star_magnitude_limit` in `src/config.local.php`.
+
 ---
 Author: Codex (GPT-5)

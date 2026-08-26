@@ -347,6 +347,7 @@ See:
 - `GET /api/trends.php` (archive-based local trend nowcast)
 - `GET /api/prediction.php` (latest prediction cache run)
 - `GET /api/celestial.php?dataset=daily` (latest celestial cache row; also supports `monthly` and `yearly`)
+- `GET /api/celestial_catalog.php` (projected visible stars and constellation lines from local catalog tables)
 - `GET /api/dump.php` (default output: CSV, row-limited)
   - `GET /api/dump.php?type=csv` -> `text/csv`
   - `GET /api/dump.php?type=json` -> `application/json`

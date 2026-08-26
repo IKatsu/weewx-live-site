@@ -157,6 +157,18 @@ return [
         'ephemeris_path' => '',
         'sample_minutes' => 10,
         'enabled_bodies' => ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn'],
+        'catalog' => [
+            // Optional full sky-dome catalog layer. Requires locally imported
+            // pws_celestial_* catalog tables; no dataset files are served.
+            'enabled' => true,
+            'stars_table' => 'pws_celestial_stars',
+            'lines_table' => 'pws_celestial_constellation_lines',
+            'names_table' => 'pws_celestial_constellation_names',
+            'star_magnitude_limit' => 6.0,
+            'star_label_magnitude_limit' => 1.6,
+            'constellation_lines' => true,
+            'constellation_labels' => true,
+        ],
         'iss' => [
             'enabled' => false,
             // Optional path to an ISS TLE file. If empty, no network fetch is attempted.

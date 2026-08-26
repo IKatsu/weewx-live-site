@@ -108,6 +108,14 @@ With the `weewx-skyfield` reference files, the dry run should report approximate
 - `constellation_points=914`
 - `names=88`
 
+The web page then reads projected visible stars/constellation lines through:
+
+```text
+GET /api/celestial_catalog.php
+```
+
+This endpoint returns derived alt/az JSON only. It does not serve the source catalog files.
+
 Future Download Location
 
 If later ISS/TLE, comet, or other stale orbital-data downloads are added, cron scripts should download those files to `/tmp` or a subdirectory such as `/tmp/pws-live-site`, not into this repository. Static catalog files can be staged locally for import, but should still stay outside git and release archives.

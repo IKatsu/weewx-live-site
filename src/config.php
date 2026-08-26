@@ -275,6 +275,16 @@ function app_config(): array
                 static fn($body) => strtolower(trim((string) $body)),
                 (array) ($celestialCfg['enabled_bodies'] ?? ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn'])
             ), static fn($body) => preg_match('/^[a-z0-9_]+$/', $body) === 1)),
+            'catalog' => [
+                'enabled' => (bool) (($celestialCfg['catalog']['enabled'] ?? true)),
+                'stars_table' => (string) (($celestialCfg['catalog']['stars_table'] ?? 'pws_celestial_stars')),
+                'lines_table' => (string) (($celestialCfg['catalog']['lines_table'] ?? 'pws_celestial_constellation_lines')),
+                'names_table' => (string) (($celestialCfg['catalog']['names_table'] ?? 'pws_celestial_constellation_names')),
+                'star_magnitude_limit' => max(-2.0, min(12.0, (float) (($celestialCfg['catalog']['star_magnitude_limit'] ?? 6.0)))),
+                'star_label_magnitude_limit' => max(-2.0, min(6.5, (float) (($celestialCfg['catalog']['star_label_magnitude_limit'] ?? 1.6)))),
+                'constellation_lines' => (bool) (($celestialCfg['catalog']['constellation_lines'] ?? true)),
+                'constellation_labels' => (bool) (($celestialCfg['catalog']['constellation_labels'] ?? true)),
+            ],
             'iss' => [
                 'enabled' => (bool) (($celestialCfg['iss']['enabled'] ?? false)),
                 'tle_path' => (string) (($celestialCfg['iss']['tle_path'] ?? '')),

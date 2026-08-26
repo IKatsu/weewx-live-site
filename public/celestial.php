@@ -126,6 +126,7 @@ const CELESTIAL_CACHE = {
     daily: null,
     monthly: null,
     yearly: null,
+    catalog: null,
 };
 const CELESTIAL_BODY_ORDER = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune'];
 const CELESTIAL_BODY_LABELS = {
@@ -397,6 +398,77 @@ function pathVisibilityIntervals(rows, start, end) {
     return intervals;
 }
 
+function catalogPayload() {
+    return CELESTIAL_CACHE.catalog || {};
+}
+
+function drawCatalogLayer(ctx, cx, cy, radius, text, muted) {
+    const catalog = catalogPayload();
+    const stars = Array.isArray(catalog.stars) ? catalog.stars : [];
+    const lines = Array.isArray(catalog.constellationLines) ? catalog.constellationLines : [];
+    const labels = Array.isArray(catalog.constellationLabels) ? catalog.constellationLabels : [];
+    if (stars.length === 0 && lines.length === 0) return;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    ctx.strokeStyle = colorMix(muted, '#000000', 0.12);
+    ctx.lineWidth = 0.7;
+    ctx.globalAlpha = 0.42;
+    for (const line of lines) {
+        const points = Array.isArray(line.points) ? line.points : [];
+        if (points.length < 2) continue;
+        ctx.beginPath();
+        let started = false;
+        for (const point of points) {
+            const alt = Number(point.altitude);
+            const az = Number(point.azimuth);
+            if (!Number.isFinite(alt) || !Number.isFinite(az) || alt < -5) {
+                started = false;
+                continue;
+            }
+            const pt = projectSky(az, alt, cx, cy, radius);
+            if (!started) {
+                ctx.moveTo(pt.x, pt.y);
+                started = true;
+            } else {
+                ctx.lineTo(pt.x, pt.y);
+            }
+        }
+        ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    for (const star of stars) {
+        const alt = Number(star.altitude);
+        const az = Number(star.azimuth);
+        const mag = Number(star.magnitude);
+        if (!Number.isFinite(alt) || !Number.isFinite(az) || alt < 0) continue;
+        const pt = projectSky(az, alt, cx, cy, radius);
+        const brightness = Math.max(0.18, Math.min(1, (6.5 - (Number.isFinite(mag) ? mag : 6)) / 6.5));
+        const dot = Math.max(0.75, Math.min(2.8, 2.9 - (Number.isFinite(mag) ? mag : 6) * 0.32));
+        ctx.fillStyle = `rgba(238, 232, 206, ${0.38 + brightness * 0.55})`;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, dot, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.fillStyle = colorMix(text, muted, 0.34);
+    ctx.font = '10px Source Sans 3, Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const label of labels) {
+        const alt = Number(label.altitude);
+        const az = Number(label.azimuth);
+        if (!Number.isFinite(alt) || !Number.isFinite(az) || alt < 4) continue;
+        const pt = projectSky(az, alt, cx, cy, radius);
+        ctx.fillText(String(label.name || label.abbr || ''), pt.x, pt.y);
+    }
+    ctx.restore();
+}
+
 function projectSky(az, alt, cx, cy, radius) {
     const horizonAlt = -6;
     const clampedAlt = Math.max(horizonAlt, Math.min(90, alt));
@@ -466,6 +538,8 @@ function drawSkyMap(now) {
         ctx.textBaseline = 'middle';
         ctx.fillText(label, pt.x, pt.y);
     }
+
+    drawCatalogLayer(ctx, cx, cy, radius, text, muted);
 
     function drawPath(rows, color, widthPx) {
         ctx.strokeStyle = color;
@@ -967,13 +1041,29 @@ async function loadCelestialCache() {
     }));
 }
 
+async function loadCelestialCatalog() {
+    try {
+        const bucket = Math.floor(Date.now() / 900000) * 900;
+        const response = await fetch(`api/celestial_catalog.php?time=${bucket}&_=${bucket}`, { cache: 'no-store' });
+        if (!response.ok) return;
+        CELESTIAL_CACHE.catalog = await response.json();
+    } catch {
+        // Catalog stars are optional; the dome still renders sun/moon/planets.
+    }
+}
+
 initThemeSelector();
 (async function initCelestial() {
     await loadCelestialCache();
+    await loadCelestialCatalog();
     renderCelestial();
 })();
 window.addEventListener('resize', renderCelestial);
 window.setInterval(renderCelestial, 60000);
+window.setInterval(async () => {
+    await loadCelestialCatalog();
+    renderCelestial();
+}, 900000);
 </script>
 </body>
 </html>
