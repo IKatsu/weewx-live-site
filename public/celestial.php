@@ -47,14 +47,14 @@ render_site_header('Celestial Almanac', default_nav_links($config), [
 ]);
 ?>
 
-    <section class="charts celestial-charts">
+    <section class="charts celestial-charts celestial-full">
         <article class="chart-card celestial-sky-card">
             <h2 class="chart-title">Sky Map</h2>
             <canvas id="celestial-sky" width="900" height="900"></canvas>
         </article>
     </section>
 
-    <section class="charts celestial-charts celestial-full">
+    <section class="charts celestial-charts">
         <article class="card">
             <h2 class="chart-title">Sun</h2>
             <div id="sun-details" class="celestial-detail-grid"></div>
