@@ -232,9 +232,13 @@ Optional full-dome preparation:
 
 ```bash
 mysql -u DB_USER -p DB_NAME < docs/sql/create_pws_celestial_catalog.sql
+php src/cli/import_celestial_catalog.php \
+  --stars=/path/to/wxskyfield_stars.dat.gz \
+  --lines=/path/to/wxskyfield_lines.dat \
+  --force
 ```
 
-That schema is for future/local star and constellation imports. It does not ship or import catalog data by itself.
+The schema and importer are tracked. The catalog datasets are not tracked and should stay outside git/release archives.
 
 ## Monthly history rollup setup
 

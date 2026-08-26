@@ -83,6 +83,35 @@ mysql -u DB_ADMIN_USER -p DB_NAME < docs/sql/create_pws_celestial_catalog.sql
 
 That schema provides empty tables for locally imported stars and constellation lines. It does not include catalog data and is not required for the current sun/moon/planet panels.
 
+Validate local catalog files without writing rows:
+
+```bash
+php src/cli/import_celestial_catalog.php \
+  --stars=/path/to/wxskyfield_stars.dat.gz \
+  --lines=/path/to/wxskyfield_lines.dat \
+  --dry-run
+```
+
+Import local catalog files:
+
+```bash
+php src/cli/import_celestial_catalog.php \
+  --stars=/path/to/wxskyfield_stars.dat.gz \
+  --lines=/path/to/wxskyfield_lines.dat \
+  --force
+```
+
+With the `weewx-skyfield` reference files, the dry run should report approximately:
+
+- `stars=118218`
+- `constellation_polylines=219`
+- `constellation_points=914`
+- `names=88`
+
+Future Download Location
+
+If later ISS/TLE, comet, or other stale orbital-data downloads are added, cron scripts should download those files to `/tmp` or a subdirectory such as `/tmp/pws-live-site`, not into this repository. Static catalog files can be staged locally for import, but should still stay outside git and release archives.
+
 ## Build
 
 Build all cache datasets:
@@ -109,4 +138,4 @@ Suggested cron:
 
 ISS support is intentionally disabled by default. It needs fresh TLE data, which is not predictable in the same way as sun/moon/planet positions.
 
-If added later, keep the TLE file outside git and refresh it separately from CelesTrak or another trusted source.
+If added later, keep the TLE file outside git and refresh it separately from CelesTrak or another trusted source, preferably under `/tmp/pws-live-site` from cron.

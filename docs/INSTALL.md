@@ -488,7 +488,25 @@ Optional full-sky-dome catalog schema:
 mysql -u DB_USER -p DB_NAME < docs/sql/create_pws_celestial_catalog.sql
 ```
 
-This creates empty tables for future/local star and constellation imports. It intentionally does not include catalog data.
+This creates empty tables for local star and constellation imports. It intentionally does not include catalog data.
+
+Import local catalog files:
+
+```bash
+php src/cli/import_celestial_catalog.php \
+  --stars=/path/to/wxskyfield_stars.dat.gz \
+  --lines=/path/to/wxskyfield_lines.dat \
+  --force
+```
+
+Expected dry-run shape with the `weewx-skyfield` reference files:
+
+- `stars=118218`
+- `constellation_polylines=219`
+- `constellation_points=914`
+- `names=88`
+
+Use `--dry-run` first if you want to validate the files without connecting to MySQL.
 
 ---
 Author: Codex (GPT-5)
