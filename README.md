@@ -22,7 +22,7 @@ Live weather dashboard for weewx data with:
 - latest conditions from MySQL (`weather.archive`)
 - responsive history charts (Chart.js)
 - live value updates via MQTT WebSocket (`weewx/#`)
-- history presets: `Today`, `Yesterday`, `Last Week`, `Last Month`, `Last Year`
+- history presets: `Today`, `48 Hours`, `Last Week`, `Last Month`, `Last Year`; rolling ranges end at now
 - wind rose + wind direction point chart
 - comfort indication based on wind, outside temperature, and outside humidity
 - wind row summary cards for 1h and 3h average wind/gust values
@@ -309,6 +309,7 @@ See:
 
 - `GET /api/latest.php`
 - `GET /api/history.php?hours=24&endOffsetHours=0&bucketMinutes=5&fields=outTemp,dewpoint,outHumidity,windSpeed,windGust,windDir,barometer,pressure,rainRate,rainHourly`
+- Metric WeeWX archives with `usUnits=16` store rain-like values in centimeters; the API converts those values to millimeters for dashboard display.
 - `GET /api/forecast.php` (reads cached WU forecast from DB)
 - `GET /api/trends.php` (archive-based local trend nowcast)
 - `GET /api/prediction.php` (latest prediction cache run)

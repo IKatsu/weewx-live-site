@@ -169,6 +169,7 @@ try {
             $usUnits = (int) $rows[0]['usUnits'];
             foreach ($rows as $row) {
                 $x = (int) $row['dateTime'] * 1000;
+                $rowUnits = isset($row['usUnits']) ? (int) $row['usUnits'] : $usUnits;
                 foreach (array_keys($mapped) as $field) {
                     if ($field === 'windDir') {
                         $sinSum = isset($row['windDir_sin_sum']) ? (float) $row['windDir_sin_sum'] : null;
@@ -187,7 +188,7 @@ try {
                     if ($value === null) {
                         continue;
                     }
-                $series[$field][] = ['x' => $x, 'y' => (float) $value];
+                $series[$field][] = ['x' => $x, 'y' => (float) display_value_for_field($field, $value, $rowUnits)];
             }
         }
     }
@@ -215,7 +216,7 @@ try {
             foreach ($hourRows as $hourRow) {
                 $series['rainHourly'][] = [
                     'x' => (int) $hourRow['hour_ts'] * 1000,
-                    'y' => (float) ($hourRow['rain_sum'] ?? 0),
+                    'y' => (float) display_value_for_field('rainHourly', $hourRow['rain_sum'] ?? 0, (int) ($hourRow['usUnits'] ?? 0)),
                 ];
                 if ($usUnits === null && $hourRow['usUnits'] !== null) {
                     $usUnits = (int) $hourRow['usUnits'];
@@ -247,7 +248,7 @@ try {
             $windowSum = 0.0;
             foreach ($rollingRows as $rollingRow) {
                 $bucketTs = (int) ($rollingRow['bucket_ts'] ?? 0);
-                $bucketRain = (float) ($rollingRow['rain_sum'] ?? 0);
+                $bucketRain = (float) display_value_for_field('rainRolling24h', $rollingRow['rain_sum'] ?? 0, (int) ($rollingRow['usUnits'] ?? 0));
                 $window[] = ['ts' => $bucketTs, 'rain' => $bucketRain];
                 $windowSum += $bucketRain;
 
@@ -261,9 +262,13 @@ try {
                     continue;
                 }
 
+                if (abs($windowSum) < 0.000001) {
+                    $windowSum = 0.0;
+                }
+
                 $series['rainRolling24h'][] = [
                     'x' => $bucketTs * 1000,
-                    'y' => $windowSum,
+                    'y' => max(0.0, $windowSum),
                 ];
                 if ($usUnits === null && $rollingRow['usUnits'] !== null) {
                     $usUnits = (int) $rollingRow['usUnits'];

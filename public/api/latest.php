@@ -393,7 +393,7 @@ try {
         $value = $derivedValues[$field] ?? ($row[$field] ?? null);
         $metrics[$field] = [
             'label' => $spec['label'],
-            'value' => $value,
+            'value' => display_value_for_field($field, $value, (int) $row['usUnits']),
             'unit' => $unit,
             'missingColumn' => false,
         ];
@@ -402,7 +402,7 @@ try {
     if (array_key_exists('rain24h', $derivedValues)) {
         $metrics['rain24h'] = [
             'label' => 'Rain 24h',
-            'value' => $derivedValues['rain24h'],
+            'value' => display_value_for_field('rain24h', $derivedValues['rain24h'], (int) $row['usUnits']),
             'unit' => $unitOverride['mm'] ?? ($units['rain'] ?? ''),
             'missingColumn' => false,
         ];

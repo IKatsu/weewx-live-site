@@ -137,7 +137,7 @@ render_site_header('PWS Live Dashboard', default_nav_links($config), [
 
     <nav class="range-toolbar" id="range-toolbar">
         <button class="range-btn active" data-range="today">Today</button>
-        <button class="range-btn" data-range="yesterday">Yesterday</button>
+        <button class="range-btn" data-range="yesterday">48 Hours</button>
         <button class="range-btn" data-range="week">Last Week</button>
         <button class="range-btn" data-range="month">Last Month</button>
         <button class="range-btn" data-range="year">Last Year</button>
@@ -311,7 +311,7 @@ const APP = {
 const historyBuckets = APP.historyRangeBuckets || {};
 const historyRanges = {
     today: { label: 'Today', hours: 24, endOffsetHours: 0, bucketMinutes: Number(historyBuckets.today || 5) },
-    yesterday: { label: 'Yesterday', hours: 24, endOffsetHours: 24, bucketMinutes: Number(historyBuckets.yesterday || 5) },
+    yesterday: { label: 'Last 48 Hours', hours: 48, endOffsetHours: 0, bucketMinutes: Number(historyBuckets.yesterday || 5) },
     week: { label: 'Last Week', hours: 24 * 7, endOffsetHours: 0, bucketMinutes: Number(historyBuckets.week || 15) },
     month: { label: 'Last Month', hours: 24 * 30, endOffsetHours: 0, bucketMinutes: Number(historyBuckets.month || 60) },
     year: { label: 'Last Year', hours: 24 * 365, endOffsetHours: 0, bucketMinutes: Number(historyBuckets.year || (6 * 60)) },

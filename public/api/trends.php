@@ -216,6 +216,7 @@ try {
     $rows = $historyStmt->fetchAll();
 
     $units = unit_map((int) $latest['usUnits']);
+    $latestUnits = (int) $latest['usUnits'];
     $metrics = [];
     $trendLookup = [];
 
@@ -236,13 +237,13 @@ try {
             }
             $points[] = [
                 't' => (float) $rowTs,
-                'v' => (float) $v,
+                'v' => (float) display_value_for_field($field, $v, $latestUnits),
             ];
         }
 
         $trend = regression_slope($points);
         $direction = trend_direction((float) $trend['slope_per_hour'], (float) $spec['deadband']);
-        $current = isset($latest[$field]) && is_numeric($latest[$field]) ? (float) $latest[$field] : null;
+        $current = isset($latest[$field]) && is_numeric($latest[$field]) ? (float) display_value_for_field($field, $latest[$field], $latestUnits) : null;
         $predictHours = (int) $spec['predictHours'];
         $predicted = $current !== null ? $current + ((float) $trend['slope_per_hour'] * $predictHours) : null;
         if ($predicted !== null && $field === 'outHumidity') {
@@ -275,7 +276,7 @@ try {
     $latestMetrics = [];
     foreach (array_keys($mapped) as $field) {
         if (isset($latest[$field]) && is_numeric($latest[$field])) {
-            $latestMetrics[$field] = (float) $latest[$field];
+            $latestMetrics[$field] = (float) display_value_for_field($field, $latest[$field], $latestUnits);
         }
     }
 

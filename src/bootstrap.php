@@ -107,6 +107,26 @@ function unit_map(int $usUnits): array
     ];
 }
 
+function rain_display_factor(int $usUnits): float
+{
+    // WeeWX METRIC archives (usUnits=16) store group_rain values in cm.
+    // The UI presents metric rain as mm, so convert only that storage mode.
+    return $usUnits === 16 ? 10.0 : 1.0;
+}
+
+function display_value_for_field(string $field, mixed $value, int $usUnits): mixed
+{
+    if ($value === null || !is_numeric($value)) {
+        return $value;
+    }
+
+    if (in_array($field, ['rain', 'rainRate', 'rain24h', 'rainHourly', 'rainRolling24h', 'ET', 'hail', 'hailRate', 'snow', 'snowRate'], true)) {
+        return (float) $value * rain_display_factor($usUnits);
+    }
+
+    return $value;
+}
+
 function is_safe_identifier(string $identifier): bool
 {
     // Restrict SQL identifiers to plain column/table names only.

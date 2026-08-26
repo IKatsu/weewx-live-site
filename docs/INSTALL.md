@@ -257,10 +257,10 @@ With `ui.plotly_js = 'auto'`, the site will automatically use the newest `plotly
 2. Confirm weather cards load values from MySQL.
 3. Confirm charts render and resize on mobile/desktop.
 4. Confirm MQTT status changes to `connected` and values update live.
-5. Confirm the range buttons (`Today`, `Yesterday`, `Last Week`, `Last Month`, `Last Year`) reload history successfully.
+5. Confirm the range buttons (`Today`, `48 Hours`, `Last Week`, `Last Month`, `Last Year`) reload history successfully. Rolling ranges should include current-day data up to now.
 6. Confirm the `Wind` row contains the extra `Avg 1h` and `Avg 3h` cards, each showing wind on the first line and gust on the second line.
 7. Confirm the separate `Wind Averages / Gust Averages` graph renders alongside the existing wind speed/gust graph.
-8. Confirm rain chart shows both rain rate and hourly rain sum.
+8. Confirm rain chart shows both rain rate and hourly rain sum in millimeters for metric installs.
 9. Confirm battery charts render for wind/rain/lightning/pm25 battery fields.
 10. Confirm the top-of-page metric rows are grouped logically and PM2.5 shows air-quality coloring.
 9. Confirm `php src/cli/fetch_forecast.php --force` succeeds and dashboard forecast panels fill.

@@ -210,7 +210,8 @@ try {
     $rows = $readPdo->query($historySql)->fetchAll();
 
     $nowTs = (int) $latest['dateTime'];
-    $units = unit_map((int) $latest['usUnits']);
+    $latestUnits = (int) $latest['usUnits'];
+    $units = unit_map($latestUnits);
     $wuTomorrowRange = wu_tomorrow_temp_range($readPdo, $config);
 
     $predictionRows = [];
@@ -220,7 +221,7 @@ try {
     foreach ($mapped as $field => $_col) {
         $def = $metricDefs[$field];
         $unit = (string) ($units[$def['unitType']] ?? '');
-        $current = isset($latest[$field]) && is_numeric($latest[$field]) ? (float) $latest[$field] : null;
+        $current = isset($latest[$field]) && is_numeric($latest[$field]) ? (float) display_value_for_field($field, $latest[$field], $latestUnits) : null;
         if ($current === null) {
             continue;
         }
@@ -233,7 +234,7 @@ try {
                 continue;
             }
             $ts = (int) $row['dateTime'];
-            $val = (float) $v;
+            $val = (float) display_value_for_field($field, $v, $latestUnits);
             $seasonalHistory[] = ['ts' => $ts, 'val' => $val];
             if ($ts >= ($nowTs - (3 * 3600))) {
                 $recentPoints[] = ['t' => $ts, 'v' => $val];
