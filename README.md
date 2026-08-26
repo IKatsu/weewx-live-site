@@ -32,7 +32,7 @@ Live weather dashboard for weewx data with:
 - cached WU/TWC forecast integration (dashboard + dedicated forecast page)
 - archive-based trend page (`trends.php`)
 - hybrid prediction cache and page (`prediction.php`)
-- detailed celestial almanac page (`celestial.php`) with cached Skyfield sun/moon paths, planet positions, twilight, moon phase, and visibility timeline
+- detailed celestial almanac page (`celestial.php`) with cached Skyfield sky map, rise/set timeline, lunar month, solar-year daylight graph, solar-system map, almanac table, twilight, and moon phase panels
 - optional WeeWX `custom_obs` extension package for solar/lunar custom field registration
 
 Compatibility note:
@@ -212,7 +212,7 @@ Optional for better hybrid behavior:
 
 ## Celestial cache setup
 
-The celestial page can use precomputed Skyfield data for sun/moon/planet paths, twilight, moon phase, and visible planet position details without running WeeWX skin generation.
+The celestial page can use precomputed Skyfield data for sun/moon/planet paths, twilight, moon phase, solar-system, lunar-month, and solar-year daylight details without running WeeWX skin generation.
 
 See full setup and dataset-license notes:
 
