@@ -85,6 +85,31 @@ render_site_header('Celestial Almanac', default_nav_links($config), [
     </section>
 
     <section class="charts celestial-charts">
+        <article class="chart-card">
+            <h2 class="chart-title">Solar Year - Daylight Week By Week</h2>
+            <canvas id="celestial-daylight-year" width="1200" height="420"></canvas>
+        </article>
+    </section>
+
+    <section class="charts celestial-charts">
+        <article class="chart-card">
+            <h2 class="chart-title">Solar System - Today</h2>
+            <canvas id="celestial-solar-system" width="760" height="620"></canvas>
+        </article>
+        <article class="chart-card">
+            <h2 class="chart-title">Lunar Month</h2>
+            <canvas id="celestial-lunation" width="760" height="240"></canvas>
+        </article>
+    </section>
+
+    <section class="charts celestial-charts">
+        <article class="card">
+            <h2 class="chart-title">Almanac</h2>
+            <div id="celestial-almanac-table" class="celestial-tablewrap"></div>
+        </article>
+    </section>
+
+    <section class="charts celestial-charts">
         <article class="card">
             <h2 class="chart-title">Twilight</h2>
             <div id="twilight-details" class="celestial-detail-grid"></div>
@@ -132,6 +157,7 @@ const CELESTIAL_BODY_ORDER = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupite
 const CELESTIAL_BODY_LABELS = {
     sun: 'Sun',
     moon: 'Moon',
+    earth: 'Earth',
     mercury: 'Mercury',
     venus: 'Venus',
     mars: 'Mars',
@@ -143,6 +169,7 @@ const CELESTIAL_BODY_LABELS = {
 const CELESTIAL_BODY_COLORS = {
     sun: '#f6c44f',
     moon: '#cdd7f2',
+    earth: '#4f9df6',
     mercury: '#a9b0c0',
     venus: '#f0d38c',
     mars: '#e46f55',
@@ -235,6 +262,16 @@ function compassLabel(deg) {
     if (!Number.isFinite(deg)) return 'n/a';
     const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
     return dirs[Math.round(normalizeDegrees(deg) / 22.5) % dirs.length];
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+    })[char]);
 }
 
 function detailRows(targetId, rows) {
@@ -488,6 +525,17 @@ function setupCanvas(canvas) {
     const ctx = canvas.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     return { ctx, width: rect.width, height: rect.height };
+}
+
+function canvasNotice(canvasId, message) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const { ctx, width, height } = setupCanvas(canvas);
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = cssVar('--muted', '#5b6f86');
+    ctx.font = '600 14px Source Sans 3, Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(message, width / 2, height / 2);
 }
 
 function drawSkyMap(now) {
@@ -896,6 +944,283 @@ function drawMoonSymbol(now) {
     ctx.stroke();
 }
 
+function drawDaylightYear(now) {
+    const canvas = document.getElementById('celestial-daylight-year');
+    const weeks = CELESTIAL_CACHE.yearly?.payload?.daylightWeeks || [];
+    if (!canvas) return;
+    if (!Array.isArray(weeks) || weeks.length === 0) {
+        canvasNotice('celestial-daylight-year', 'Rebuild the yearly celestial cache to show daylight week by week.');
+        return;
+    }
+    const { ctx, width, height } = setupCanvas(canvas);
+    const text = cssVar('--text', '#102137');
+    const muted = cssVar('--muted', '#5b6f86');
+    const border = cssVar('--border', '#d7e1ec');
+    const accent = cssVar('--accent', '#0f6ecf');
+    const card = cssVar('--card', '#101828');
+    const left = 58;
+    const right = width - 24;
+    const top = 20;
+    const bottom = height - 44;
+    const plotW = right - left;
+    const colW = plotW / weeks.length;
+    const shade = {
+        day: colorMix(card, '#f6c44f', 0.24),
+        civil: colorMix(card, '#6f95c8', 0.30),
+        nautical: colorMix(card, '#4b638c', 0.30),
+        astronomical: colorMix(card, '#2d3b62', 0.32),
+        night: colorMix(card, '#101828', 0.38),
+    };
+    const yForHour = (hour) => top + ((24 - hour) / 24) * (bottom - top);
+    const xForWeek = (idx) => left + idx * colW + colW / 2;
+
+    function fillBand(idx, fromHour, toHour, color) {
+        if (!Number.isFinite(fromHour) || !Number.isFinite(toHour) || toHour <= fromHour) return;
+        const x = left + idx * colW;
+        ctx.fillStyle = color;
+        ctx.fillRect(x, yForHour(toHour), colW + 0.5, yForHour(fromHour) - yForHour(toHour));
+    }
+
+    function drawCurve(key, color, dash = []) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.setLineDash(dash);
+        ctx.beginPath();
+        let started = false;
+        weeks.forEach((week, idx) => {
+            const hour = Number(week.hours?.[key]);
+            if (!Number.isFinite(hour)) {
+                if (started) ctx.stroke();
+                ctx.beginPath();
+                started = false;
+                return;
+            }
+            const x = xForWeek(idx);
+            const y = yForHour(hour);
+            if (!started) {
+                ctx.moveTo(x, y);
+                started = true;
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+        if (started) ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    ctx.clearRect(0, 0, width, height);
+    weeks.forEach((week, idx) => {
+        const h = week.hours || {};
+        fillBand(idx, 0, Number(h.astronomicalDawn), shade.night);
+        fillBand(idx, Number(h.astronomicalDawn), Number(h.nauticalDawn), shade.astronomical);
+        fillBand(idx, Number(h.nauticalDawn), Number(h.civilDawn), shade.nautical);
+        fillBand(idx, Number(h.civilDawn), Number(h.sunrise), shade.civil);
+        fillBand(idx, Number(h.sunrise), Number(h.sunset), shade.day);
+        fillBand(idx, Number(h.sunset), Number(h.civilDusk), shade.civil);
+        fillBand(idx, Number(h.civilDusk), Number(h.nauticalDusk), shade.nautical);
+        fillBand(idx, Number(h.nauticalDusk), Number(h.astronomicalDusk), shade.astronomical);
+        fillBand(idx, Number(h.astronomicalDusk), 24, shade.night);
+    });
+
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(left, top, plotW, bottom - top);
+    ctx.font = '11px Source Sans 3, Segoe UI, sans-serif';
+    for (const hour of [0, 6, 12, 18, 24]) {
+        const y = yForHour(hour);
+        ctx.strokeStyle = hour === 12 ? colorMix(border, text, 0.35) : border;
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(right, y);
+        ctx.stroke();
+        ctx.fillStyle = muted;
+        ctx.textAlign = 'right';
+        ctx.fillText(`${String(hour).padStart(2, '0')}:00`, left - 8, y + 4);
+    }
+    for (const month of [0, 13, 26, 39, 52]) {
+        const x = left + month * colW;
+        ctx.strokeStyle = colorMix(border, card, 0.45);
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.stroke();
+    }
+    drawCurve('sunrise', bodyColor('sun'));
+    drawCurve('sunset', bodyColor('sun'));
+    drawCurve('solarNoon', text, [4, 5]);
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: CELESTIAL.location.timezone || 'UTC' }).format(now);
+    const todayIndex = weeks.findIndex((week) => String(week.date) >= today);
+    const nowX = left + Math.max(0, todayIndex >= 0 ? todayIndex : weeks.length - 1) * colW;
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(nowX, top - 4);
+    ctx.lineTo(nowX, bottom + 4);
+    ctx.stroke();
+    ctx.fillStyle = muted;
+    ctx.textAlign = 'left';
+    ctx.fillText('Sunrise / sunset curves with dashed solar noon; vertical line is today.', left, height - 12);
+}
+
+function drawSolarSystem() {
+    const canvas = document.getElementById('celestial-solar-system');
+    const bodies = CELESTIAL_CACHE.daily?.payload?.solarSystem || [];
+    if (!canvas) return;
+    if (!Array.isArray(bodies) || bodies.length === 0) {
+        canvasNotice('celestial-solar-system', 'Rebuild the daily celestial cache to show the solar system map.');
+        return;
+    }
+    const { ctx, width, height } = setupCanvas(canvas);
+    const text = cssVar('--text', '#102137');
+    const muted = cssVar('--muted', '#5b6f86');
+    const border = cssVar('--border', '#d7e1ec');
+    const cx = width / 2;
+    const cy = height / 2;
+    const maxR = Math.min(width, height) * 0.42;
+    const lo = Math.log(0.38);
+    const hi = Math.log(30.2);
+    const rForAu = (au) => 38 + (maxR - 38) * (Math.log(Math.max(0.38, au)) - lo) / (hi - lo);
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 1;
+    for (const au of [0.39, 0.72, 1, 1.52, 5.2, 9.58, 19.2, 30.1]) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, rForAu(au), 0, Math.PI * 2);
+        ctx.stroke();
+    }
+    ctx.strokeStyle = colorMix(border, muted, 0.35);
+    ctx.setLineDash([3, 5]);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + maxR + 18, cy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = bodyColor('sun');
+    ctx.beginPath();
+    ctx.arc(cx, cy, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = text;
+    ctx.font = '600 11px Source Sans 3, Segoe UI, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Sun', cx + 13, cy + 4);
+
+    for (const body of bodies) {
+        const name = String(body.body || '');
+        if (name === 'sun') continue;
+        const xAu = Number(body.xAu);
+        const yAu = Number(body.yAu);
+        const radiusAu = Number(body.radiusAu);
+        if (!Number.isFinite(xAu) || !Number.isFinite(yAu) || !Number.isFinite(radiusAu)) continue;
+        const angle = Math.atan2(yAu, xAu);
+        const r = rForAu(radiusAu);
+        const x = cx + Math.cos(angle) * r;
+        const y = cy - Math.sin(angle) * r;
+        const dot = name === 'earth' ? 5.5 : 4.5;
+        ctx.fillStyle = bodyColor(name);
+        ctx.beginPath();
+        ctx.arc(x, y, dot, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = text;
+        ctx.font = name === 'earth' ? '700 11px Source Sans 3, Segoe UI, sans-serif' : '600 10px Source Sans 3, Segoe UI, sans-serif';
+        ctx.textAlign = x >= cx ? 'left' : 'right';
+        ctx.fillText(bodyLabel(name), x + (x >= cx ? 8 : -8), y + 4);
+    }
+    ctx.fillStyle = muted;
+    ctx.textAlign = 'left';
+    ctx.font = '12px Source Sans 3, Segoe UI, sans-serif';
+    ctx.fillText('Log-radius heliocentric plan view; directions are ecliptic longitude.', 18, height - 16);
+}
+
+function drawLunationStrip(now) {
+    const canvas = document.getElementById('celestial-lunation');
+    const lunation = CELESTIAL_CACHE.daily?.payload?.lunation || {};
+    const days = Array.isArray(lunation.days) ? lunation.days : [];
+    if (!canvas) return;
+    if (days.length === 0) {
+        canvasNotice('celestial-lunation', 'Rebuild the daily celestial cache to show the lunar month.');
+        return;
+    }
+    const { ctx, width, height } = setupCanvas(canvas);
+    const text = cssVar('--text', '#102137');
+    const muted = cssVar('--muted', '#5b6f86');
+    const border = cssVar('--border', '#d7e1ec');
+    const accent = cssVar('--accent', '#0f6ecf');
+    const left = 34;
+    const right = width - 34;
+    const y = 82;
+    const r = Math.min(13, (right - left) / days.length * 0.42);
+    const previous = new Date(String(lunation.previousNew || ''));
+    const next = new Date(String(lunation.nextNew || ''));
+    const span = next - previous;
+
+    function drawDisc(x, illum, waxing) {
+        ctx.fillStyle = '#30394c';
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.fillStyle = '#f3ead8';
+        const litWidth = Math.max(1, r * 2 * Math.max(0, Math.min(1, illum)));
+        const startX = waxing ? x + r - litWidth : x - r;
+        ctx.fillRect(startX, y - r, litWidth, r * 2);
+        ctx.restore();
+        ctx.strokeStyle = border;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+
+    ctx.clearRect(0, 0, width, height);
+    days.forEach((day, idx) => {
+        const x = left + ((right - left) * idx / Math.max(1, days.length - 1));
+        const angle = Number(day.phaseAngle);
+        const illum = Number(day.illumination) / 100;
+        drawDisc(x, illum, angle < 180);
+    });
+
+    if (!Number.isNaN(previous.getTime()) && !Number.isNaN(next.getTime()) && span > 0) {
+        const tx = left + Math.max(0, Math.min(1, (now - previous) / span)) * (right - left);
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(tx, y, r + 5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = text;
+        ctx.textAlign = 'center';
+        ctx.font = '600 11px Source Sans 3, Segoe UI, sans-serif';
+        ctx.fillText('today', tx, y - r - 12);
+    }
+
+    const phases = Array.isArray(lunation.phases) ? lunation.phases : [];
+    phases.forEach((phase) => {
+        const date = new Date(String(phase.time || ''));
+        if (Number.isNaN(date.getTime()) || Number.isNaN(previous.getTime()) || Number.isNaN(next.getTime()) || date < previous || date > next) return;
+        const x = left + ((date - previous) / span) * (right - left);
+        ctx.strokeStyle = muted;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, y + r + 8);
+        ctx.lineTo(x, y + r + 18);
+        ctx.stroke();
+        ctx.fillStyle = muted;
+        ctx.textAlign = 'center';
+        ctx.font = '10px Source Sans 3, Segoe UI, sans-serif';
+        ctx.fillText(String(phase.label || '').replace(' Moon', ''), x, y + r + 33);
+        ctx.fillText(formatClock(date), x, y + r + 47);
+    });
+
+    ctx.fillStyle = muted;
+    ctx.textAlign = 'left';
+    ctx.font = '12px Source Sans 3, Segoe UI, sans-serif';
+    ctx.fillText(`${formatDateTime(previous)} to ${formatDateTime(next)}`, 18, height - 16);
+}
+
 function moonPhaseName(phase) {
     const p = ((phase % 1) + 1) % 1;
     if (p < 0.03 || p > 0.97) return 'New Moon';
@@ -1005,6 +1330,7 @@ function renderDetails(now) {
     ]);
 
     renderPlanetDetails();
+    renderAlmanacTable();
     renderCacheDetails();
 }
 
@@ -1024,6 +1350,56 @@ function renderPlanetDetails() {
         line2: 'src/cli/build_celestial_cache.php',
         line3: '',
     }]);
+}
+
+function renderAlmanacTable() {
+    const host = document.getElementById('celestial-almanac-table');
+    if (!host) return;
+    const bodies = CELESTIAL_CACHE.daily?.payload?.bodies || {};
+    const events = CELESTIAL_CACHE.daily?.payload?.events || {};
+    const { start, end } = localDayBounds(new Date());
+    const names = CELESTIAL_BODY_ORDER.filter((name) => bodies[name] || name === 'sun' || name === 'moon');
+    const rows = names.map((name) => {
+        const body = bodies[name] || {};
+        const intervals = pathVisibilityIntervals(sampleBody(name, start, end, 10), start, end);
+        const visibleMs = intervals.reduce((total, interval) => total + (interval.end - interval.start), 0);
+        const distanceAu = Number(body.distanceAu);
+        const distance = name === 'moon' && Number.isFinite(distanceAu)
+            ? `${(distanceAu * 149597870.7).toLocaleString(undefined, { maximumFractionDigits: 0 })} km`
+            : (Number.isFinite(distanceAu) ? `${distanceAu.toFixed(3)} au` : 'n/a');
+        return `
+            <tr>
+                <td class="celestial-table-name"><span style="background:${escapeHtml(bodyColor(name))}"></span>${escapeHtml(bodyLabel(name))}</td>
+                <td>${escapeHtml(events[name]?.rise ? formatDateTime(new Date(events[name].rise)) : 'n/a')}</td>
+                <td>${escapeHtml(events[name]?.transit ? formatDateTime(new Date(events[name].transit)) : 'n/a')}</td>
+                <td>${escapeHtml(events[name]?.set ? formatDateTime(new Date(events[name].set)) : 'n/a')}</td>
+                <td>${escapeHtml(formatDuration(visibleMs))}</td>
+                <td>${Number.isFinite(Number(body.altitude)) ? `${Number(body.altitude).toFixed(1)}°` : 'n/a'}</td>
+                <td>${Number.isFinite(Number(body.azimuth)) ? `${Number(body.azimuth).toFixed(1)}° ${escapeHtml(compassLabel(Number(body.azimuth)))}` : 'n/a'}</td>
+                <td>n/a</td>
+                <td>${escapeHtml(distance)}</td>
+            </tr>
+        `;
+    });
+
+    host.innerHTML = `
+        <table class="celestial-almanac">
+            <thead>
+                <tr>
+                    <th>Body</th>
+                    <th>Rise</th>
+                    <th>Transit</th>
+                    <th>Set</th>
+                    <th>Up for</th>
+                    <th>Altitude</th>
+                    <th>Azimuth</th>
+                    <th>Mag</th>
+                    <th>Distance</th>
+                </tr>
+            </thead>
+            <tbody>${rows.join('')}</tbody>
+        </table>
+    `;
 }
 
 function renderCacheDetails() {
@@ -1046,6 +1422,9 @@ function renderCelestial() {
     drawSkyMap(now);
     drawVisibility(now);
     drawSunPath(now);
+    drawDaylightYear(now);
+    drawSolarSystem();
+    drawLunationStrip(now);
     drawMoonSymbol(now);
     renderDetails(now);
 }

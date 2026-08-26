@@ -1079,6 +1079,25 @@ a:visited {
     height: 230px;
 }
 
+#celestial-daylight-year,
+#celestial-solar-system,
+#celestial-lunation {
+    width: 100%;
+    display: block;
+}
+
+#celestial-daylight-year {
+    height: 320px;
+}
+
+#celestial-solar-system {
+    height: 420px;
+}
+
+#celestial-lunation {
+    height: 230px;
+}
+
 .celestial-detail-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1137,6 +1156,46 @@ a:visited {
     color: var(--muted);
     font-size: 0.86rem;
     overflow-wrap: anywhere;
+}
+
+.celestial-tablewrap {
+    overflow-x: auto;
+}
+
+.celestial-almanac {
+    width: 100%;
+    min-width: 820px;
+    border-collapse: collapse;
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
+.celestial-almanac th,
+.celestial-almanac td {
+    border-bottom: 1px solid var(--border);
+    padding: 0.55rem 0.65rem;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.celestial-almanac th {
+    color: var(--muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.055em;
+    text-transform: uppercase;
+}
+
+.celestial-table-name {
+    font-weight: 700;
+}
+
+.celestial-table-name span {
+    display: inline-block;
+    width: 0.68rem;
+    height: 0.68rem;
+    margin-right: 0.45rem;
+    border-radius: 999px;
+    vertical-align: -0.04rem;
 }
 
 @media (max-width: 700px) {

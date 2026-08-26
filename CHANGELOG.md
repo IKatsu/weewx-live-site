@@ -20,6 +20,7 @@ The format is intentionally simple:
 - Added a Skyfield-style sun path panel and optional empty catalog schema for future full star/constellation dome imports
 - Added a local celestial catalog importer for Hipparcos/Tycho stars and Stellarium-derived constellation lines
 - Added a celestial catalog projection API and star/constellation rendering layer for the sky dome
+- Added Skyfield-style celestial panels for daylight week-by-week, solar-system map, lunar-month strip, and a richer almanac table
 
 ## v1.0.5 - 2026-06-26
 

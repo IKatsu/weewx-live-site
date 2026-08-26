@@ -441,7 +441,7 @@ Full details:
 
 The detailed celestial page can use a small MySQL cache generated from Skyfield. This keeps the almanac work out of WeeWX skin/report generation and lets the web page read derived JSON quickly.
 
-The daily cache includes sampled paths for the configured sun, moon, and planet bodies. Rebuild it after changing `celestial.enabled_bodies` or `celestial.sample_minutes`.
+The daily cache includes sampled paths for the configured sun, moon, and planet bodies, plus the solar-system map and lunar-month data. The yearly cache includes weekly daylight/twilight samples for the daylight graph. Rebuild the cache after changing `celestial.enabled_bodies`, `celestial.sample_minutes`, station location, or timezone.
 
 Install Python dependencies for the same user that will run cron:
 
@@ -467,6 +467,13 @@ Manual build:
 
 ```bash
 php src/cli/build_celestial_cache.php --force
+```
+
+After upgrading an older install, rebuild the daily and yearly datasets so the detailed celestial panels have the new cache fields:
+
+```bash
+php src/cli/build_celestial_cache.php --dataset=daily --force
+php src/cli/build_celestial_cache.php --dataset=yearly --force
 ```
 
 Cron example:
