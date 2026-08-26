@@ -16,6 +16,8 @@ The format is intentionally simple:
 - Added a standalone Skyfield celestial cache builder, cache table, and API endpoint for detailed celestial-page data without WeeWX skin generation
 - Added cached sun/moon paths, planet position details, and cache status panels to the celestial page
 - Documented celestial cache setup and astronomy dataset handling so ephemeris/catalog files stay outside git and release archives
+- Expanded the celestial cache to sample paths for all enabled bodies, enabling live planet markers and Skyfield-style rise/set ribbons
+- Added a Skyfield-style sun path panel and optional empty catalog schema for future full star/constellation dome imports
 
 ## v1.0.5 - 2026-06-26
 

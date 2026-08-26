@@ -441,6 +441,8 @@ Full details:
 
 The detailed celestial page can use a small MySQL cache generated from Skyfield. This keeps the almanac work out of WeeWX skin/report generation and lets the web page read derived JSON quickly.
 
+The daily cache includes sampled paths for the configured sun, moon, and planet bodies. Rebuild it after changing `celestial.enabled_bodies` or `celestial.sample_minutes`.
+
 Install Python dependencies for the same user that will run cron:
 
 ```bash
@@ -479,6 +481,14 @@ Dataset rule:
 
 - Keep ephemeris, star catalog, constellation, TLE, comet, and similar astronomy datasets outside this repository and outside release archives.
 - See `docs/CELESTIAL_CACHE.md` for the reference-project and licensing notes.
+
+Optional full-sky-dome catalog schema:
+
+```bash
+mysql -u DB_USER -p DB_NAME < docs/sql/create_pws_celestial_catalog.sql
+```
+
+This creates empty tables for future/local star and constellation imports. It intentionally does not include catalog data.
 
 ---
 Author: Codex (GPT-5)

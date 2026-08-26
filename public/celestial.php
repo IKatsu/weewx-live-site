@@ -67,13 +67,20 @@ render_site_header('Celestial Almanac', default_nav_links($config), [
 
     <section class="charts celestial-charts">
         <article class="chart-card">
-            <h2 class="chart-title">Visibility Timeline</h2>
+            <h2 class="chart-title">Rise &amp; Set - Today</h2>
             <canvas id="celestial-visibility" width="1200" height="320"></canvas>
         </article>
         <article class="chart-card">
             <h2 class="chart-title">Moon Phase</h2>
             <canvas id="celestial-moon" width="520" height="320"></canvas>
             <div id="phase-details" class="celestial-detail-grid celestial-phase-grid"></div>
+        </article>
+    </section>
+
+    <section class="charts celestial-charts">
+        <article class="chart-card">
+            <h2 class="chart-title">The Sun's Path - Today</h2>
+            <canvas id="celestial-sunpath" width="900" height="640"></canvas>
         </article>
     </section>
 
@@ -120,6 +127,29 @@ const CELESTIAL_CACHE = {
     monthly: null,
     yearly: null,
 };
+const CELESTIAL_BODY_ORDER = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune'];
+const CELESTIAL_BODY_LABELS = {
+    sun: 'Sun',
+    moon: 'Moon',
+    mercury: 'Mercury',
+    venus: 'Venus',
+    mars: 'Mars',
+    jupiter: 'Jupiter',
+    saturn: 'Saturn',
+    uranus: 'Uranus',
+    neptune: 'Neptune',
+};
+const CELESTIAL_BODY_COLORS = {
+    sun: '#f6c44f',
+    moon: '#cdd7f2',
+    mercury: '#a9b0c0',
+    venus: '#f0d38c',
+    mars: '#e46f55',
+    jupiter: '#d99a58',
+    saturn: '#d6b766',
+    uranus: '#55b6ca',
+    neptune: '#6a8ee8',
+};
 
 function setTheme(theme) {
     if (!CELESTIAL.themes.includes(theme)) return;
@@ -146,6 +176,19 @@ function initThemeSelector() {
 
 function cssVar(name, fallback) {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
+
+function colorMix(hexA, hexB, ratio = 0.5) {
+    const parse = (hex) => {
+        const clean = String(hex || '').trim().replace('#', '');
+        if (!/^[0-9a-f]{6}$/i.test(clean)) return null;
+        return [0, 2, 4].map((idx) => parseInt(clean.slice(idx, idx + 2), 16));
+    };
+    const a = parse(hexA);
+    const b = parse(hexB);
+    if (!a || !b) return hexA || hexB || '#ffffff';
+    const mix = a.map((part, idx) => Math.round(part * (1 - ratio) + b[idx] * ratio));
+    return `rgb(${mix[0]}, ${mix[1]}, ${mix[2]})`;
 }
 
 function formatClock(dateObj) {
@@ -280,7 +323,78 @@ function cachedPath(kind) {
         date: new Date(String(row.time || '')),
         alt: Number(row.altitude),
         az: Number(row.azimuth),
+        distanceAu: Number(row.distanceAu),
     })).filter((row) => !Number.isNaN(row.date.getTime()) && Number.isFinite(row.alt) && Number.isFinite(row.az));
+}
+
+function availableBodies() {
+    const paths = CELESTIAL_CACHE.daily?.payload?.paths || {};
+    const bodies = CELESTIAL_CACHE.daily?.payload?.bodies || {};
+    return CELESTIAL_BODY_ORDER.filter((name) => Array.isArray(paths[name]) || bodies[name]);
+}
+
+function bodyColor(name) {
+    return CELESTIAL_BODY_COLORS[name] || cssVar('--accent', '#0f6ecf');
+}
+
+function bodyLabel(name) {
+    return CELESTIAL_BODY_LABELS[name] || name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+function currentBodyPosition(kind, now) {
+    const rows = cachedPath(kind);
+    if (rows.length >= 2) {
+        const target = now.getTime();
+        for (let i = 1; i < rows.length; i++) {
+            const prev = rows[i - 1];
+            const next = rows[i];
+            const pTime = prev.date.getTime();
+            const nTime = next.date.getTime();
+            if (target < pTime || target > nTime) continue;
+            const f = nTime === pTime ? 0 : (target - pTime) / (nTime - pTime);
+            let azDelta = next.az - prev.az;
+            if (azDelta > 180) azDelta -= 360;
+            if (azDelta < -180) azDelta += 360;
+            return {
+                date: now,
+                alt: prev.alt + (next.alt - prev.alt) * f,
+                az: normalizeDegrees(prev.az + azDelta * f),
+                distanceAu: Number.isFinite(prev.distanceAu) && Number.isFinite(next.distanceAu)
+                    ? prev.distanceAu + (next.distanceAu - prev.distanceAu) * f
+                    : null,
+            };
+        }
+        return target < rows[0].date.getTime() ? rows[0] : rows[rows.length - 1];
+    }
+
+    if (!window.SunCalc || !['sun', 'moon'].includes(kind)) return null;
+    const raw = kind === 'sun'
+        ? SunCalc.getPosition(now, CELESTIAL.location.latitude, CELESTIAL.location.longitude)
+        : SunCalc.getMoonPosition(now, CELESTIAL.location.latitude, CELESTIAL.location.longitude);
+    return {
+        date: now,
+        alt: degrees(raw.altitude),
+        az: normalizeDegrees(degrees(raw.azimuth) + 180),
+        distanceAu: null,
+    };
+}
+
+function pathVisibilityIntervals(rows, start, end) {
+    const intervals = [];
+    let active = null;
+    for (const row of rows) {
+        if (row.date < start || row.date > end) continue;
+        if (row.alt >= 0 && active === null) {
+            active = { start: row.date, end: row.date };
+        } else if (row.alt >= 0 && active !== null) {
+            active.end = row.date;
+        } else if (row.alt < 0 && active !== null) {
+            intervals.push(active);
+            active = null;
+        }
+    }
+    if (active !== null) intervals.push(active);
+    return intervals;
 }
 
 function projectSky(az, alt, cx, cy, radius) {
@@ -377,26 +491,27 @@ function drawSkyMap(now) {
     drawPath(sunPath, 'rgba(245, 176, 44, 0.95)', 3);
     drawPath(moonPath, 'rgba(170, 184, 222, 0.9)', 2);
 
-    const sunNow = SunCalc.getPosition(now, CELESTIAL.location.latitude, CELESTIAL.location.longitude);
-    const moonNow = SunCalc.getMoonPosition(now, CELESTIAL.location.latitude, CELESTIAL.location.longitude);
-    const sunPt = projectSky(normalizeDegrees(degrees(sunNow.azimuth) + 180), degrees(sunNow.altitude), cx, cy, radius);
-    const moonPt = projectSky(normalizeDegrees(degrees(moonNow.azimuth) + 180), degrees(moonNow.altitude), cx, cy, radius);
-
-    ctx.fillStyle = '#f5b02c';
-    ctx.beginPath();
-    ctx.arc(sunPt.x, sunPt.y, 8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#fff4bf';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.fillStyle = '#d8def0';
-    ctx.beginPath();
-    ctx.arc(moonPt.x, moonPt.y, 7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#7987a7';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    for (const name of availableBodies()) {
+        const pos = currentBodyPosition(name, now);
+        if (!pos || pos.alt < 0) continue;
+        const pt = projectSky(pos.az, pos.alt, cx, cy, radius);
+        const isMajor = name === 'sun' || name === 'moon';
+        const dotRadius = name === 'sun' ? 8 : (name === 'moon' ? 7 : 4.5);
+        ctx.fillStyle = bodyColor(name);
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = name === 'sun' ? '#fff4bf' : colorMix(bodyColor(name), text, 0.35);
+        ctx.lineWidth = isMajor ? 2 : 1.4;
+        ctx.stroke();
+        if (isMajor || pos.alt > 6) {
+            ctx.fillStyle = text;
+            ctx.font = `${isMajor ? '600 ' : ''}11px Source Sans 3, Segoe UI, sans-serif`;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(bodyLabel(name), pt.x + dotRadius + 5, pt.y);
+        }
+    }
 
     ctx.fillStyle = muted;
     ctx.font = '12px Source Sans 3, Segoe UI, sans-serif';
@@ -412,68 +527,245 @@ function drawSkyMap(now) {
 
 function drawVisibility(now) {
     const canvas = document.getElementById('celestial-visibility');
-    if (!canvas || !window.SunCalc) return;
+    if (!canvas) return;
     const { ctx, width, height } = setupCanvas(canvas);
     const text = cssVar('--text', '#102137');
     const muted = cssVar('--muted', '#5b6f86');
     const border = cssVar('--border', '#d7e1ec');
     const { start, end } = localDayBounds(now);
-    const sun = sampleBody('sun', start, end, 10);
-    const moon = sampleBody('moon', start, end, 10);
-    const left = 48;
-    const right = width - 16;
-    const top = 18;
-    const bottom = height - 34;
+    const bodies = availableBodies().filter((name) => cachedPath(name).length > 0 || ['sun', 'moon'].includes(name));
+    const left = 92;
+    const right = width - 72;
+    const top = 26;
+    const rowGap = 25;
+    const rowHeight = 8;
+    const bottom = Math.min(height - 26, top + Math.max(1, bodies.length) * rowGap + 16);
 
     ctx.clearRect(0, 0, width, height);
+    function xFor(date) {
+        return left + ((date.getTime() - start.getTime()) / (end.getTime() - start.getTime())) * (right - left);
+    }
+
+    ctx.fillStyle = colorMix(cssVar('--card', '#102137'), cssVar('--accent-soft', '#2d6cdf'), 0.24);
+    ctx.fillRect(left, top - 8, right - left, bottom - top + 18);
     ctx.strokeStyle = border;
-    ctx.fillStyle = muted;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(left, top - 8, right - left, bottom - top + 18);
+
     ctx.font = '12px Source Sans 3, Segoe UI, sans-serif';
-    for (const alt of [-18, -12, -6, 0, 30, 60]) {
-        const y = bottom - ((alt + 20) / 90) * (bottom - top);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = muted;
+    for (let h = 0; h <= 24; h += 3) {
+        const x = left + (h / 24) * (right - left);
+        ctx.strokeStyle = h % 6 === 0 ? border : colorMix(border, cssVar('--card', '#102137'), 0.6);
+        ctx.beginPath();
+        ctx.moveTo(x, top - 8);
+        ctx.lineTo(x, bottom + 10);
+        ctx.stroke();
+        ctx.fillText(`${String(h).padStart(2, '0')}`, x, height - 9);
+    }
+
+    ctx.textAlign = 'left';
+    bodies.forEach((name, idx) => {
+        const y = top + idx * rowGap;
+        const rows = sampleBody(name, start, end, 10);
+        const intervals = pathVisibilityIntervals(rows, start, end);
+        ctx.fillStyle = bodyColor(name);
+        ctx.beginPath();
+        ctx.arc(18, y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = text;
+        ctx.font = '600 12px Source Sans 3, Segoe UI, sans-serif';
+        ctx.fillText(bodyLabel(name), 28, y + 4);
+
+        ctx.strokeStyle = colorMix(border, bodyColor(name), 0.16);
+        ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(left, y);
         ctx.lineTo(right, y);
         ctx.stroke();
-        ctx.fillText(`${alt}°`, 8, y + 4);
-    }
 
-    function xFor(date) {
-        return left + ((date.getTime() - start.getTime()) / (end.getTime() - start.getTime())) * (right - left);
-    }
-    function yFor(alt) {
-        return bottom - ((Math.max(-20, Math.min(70, alt)) + 20) / 90) * (bottom - top);
-    }
-    function path(rows, color) {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        rows.forEach((row, idx) => {
-            const x = xFor(row.date);
-            const y = yFor(row.alt);
-            if (idx === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        });
-        ctx.stroke();
-    }
+        ctx.fillStyle = bodyColor(name);
+        for (const interval of intervals) {
+            const x0 = Math.max(left, xFor(interval.start));
+            const x1 = Math.min(right, xFor(interval.end));
+            ctx.fillRect(x0, y - rowHeight / 2, Math.max(2, x1 - x0), rowHeight);
+        }
 
-    path(sun, '#f5b02c');
-    path(moon, '#aab8de');
+        const transit = CELESTIAL_CACHE.daily?.payload?.events?.[name]?.transit;
+        if (transit) {
+            const tx = xFor(new Date(transit));
+            if (tx >= left && tx <= right) {
+                ctx.strokeStyle = colorMix(bodyColor(name), text, 0.22);
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(tx, y - 8);
+                ctx.lineTo(tx, y + 8);
+                ctx.stroke();
+            }
+        }
+    });
+
     const nowX = xFor(now);
-    ctx.strokeStyle = text;
+    ctx.strokeStyle = cssVar('--accent', '#0f6ecf');
+    ctx.lineWidth = 2;
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
-    ctx.moveTo(nowX, top);
-    ctx.lineTo(nowX, bottom);
+    ctx.moveTo(nowX, top - 13);
+    ctx.lineTo(nowX, bottom + 15);
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.fillStyle = cssVar('--accent', '#0f6ecf');
+    ctx.textAlign = 'center';
+    ctx.font = '600 11px Source Sans 3, Segoe UI, sans-serif';
+    ctx.fillText(`now ${formatClock(now)}`, Math.max(left + 34, Math.min(right - 34, nowX)), top - 16);
+}
+
+function drawSunPath(now) {
+    const canvas = document.getElementById('celestial-sunpath');
+    if (!canvas) return;
+    const { ctx, width, height } = setupCanvas(canvas);
+    const text = cssVar('--text', '#102137');
+    const muted = cssVar('--muted', '#5b6f86');
+    const border = cssVar('--border', '#d7e1ec');
+    const card = cssVar('--card', '#101828');
+    const { start, end } = localDayBounds(now);
+    const sun = sampleBody('sun', start, end, 10);
+    const moon = sampleBody('moon', start, end, 10);
+    const floor = -24;
+    const topAlt = Math.min(94, Math.max(48, ...sun.concat(moon).map((row) => row.alt).filter(Number.isFinite)) + 8);
+    const left = 54;
+    const right = width - 22;
+    const top = 18;
+    const bottom = height - 42;
+
+    function xForAz(az) {
+        return left + (normalizeDegrees(az) / 360) * (right - left);
+    }
+    function yForAlt(alt) {
+        const clamped = Math.max(floor, Math.min(topAlt, alt));
+        return top + ((topAlt - clamped) / (topAlt - floor)) * (bottom - top);
+    }
+    function band(hi, lo, color) {
+        const y0 = yForAlt(Math.min(hi, topAlt));
+        const y1 = yForAlt(Math.max(lo, floor));
+        if (y1 <= y0) return;
+        ctx.fillStyle = color;
+        ctx.fillRect(left, y0, right - left, y1 - y0);
+    }
+    function drawAzPath(rows, color, lineWidth, dash = []) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.setLineDash(dash);
+        ctx.beginPath();
+        let started = false;
+        let prevAz = null;
+        for (const row of rows) {
+            if (row.alt < floor || (prevAz !== null && Math.abs(row.az - prevAz) > 180)) {
+                if (started) ctx.stroke();
+                ctx.beginPath();
+                started = false;
+                prevAz = null;
+                continue;
+            }
+            const x = xForAz(row.az);
+            const y = yForAlt(row.alt);
+            if (!started) {
+                ctx.moveTo(x, y);
+                started = true;
+            } else {
+                ctx.lineTo(x, y);
+            }
+            prevAz = row.az;
+        }
+        if (started) ctx.stroke();
+        ctx.setLineDash([]);
+    }
+    function marker(name, radius) {
+        const pos = currentBodyPosition(name, now);
+        if (!pos || pos.alt < floor) return;
+        const x = xForAz(pos.az);
+        const y = yForAlt(pos.alt);
+        ctx.fillStyle = bodyColor(name);
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = colorMix(bodyColor(name), text, 0.28);
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = text;
+        ctx.font = '600 11px Source Sans 3, Segoe UI, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(bodyLabel(name), x + radius + 5, y + 4);
+    }
+
+    ctx.clearRect(0, 0, width, height);
+    band(topAlt, 0, colorMix(card, '#f6c44f', 0.18));
+    band(0, -6, colorMix(card, '#6f95c8', 0.28));
+    band(-6, -12, colorMix(card, '#4b638c', 0.28));
+    band(-12, -18, colorMix(card, '#2d3b62', 0.28));
+    band(-18, floor, colorMix(card, '#101828', 0.25));
+
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(left, top, right - left, bottom - top);
+    ctx.font = '12px Source Sans 3, Segoe UI, sans-serif';
+    for (const alt of [0, 30, 60, 90]) {
+        if (alt > topAlt) continue;
+        const y = yForAlt(alt);
+        ctx.strokeStyle = alt === 0 ? text : border;
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(right, y);
+        ctx.stroke();
+        ctx.fillStyle = muted;
+        ctx.textAlign = 'right';
+        ctx.fillText(`${alt}°`, left - 8, y + 4);
+    }
+    for (const az of [0, 45, 90, 135, 180, 225, 270, 315, 360]) {
+        const x = xForAz(az);
+        ctx.strokeStyle = az % 90 === 0 ? border : colorMix(border, card, 0.55);
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.stroke();
+        ctx.fillStyle = muted;
+        ctx.textAlign = 'center';
+        const label = {0: 'N', 90: 'E', 180: 'S', 270: 'W', 360: 'N'}[az] || String(az);
+        ctx.fillText(label, x, bottom + 20);
+    }
+
+    drawAzPath(moon, bodyColor('moon'), 2, [5, 5]);
+    drawAzPath(sun, bodyColor('sun'), 3);
+    for (const row of sun) {
+        const localHour = Number(new Intl.DateTimeFormat('en-GB', {
+            timeZone: CELESTIAL.location.timezone || 'UTC',
+            hour: '2-digit',
+            hourCycle: 'h23',
+        }).format(row.date));
+        const minute = Number(new Intl.DateTimeFormat('en-GB', {
+            timeZone: CELESTIAL.location.timezone || 'UTC',
+            minute: '2-digit',
+        }).format(row.date));
+        if (minute !== 0 || localHour % 3 !== 0 || row.alt < floor) continue;
+        const x = xForAz(row.az);
+        const y = yForAlt(row.alt);
+        ctx.fillStyle = text;
+        ctx.beginPath();
+        ctx.arc(x, y, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = muted;
+        ctx.font = '10px Source Sans 3, Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(localHour).padStart(2, '0'), x, y - 7);
+    }
+    marker('moon', 6);
+    marker('sun', 7);
 
     ctx.fillStyle = muted;
-    ctx.textAlign = 'center';
-    for (let h = 0; h <= 24; h += 4) {
-        const x = left + (h / 24) * (right - left);
-        ctx.fillText(`${String(h).padStart(2, '0')}:00`, x, height - 10);
-    }
+    ctx.font = '12px Source Sans 3, Segoe UI, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Altitude against azimuth from midnight to midnight; dashed line is the Moon.', left, height - 10);
 }
 
 function drawMoonSymbol(now) {
@@ -658,6 +950,7 @@ function renderCelestial() {
     const now = new Date();
     drawSkyMap(now);
     drawVisibility(now);
+    drawSunPath(now);
     drawMoonSymbol(now);
     renderDetails(now);
 }

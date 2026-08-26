@@ -212,7 +212,7 @@ Optional for better hybrid behavior:
 
 ## Celestial cache setup
 
-The celestial page can use precomputed Skyfield data for sun/moon paths, twilight, moon phase, and visible planet position details without running WeeWX skin generation.
+The celestial page can use precomputed Skyfield data for sun/moon/planet paths, twilight, moon phase, and visible planet position details without running WeeWX skin generation.
 
 See full setup and dataset-license notes:
 
@@ -227,6 +227,14 @@ php src/cli/build_celestial_cache.php --force
 ```
 
 Keep ephemeris, star catalog, constellation, TLE, and similar astronomy datasets outside this repository and outside release archives.
+
+Optional full-dome preparation:
+
+```bash
+mysql -u DB_USER -p DB_NAME < docs/sql/create_pws_celestial_catalog.sql
+```
+
+That schema is for future/local star and constellation imports. It does not ship or import catalog data by itself.
 
 ## Monthly history rollup setup
 

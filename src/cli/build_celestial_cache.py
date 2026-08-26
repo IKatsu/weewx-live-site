@@ -142,7 +142,7 @@ def generate_daily(args) -> dict:
     paths = {}
     sample_step = max(1, args.sample_minutes)
     sample_count = int((24 * 60) / sample_step) + 1
-    for name in [b for b in enabled if b in ("sun", "moon")]:
+    for name in enabled:
         rows = []
         for idx in range(sample_count):
             dt = start_local + timedelta(minutes=idx * sample_step)

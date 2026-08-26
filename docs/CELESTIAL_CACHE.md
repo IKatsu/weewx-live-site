@@ -6,6 +6,8 @@ The celestial page can use a precomputed Skyfield cache instead of asking WeeWX 
 
 This project does **not** use the WeeWX skin output from `weewx-skyfield`. Instead, `src/cli/build_celestial_cache.py` uses Skyfield directly, emits derived JSON, and `src/cli/build_celestial_cache.php` stores that JSON in MySQL for `public/celestial.php`.
 
+The current daily cache includes sampled paths for the configured sun, moon, and planet bodies. The browser uses those paths for live marker interpolation, rise/set ribbons, and the sun-path panel.
+
 ## Reference
 
 The implementation is inspired by:
@@ -72,6 +74,14 @@ mysql -u DB_ADMIN_USER -p DB_NAME < docs/sql/create_pws_celestial_cache.sql
 ```
 
 If your writer account is not `pws_forecast_writer`, adjust the `GRANT` line first.
+
+Optional full-dome catalog schema:
+
+```bash
+mysql -u DB_ADMIN_USER -p DB_NAME < docs/sql/create_pws_celestial_catalog.sql
+```
+
+That schema provides empty tables for locally imported stars and constellation lines. It does not include catalog data and is not required for the current sun/moon/planet panels.
 
 ## Build
 
