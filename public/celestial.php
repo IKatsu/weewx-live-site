@@ -714,7 +714,9 @@ function drawSunPath(now) {
     const bottom = height - 42;
 
     function xForAz(az) {
-        return left + (normalizeDegrees(az) / 360) * (right - left);
+        const wrapped = ((az % 360) + 360) % 360;
+        const chartAz = wrapped === 0 && az > 0 ? 360 : wrapped;
+        return left + (chartAz / 360) * (right - left);
     }
     function yForAlt(alt) {
         const clamped = Math.max(floor, Math.min(topAlt, alt));
@@ -733,24 +735,43 @@ function drawSunPath(now) {
         ctx.setLineDash(dash);
         ctx.beginPath();
         let started = false;
-        let prevAz = null;
+        let prev = null;
         for (const row of rows) {
-            if (row.alt < floor || (prevAz !== null && Math.abs(row.az - prevAz) > 180)) {
+            if (row.alt < floor) {
                 if (started) ctx.stroke();
                 ctx.beginPath();
                 started = false;
-                prevAz = null;
+                prev = null;
                 continue;
             }
             const x = xForAz(row.az);
             const y = yForAlt(row.alt);
+            if (prev !== null && Math.abs(row.az - prev.az) > 180) {
+                const wrappedAz = row.az < prev.az ? row.az + 360 : row.az - 360;
+                const seamAz = row.az < prev.az ? 360 : 0;
+                const ratio = (seamAz - prev.az) / (wrappedAz - prev.az);
+                const seamAlt = prev.alt + (row.alt - prev.alt) * ratio;
+                const seamY = yForAlt(seamAlt);
+
+                if (started) {
+                    ctx.lineTo(xForAz(seamAz), seamY);
+                    ctx.stroke();
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(xForAz(seamAz === 360 ? 0 : 360), seamY);
+                ctx.lineTo(x, y);
+                started = true;
+                prev = row;
+                continue;
+            }
             if (!started) {
                 ctx.moveTo(x, y);
                 started = true;
             } else {
                 ctx.lineTo(x, y);
             }
-            prevAz = row.az;
+            prev = row;
         }
         if (started) ctx.stroke();
         ctx.setLineDash([]);
