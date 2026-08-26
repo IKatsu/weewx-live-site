@@ -980,7 +980,18 @@ function drawDaylightYear(now) {
         ctx.fillRect(x, yForHour(toHour), colW + 0.5, yForHour(fromHour) - yForHour(toHour));
     }
 
-    function fillColumn(idx, hours) {
+    function fillColumn(idx, week) {
+        const bands = Array.isArray(week.bands) ? week.bands : [];
+        if (bands.length > 0) {
+            for (const band of bands) {
+                const state = String(band.state || '');
+                const color = shade[state] || shade.night;
+                fillBand(idx, Number(band.startHour), Number(band.endHour), color);
+            }
+            return;
+        }
+
+        const hours = week.hours || {};
         const events = [
             [0, 'night'],
             [Number(hours.astronomicalDawn), 'astronomical'],
@@ -1033,7 +1044,7 @@ function drawDaylightYear(now) {
 
     ctx.clearRect(0, 0, width, height);
     weeks.forEach((week, idx) => {
-        fillColumn(idx, week.hours || {});
+        fillColumn(idx, week);
     });
 
     ctx.strokeStyle = border;

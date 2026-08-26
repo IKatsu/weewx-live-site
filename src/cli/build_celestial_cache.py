@@ -138,6 +138,43 @@ def local_hour_from_iso(value: Optional[str], tz: ZoneInfo):
     return safe_float(dt.hour + dt.minute / 60.0 + dt.second / 3600.0, 4)
 
 
+def twilight_state(altitude_degrees: float) -> str:
+    if altitude_degrees >= 0.0:
+        return "day"
+    if altitude_degrees >= -6.0:
+        return "civil"
+    if altitude_degrees >= -12.0:
+        return "nautical"
+    if altitude_degrees >= -18.0:
+        return "astronomical"
+    return "night"
+
+
+def sun_twilight_bands(eph, observer, ts, day_start: datetime, sample_minutes: int = 10) -> list:
+    step_hours = max(1, sample_minutes) / 60.0
+    samples = []
+    sample_count = int((24 * 60) / max(1, sample_minutes))
+    for idx in range(sample_count):
+        start_hour = idx * step_hours
+        end_hour = min(24.0, (idx + 1) * step_hours)
+        midpoint = day_start + timedelta(hours=(start_hour + end_hour) / 2.0)
+        apparent = observer.at(ts.from_datetime(midpoint.astimezone(timezone.utc))).observe(eph["sun"]).apparent()
+        alt, _, _ = apparent.altaz()
+        samples.append((start_hour, end_hour, twilight_state(float(alt.degrees))))
+
+    bands = []
+    for start_hour, end_hour, state in samples:
+        if bands and bands[-1]["state"] == state and abs(bands[-1]["endHour"] - start_hour) < 0.0001:
+            bands[-1]["endHour"] = safe_float(end_hour, 4)
+        else:
+            bands.append({
+                "startHour": safe_float(start_hour, 4),
+                "endHour": safe_float(end_hour, 4),
+                "state": state,
+            })
+    return bands
+
+
 def first_event_time(find_func, observer, body, t0, t1, tz: ZoneInfo):
     return first_or_none(event_list(find_func, observer, body, t0, t1, tz))
 
@@ -413,6 +450,7 @@ def generate_yearly(args) -> dict:
             "astronomicalDawn": astro_dawn,
             "astronomicalDusk": astro_dusk,
             "daylightMinutes": daylight_minutes,
+            "bands": sun_twilight_bands(eph, observer, ts, day_start),
             "hours": {
                 "sunrise": local_hour_from_iso(rise, tz),
                 "solarNoon": local_hour_from_iso(transit, tz),
