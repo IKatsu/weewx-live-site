@@ -969,7 +969,7 @@ function drawDaylightYear(now) {
     const left = 58;
     const right = width - 24;
     const top = 20;
-    const bottom = height - 44;
+    const bottom = height - 58;
     const plotW = right - left;
     const colW = plotW / weeks.length;
     const shade = {
@@ -987,6 +987,30 @@ function drawDaylightYear(now) {
         const x = left + idx * colW;
         ctx.fillStyle = color;
         ctx.fillRect(x, yForHour(toHour), colW + 0.5, yForHour(fromHour) - yForHour(toHour));
+    }
+
+    function fillColumn(idx, hours) {
+        const events = [
+            [0, 'night'],
+            [Number(hours.astronomicalDawn), 'astronomical'],
+            [Number(hours.nauticalDawn), 'nautical'],
+            [Number(hours.civilDawn), 'civil'],
+            [Number(hours.sunrise), 'day'],
+            [Number(hours.sunset), 'civil'],
+            [Number(hours.civilDusk), 'nautical'],
+            [Number(hours.nauticalDusk), 'astronomical'],
+            [Number(hours.astronomicalDusk), 'night'],
+            [24, null],
+        ].filter(([hour]) => Number.isFinite(hour) && hour >= 0 && hour <= 24)
+            .sort((a, b) => a[0] - b[0]);
+
+        let state = 'night';
+        for (let i = 0; i < events.length - 1; i += 1) {
+            const [hour, nextState] = events[i];
+            const nextHour = events[i + 1][0];
+            if (nextState) state = nextState;
+            if (nextHour > hour) fillBand(idx, hour, nextHour, shade[state]);
+        }
     }
 
     function drawCurve(key, color, dash = []) {
@@ -1018,16 +1042,7 @@ function drawDaylightYear(now) {
 
     ctx.clearRect(0, 0, width, height);
     weeks.forEach((week, idx) => {
-        const h = week.hours || {};
-        fillBand(idx, 0, Number(h.astronomicalDawn), shade.night);
-        fillBand(idx, Number(h.astronomicalDawn), Number(h.nauticalDawn), shade.astronomical);
-        fillBand(idx, Number(h.nauticalDawn), Number(h.civilDawn), shade.nautical);
-        fillBand(idx, Number(h.civilDawn), Number(h.sunrise), shade.civil);
-        fillBand(idx, Number(h.sunrise), Number(h.sunset), shade.day);
-        fillBand(idx, Number(h.sunset), Number(h.civilDusk), shade.civil);
-        fillBand(idx, Number(h.civilDusk), Number(h.nauticalDusk), shade.nautical);
-        fillBand(idx, Number(h.nauticalDusk), Number(h.astronomicalDusk), shade.astronomical);
-        fillBand(idx, Number(h.astronomicalDusk), 24, shade.night);
+        fillColumn(idx, week.hours || {});
     });
 
     ctx.strokeStyle = border;
@@ -1045,13 +1060,32 @@ function drawDaylightYear(now) {
         ctx.textAlign = 'right';
         ctx.fillText(`${String(hour).padStart(2, '0')}:00`, left - 8, y + 4);
     }
-    for (const month of [0, 13, 26, 39, 52]) {
-        const x = left + month * colW;
+    const monthTicks = [];
+    let lastMonth = '';
+    weeks.forEach((week, idx) => {
+        const date = new Date(`${week.date}T12:00:00`);
+        if (Number.isNaN(date.getTime())) return;
+        const month = new Intl.DateTimeFormat([], {
+            timeZone: CELESTIAL.location.timezone || 'UTC',
+            month: 'short',
+        }).format(date);
+        if (month !== lastMonth) {
+            monthTicks.push({ idx, label: month });
+            lastMonth = month;
+        }
+    });
+    for (const tick of monthTicks) {
+        const x = left + tick.idx * colW;
         ctx.strokeStyle = colorMix(border, card, 0.45);
         ctx.beginPath();
         ctx.moveTo(x, top);
-        ctx.lineTo(x, bottom);
+        ctx.lineTo(x, bottom + 6);
         ctx.stroke();
+        if (tick.idx % 2 === 0 || width > 900) {
+            ctx.fillStyle = muted;
+            ctx.textAlign = 'center';
+            ctx.fillText(tick.label, Math.min(right - 10, Math.max(left + 10, x)), bottom + 22);
+        }
     }
     drawCurve('sunrise', bodyColor('sun'));
     drawCurve('sunset', bodyColor('sun'));
@@ -1067,7 +1101,7 @@ function drawDaylightYear(now) {
     ctx.stroke();
     ctx.fillStyle = muted;
     ctx.textAlign = 'left';
-    ctx.fillText('Sunrise / sunset curves with dashed solar noon; vertical line is today.', left, height - 12);
+    ctx.fillText('Sunrise / sunset curves with dashed solar noon; vertical line is today.', left, height - 10);
 }
 
 function drawSolarSystem() {
