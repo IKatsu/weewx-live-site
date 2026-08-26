@@ -1065,6 +1065,10 @@ a:visited {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.celestial-full {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 #celestial-visibility,
 #celestial-moon {
     width: 100%;
@@ -1072,7 +1076,7 @@ a:visited {
 }
 
 #celestial-visibility {
-    height: 260px;
+    height: 300px;
 }
 
 #celestial-moon {
@@ -1160,22 +1164,39 @@ a:visited {
 
 .celestial-tablewrap {
     overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 0.85rem;
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--card) 90%, var(--accent-soft) 10%), var(--card));
 }
 
 .celestial-almanac {
     width: 100%;
     min-width: 820px;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     color: var(--text);
     font-size: 0.9rem;
 }
 
 .celestial-almanac th,
 .celestial-almanac td {
-    border-bottom: 1px solid var(--border);
-    padding: 0.55rem 0.65rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, var(--accent-soft) 28%);
+    padding: 0.68rem 0.75rem;
     text-align: left;
     white-space: nowrap;
+}
+
+.celestial-almanac tbody tr:nth-child(odd) {
+    background: color-mix(in srgb, var(--card) 90%, var(--accent-soft) 10%);
+}
+
+.celestial-almanac tbody tr:hover {
+    background: color-mix(in srgb, var(--card) 78%, var(--accent-soft) 22%);
+}
+
+.celestial-almanac tbody tr:last-child td {
+    border-bottom: 0;
 }
 
 .celestial-almanac th {
@@ -1183,19 +1204,34 @@ a:visited {
     font-size: 0.78rem;
     letter-spacing: 0.055em;
     text-transform: uppercase;
+    background: color-mix(in srgb, var(--card) 82%, var(--accent-soft) 18%);
 }
 
 .celestial-table-name {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
     font-weight: 700;
 }
 
-.celestial-table-name span {
+.celestial-body-orb {
     display: inline-block;
-    width: 0.68rem;
-    height: 0.68rem;
-    margin-right: 0.45rem;
+    width: 1.05rem;
+    height: 1.05rem;
+    flex: 0 0 auto;
     border-radius: 999px;
-    vertical-align: -0.04rem;
+    box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--text) 16%, transparent),
+        0 0 14px color-mix(in srgb, currentColor 46%, transparent);
+}
+
+.celestial-table-name em {
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-style: normal;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 @media (max-width: 700px) {

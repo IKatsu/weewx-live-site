@@ -47,12 +47,14 @@ render_site_header('Celestial Almanac', default_nav_links($config), [
 ]);
 ?>
 
-    <section class="celestial-layout">
+    <section class="charts celestial-charts celestial-full">
         <article class="chart-card celestial-sky-card">
             <h2 class="chart-title">Sky Map</h2>
             <canvas id="celestial-sky" width="900" height="900"></canvas>
         </article>
+    </section>
 
+    <section class="charts celestial-charts">
         <aside class="celestial-side">
             <article class="card">
                 <h2 class="chart-title">Sun</h2>
@@ -65,11 +67,14 @@ render_site_header('Celestial Almanac', default_nav_links($config), [
         </aside>
     </section>
 
-    <section class="charts celestial-charts">
+    <section class="charts celestial-charts celestial-full">
         <article class="chart-card">
             <h2 class="chart-title">Rise &amp; Set - Today</h2>
             <canvas id="celestial-visibility" width="1200" height="320"></canvas>
         </article>
+    </section>
+
+    <section class="charts celestial-charts">
         <article class="chart-card">
             <h2 class="chart-title">Moon Phase</h2>
             <canvas id="celestial-moon" width="520" height="320"></canvas>
@@ -77,14 +82,14 @@ render_site_header('Celestial Almanac', default_nav_links($config), [
         </article>
     </section>
 
-    <section class="charts celestial-charts">
+    <section class="charts celestial-charts celestial-full">
         <article class="chart-card">
             <h2 class="chart-title">The Sun's Path - Today</h2>
             <canvas id="celestial-sunpath" width="900" height="640"></canvas>
         </article>
     </section>
 
-    <section class="charts celestial-charts">
+    <section class="charts celestial-charts celestial-full">
         <article class="chart-card">
             <h2 class="chart-title">Solar Year - Daylight Week By Week</h2>
             <canvas id="celestial-daylight-year" width="1200" height="420"></canvas>
@@ -96,13 +101,16 @@ render_site_header('Celestial Almanac', default_nav_links($config), [
             <h2 class="chart-title">Solar System - Today</h2>
             <canvas id="celestial-solar-system" width="760" height="620"></canvas>
         </article>
+    </section>
+
+    <section class="charts celestial-charts celestial-full">
         <article class="chart-card">
             <h2 class="chart-title">Lunar Month</h2>
             <canvas id="celestial-lunation" width="760" height="240"></canvas>
         </article>
     </section>
 
-    <section class="charts celestial-charts">
+    <section class="charts celestial-charts celestial-full">
         <article class="card">
             <h2 class="chart-title">Almanac</h2>
             <div id="celestial-almanac-table" class="celestial-tablewrap"></div>
@@ -1361,6 +1369,7 @@ function renderAlmanacTable() {
     const names = CELESTIAL_BODY_ORDER.filter((name) => bodies[name] || name === 'sun' || name === 'moon');
     const rows = names.map((name) => {
         const body = bodies[name] || {};
+        const typeLabel = name === 'sun' ? 'Star' : (name === 'moon' ? 'Moon' : 'Planet');
         const intervals = pathVisibilityIntervals(sampleBody(name, start, end, 10), start, end);
         const visibleMs = intervals.reduce((total, interval) => total + (interval.end - interval.start), 0);
         const distanceAu = Number(body.distanceAu);
@@ -1369,7 +1378,10 @@ function renderAlmanacTable() {
             : (Number.isFinite(distanceAu) ? `${distanceAu.toFixed(3)} au` : 'n/a');
         return `
             <tr>
-                <td class="celestial-table-name"><span style="background:${escapeHtml(bodyColor(name))}"></span>${escapeHtml(bodyLabel(name))}</td>
+                <td class="celestial-table-name">
+                    <span class="celestial-body-orb" style="background:${escapeHtml(bodyColor(name))}; color:${escapeHtml(bodyColor(name))}"></span>
+                    <span>${escapeHtml(bodyLabel(name))}<br><em>${escapeHtml(typeLabel)}</em></span>
+                </td>
                 <td>${escapeHtml(events[name]?.rise ? formatDateTime(new Date(events[name].rise)) : 'n/a')}</td>
                 <td>${escapeHtml(events[name]?.transit ? formatDateTime(new Date(events[name].transit)) : 'n/a')}</td>
                 <td>${escapeHtml(events[name]?.set ? formatDateTime(new Date(events[name].set)) : 'n/a')}</td>
